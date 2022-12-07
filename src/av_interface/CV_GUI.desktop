@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Name=CV_GUI
+Comment=CV_GUI
+Exec=/bin/bash -c 'source /opt/ros/melodic/setup.bash; export ROS_HOSTNAME=localhost; source ~/projects/cv-platform/externals_ws/devel/setup.bash; source ~/projects/cv-platform/swm_ws/devel/setup.bash; source ~/projects/cv-platform/nrc_ws/devel/setup.bash; python ~/projects/cv-platform/nrc_ws/src/nrc_svcs/av_interface/cv_interface.py; read'
+Icon=~/projects/cv-platform/nrc_ws/src/nrc_svcs/icons/cv.png
+Terminal=true
+Type=Application
+Categories=None

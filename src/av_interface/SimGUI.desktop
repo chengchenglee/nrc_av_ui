@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Name=Sim_GUI
+Comment=Sim_GUI
+Exec=/bin/bash -c 'source ~/.bashrc; python ~/projects/nrc_ws/src/nrc_svcs/av_interface/sim_interface.py; read'
+Icon=/home/users/costafew/projects/nrc_ws/src/nrc_svcs/icons/rnm.png
+Terminal=true
+Type=Application
+Categories=None
+StartupNotify=True

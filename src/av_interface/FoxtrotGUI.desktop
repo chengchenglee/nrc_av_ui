@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Name=Foxtrot_GUI
+Comment=Foxtrot_GUI
+Exec=/bin/bash -c 'source ~/.bashrc; python ~/projects/nrc_ws/src/nrc_svcs/av_interface/foxtrot_interface.py; read'
+Icon=~/projects/nrc_ws/src/nrc_svcs/icons/rnm.png
+Terminal=true
+Type=Application
+Categories=None
+StartupNotify=True
