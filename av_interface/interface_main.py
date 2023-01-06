@@ -198,7 +198,7 @@ def updateMap(newName):
   else:
     map_name = newName
     print ('New map name selected is ',map_name)
-    os.system("rosrun nrc_svcs paramsForMap.sh "+map_name)
+    #os.system("rosrun nrc_svcs paramsForMap.sh "+map_name)
 
 def retrieve_valInput():
   global valSpdTextbox
@@ -282,7 +282,8 @@ def sendValCmd(arg):
     publishTeleopCmd = "bash " + teleopFolder + "publish-teleop.sh "
     publishTeleopCmd += teleopFolder + msg.teleop_filename
     try:
-        os.system(publishTeleopCmd)
+        #os.system(publishTeleopCmd)
+        a=1
     except:
         print("Unable to publish teleop path.")
         
@@ -556,7 +557,7 @@ def interfaceHealth(agent_name, ping_machines, sensors_list, algs_list, cmd_list
   #print('1map_name ', map_name)
   #print('2map_name ', map_name)
 
-  mapsel.set(map_name)
+  #mapsel.set(map_name)
   m=Tkinter.OptionMenu(allLaunchFrame, mapsel, *map_options, command=updateMap)
   m.grid(column=3, row=2, sticky=Tkinter.W+Tkinter.E)
 
@@ -741,8 +742,8 @@ def interfaceHealth(agent_name, ping_machines, sensors_list, algs_list, cmd_list
   # Setup rosparams - pass in runtime options here
   # Note: we now have a flag to Rerun this if the map name changes
   os.system("rosparam set /agent_name "+agent_name)
-  os.system("rosrun nrc_svcs paramsForDriving.sh")
-  os.system("rosrun nrc_svcs paramsForMap.sh "+map_name)
+  #os.system("rosrun nrc_svcs paramsForDriving.sh")
+  #os.system("rosrun nrc_svcs paramsForMap.sh "+map_name)
   
   running = True;
   nextBeepTime = rospy.Time.now().to_sec()

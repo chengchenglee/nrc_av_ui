@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package>
+  <name>nrc_av_ui</name>
+  <version>0.0.0</version>
+  <description>Nissan av ui package</description>
+  <maintainer email="christopher.ostafew@nissan-usa.com">Chris Ostafew</maintainer>
+  <license>NissanClosedSource</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- ADDED LINES BELOW FOR TESTING --> 
+  <build_depend>cmake_modules</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>rospy</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>nrc_msgs</build_depend>
+  <build_depend>pluginlib</build_depend>
+
+  <run_depend>std_msgs</run_depend>
+  <run_depend>roscpp</run_depend>
+  <run_depend>rospy</run_depend>
+  <run_depend>nrc_msgs</run_depend>
+  <run_depend>pluginlib</run_depend>
+</package>

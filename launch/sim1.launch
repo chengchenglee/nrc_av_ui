@@ -1,0 +1,5 @@
+<?xml version="1.0" ?>
+
+<launch>
+  <node pkg="nrc_av_ui" type="sim1" name="sim1_node"/>
+</launch>
