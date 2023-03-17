@@ -1,0 +1,39 @@
+#vehicle-nodes {
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 10px;
+
+  .ant-list-item-meta {
+    .ant-checkbox-wrapper {
+      top: -10px;
+      position: relative;
+
+      span:not(.ant-checkbox) {
+        padding-left: 16px;
+      }
+    }
+
+    .ant-list-item-meta-content {
+      position: relative;
+      top: 8px;
+
+      .ant-list-item-meta-title {
+        margin: 0px;
+      }
+    }
+
+    .status-btn {
+      top: 2px;
+    }
+  }
+
+  #btn-rosrun {
+    position: relative;
+  }
+
+  .spin__content {
+    padding: 50px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+  }
+}

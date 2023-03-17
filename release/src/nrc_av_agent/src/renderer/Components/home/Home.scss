@@ -1,0 +1,40 @@
+.App-Header {
+  background-color: antiquewhite;
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  font-size: calc(10px + 2vmin);
+  justify-content: center;
+}
+
+.Content {
+  text-align: center;
+
+  table {
+    font-size: 14pt;
+    margin-top: 20px;
+    width: 100%;
+
+    tr :first-child {
+      font-weight: 600;
+      text-align: end;
+      padding-right: 5pt;
+      width: 50%;
+    }
+
+    tr :last-child {
+      text-align: start;
+      padding-left: 5pt;
+      width: 50%;
+    }
+  }
+}
+
+.footer {
+  background-color: antiquewhite;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-grow: 1;
+  margin-top: 4rem;
+}
