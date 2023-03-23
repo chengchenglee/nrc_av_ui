@@ -44,13 +44,11 @@ cmds = [
   {"name": "ALL",       "command": " ", "nodes" : " "},
   {"name": "simulator", "command": "rosrun nrc_sim SimpleatorSimNode __name:=SimpleSimNode", "nodes" : "SimpleSimNode"},  
   {"name": "tf_sys",    "command": "roslaunch nrc_svcs leaf_tf_subsystem.launch sanborn:=true"},
-  #{"name": "vis_area",  "command": "rosrun nrc_perc_svcs visible_space_fusion __name:=VisAreaNode", "nodes" : "VisAreaNode"},    
-  #{"name": "world_mdl", "command": "roslaunch nrc_wm_svcs master_rbpf_store.launch runRbpfAnalyser:=false"},
   {"name": "world_mdl2","command": "roslaunch nrc_wm2_svcs leaf_pred.launch"},
-  {"name": "virt_objs", "command": "rosrun nrc_ralp_svcs inter_pred", "inclByDef" : False},
-  {"name": "modia",     "command": "roslaunch nrc_dm_svcs modia_all.launch autonomy_level:=ad5"},
+  {"name": "auto_goals", "command": "rosrun nrc_ralp_svcs auto_goals", "inclByDef" : False},
+  #{"name": "modia",     "command": "roslaunch nrc_dm_svcs modia_all.launch autonomy_level:=ad5"},
   {"name": "traj_plan", "command": "roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=LeafFS"},
-  {"name": "rviz",      "command": "rosrun rviz rviz __name:=rviz_debug",   "nodes" : "rviz_debug",   "inclByDef" : False},
+  #{"name": "rviz",      "command": "rosrun rviz rviz __name:=rviz_debug",   "nodes" : "rviz_debug",   "inclByDef" : False},
 ]
 
 dest_list = [

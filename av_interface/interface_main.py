@@ -742,8 +742,8 @@ def interfaceHealth(agent_name, ping_machines, sensors_list, algs_list, cmd_list
   # Setup rosparams - pass in runtime options here
   # Note: we now have a flag to Rerun this if the map name changes
   os.system("rosparam set /agent_name "+agent_name)
-  #os.system("rosrun nrc_svcs paramsForDriving.sh")
-  #os.system("rosrun nrc_svcs paramsForMap.sh "+map_name)
+  os.system("rosrun nrc_svcs paramsForDriving.sh")
+  os.system("rosrun nrc_svcs paramsForMap.sh "+map_name)
   
   running = True;
   nextBeepTime = rospy.Time.now().to_sec()
