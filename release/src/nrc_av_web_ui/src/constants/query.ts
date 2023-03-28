@@ -1,0 +1,9 @@
+export const CARS = 'cars';
+export const INTERFACES = 'interfaces';
+export const CMD = 'cmds';
+export const CAR_STATUS = { ACTIVE: 'active', WAITING: 'waiting' };
+export const SEQUENCES = 'sequences';
+export const RUN_SEQUENCE = 'run-sequence';
+export const RUN_ROS_CORE = 'run-ros-core';
+export const RUN_ROS_NODE = 'run-ros-node';
+export const AUTH = 'auth';

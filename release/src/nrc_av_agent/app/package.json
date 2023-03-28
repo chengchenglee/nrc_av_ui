@@ -1,0 +1,14 @@
+{
+  "name": "nrc_av_agent",
+  "version": "0.0.1",
+  "main": "./dist/main/main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "@azure/storage-file-share": "^12.13.0",
+    "getmac": "^5.20.0",
+    "socket.io-client": "^4.6.1",
+    "uuid": "^9.0.0"
+  }
+}

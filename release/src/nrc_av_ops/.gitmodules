@@ -1,0 +1,8 @@
+[submodule "nrc_av_web_api"]
+	path = nrc_av_web_api
+	url = https://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@github.com/niskyB/nrc_av_web_api.git
+	branch = develop
+[submodule "nrc_av_web_ui"]
+	path = nrc_av_web_ui
+	url = https://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@github.com/niskyB/nrc_av_web_ui.git
+	branch = develop

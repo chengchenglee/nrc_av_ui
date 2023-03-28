@@ -1,0 +1,23 @@
+# Dependency directories
+node_modules/
+
+# Temporary folders
+app/dist
+app/yarn.lock
+
+release/build
+
+# Temporary files
+package-lock.json
+.eslintcache
+app-config/connection.json
+app-config/vehicle-info.json
+av/ComputerStatsMonitor.pyc
+av/CsvWriter.pyc
+av/main.pyc
+av/MultiSetDest.pyc
+av/RosCmd.pyc
+av/RoscoreObj.pyc
+av/RosMsgMonitor.pyc
+av/SetConfig.pyc
+av/SetDest.pyc
