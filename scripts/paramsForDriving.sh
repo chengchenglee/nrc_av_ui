@@ -1,11 +1,6 @@
 #!/bin/bash
 
-echo
-echo why am i being called from sim_interface.py when paramsForSim.sh exists?
-echo also, map stuff has been moved to paramsForMap.sh
-echo
-
-cd ~/projects/nrc_ws/src/nrc_svcs/src/nrc_car_description
+cd ~/projects/nrc_ws/src/nrc_av_ui/scripts
 pwd=$(pwd) # so bashy
 
 use_sim_time=False
