@@ -20,7 +20,6 @@
     "make:linux": "yarn clean:build && yarn build && electron-builder build -l",
     "make:mac": "yarn clean:build && yarn build && electron-builder build -m",
     "make:win": "yarn clean:build && yarn build && electron-builder build -w",
-    "prepare": "husky install",
     "prod": "yarn build && electron .",
     "prod:debug": "yarn debug && electron .",
     "start": "ts-node --esm configs/check-port.ts && yarn clean:dist && yarn dev",

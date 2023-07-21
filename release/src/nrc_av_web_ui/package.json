@@ -10,7 +10,6 @@
     "format:check": "prettier --check --cache .",
     "lint": "eslint --fix --cache .",
     "lint:check": "eslint --cache .",
-    "prepare": "husky install",
     "preview": "vite preview",
     "start": "vite",
     "upgrade:dependencies": "npx npm-check-updates -u"

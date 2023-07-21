@@ -10,7 +10,6 @@
     "format:check": "prettier --check --cache .",
     "lint": "eslint --fix --cache .",
     "lint:check": "eslint --cache .",
-    "prepare": "husky install",
     "start": "SET TZ=UTC && nest start",
     "start:debug": "nest start --debug --watch",
     "start:dev": "SET TZ=UTC && nest start --watch",
