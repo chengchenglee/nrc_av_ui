@@ -33,4 +33,8 @@ export default class ElectronWrapperService implements IElectronWrapper {
   getApp(): App {
     return app;
   }
+
+  quit(): void {
+    app.quit();
+  }
 }

@@ -1,18 +1,18 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { DatabaseService, User } from '../core';
+import { DataSource } from 'typeorm';
+import { User } from '../core';
 import { LoginDTO } from './dto/loginDTO';
 
 @Injectable()
 export class AuthService {
-  constructor(
-    private readonly jwtService: JwtService,
-    private readonly databaseService: DatabaseService
-  ) {}
+  constructor(private readonly jwtService: JwtService, private readonly dataSource: DataSource) {}
 
   async login(loginDTO: LoginDTO): Promise<string> {
-    const user = await this.databaseService.getOneByField(User, 'username', loginDTO.username);
+    const user = await this.dataSource.getRepository(User).findOne({
+      where: { username: loginDTO.username }
+    });
 
     if (!user) {
       throw new HttpException(

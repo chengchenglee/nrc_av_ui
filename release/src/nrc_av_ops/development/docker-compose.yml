@@ -1,0 +1,65 @@
+version: '3'
+services:
+  backend_db_dev:
+    image: postgres:14-alpine
+    container_name: nrc_av_deploy_dev_backend_db
+    environment:
+      - POSTGRES_USER=${DATABASE_USERNAME}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_DB=${DATABASE_NAME}
+    networks:
+      - backend-db-dev_net
+    ports:
+      - ${DATABASE_EXTERNAL_PORT}:5432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: always
+
+  backend_service_dev:
+    build: ../nrc_av_web_api
+    container_name: nrc_av_deploy_dev_backend
+    environment:
+      - SERVER_PORT=3000
+      - DATABASE_HOST=${DATABASE_HOST}
+      - DATABASE_PORT=${DATABASE_PORT}
+      - DATABASE_USERNAME=${DATABASE_USERNAME}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - DATABASE_NAME=${DATABASE_NAME}
+      - CLIENT_URL=${CLIENT_URL}
+    depends_on:
+      - backend_db_dev
+    networks:
+      - backend-service-dev_net
+      - backend-db-dev_net
+    ports:
+      - ${BACKEND_PORT}:3000
+    restart: always
+
+  frontend_service_dev:
+    build:
+      context: ../nrc_av_web_ui
+      args:
+        - VITE_BASE_URL=${API_URL}
+    container_name: nrc_av_deploy_dev_frontend
+    ports:
+      - ${FRONTEND_PORT}:80
+    restart: always
+
+  flyway_service_dev:
+    image: flyway/flyway
+    container_name: nrc_av_deploy_dev_flyway
+    command: -url=jdbc:postgresql://${DATABASE_HOST}/${DATABASE_NAME} -user=${DATABASE_USERNAME} -password=${DATABASE_PASSWORD} -baselineOnMigrate=true -connectRetries=60 migrate
+    volumes:
+      - '../nrc_av_web_api/sql:/flyway/sql'
+    networks:
+      - backend-db-dev_net
+    depends_on:
+      - backend_db_dev
+
+networks:
+  backend-db-dev_net:
+  backend-service-dev_net:
+
+
+volumes:
+  postgres-data:

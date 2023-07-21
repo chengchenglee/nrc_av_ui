@@ -64,6 +64,7 @@ export default defineConfig({
                 '@azure/storage-file-share',
                 'uuid',
                 'getmac',
+                'roslib',
                 ...builtinModules
               ]
             }
@@ -76,6 +77,46 @@ export default defineConfig({
       },
       {
         entry: './src/worker/workerROSNodeHealthcheck.ts',
+        onstart(options) {
+          // Notify the Renderer-Process to reload the page
+          // when the Preload-Scripts build is complete,
+          // instead of restarting the entire Electron App.
+          options.reload();
+        },
+        vite: {
+          build: {
+            assetsDir: '',
+            sourcemap: isDebug,
+            outDir: resolve('./app/dist/worker')
+          },
+          plugins: [
+            EnvironmentPlugin('all', { prefix: '' }),
+            TsConfigPaths({ projects: [resolve(__dirname, '../tsconfig.json')] })
+          ]
+        }
+      },
+      {
+        entry: './src/worker/workerInterfaceFileHealthcheck.ts',
+        onstart(options) {
+          // Notify the Renderer-Process to reload the page
+          // when the Preload-Scripts build is complete,
+          // instead of restarting the entire Electron App.
+          options.reload();
+        },
+        vite: {
+          build: {
+            assetsDir: '',
+            sourcemap: isDebug,
+            outDir: resolve('./app/dist/worker')
+          },
+          plugins: [
+            EnvironmentPlugin('all', { prefix: '' }),
+            TsConfigPaths({ projects: [resolve(__dirname, '../tsconfig.json')] })
+          ]
+        }
+      },
+      {
+        entry: './src/worker/workerInterfaceHealthcheck.ts',
         onstart(options) {
           // Notify the Renderer-Process to reload the page
           // when the Preload-Scripts build is complete,

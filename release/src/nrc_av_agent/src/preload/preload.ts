@@ -23,7 +23,9 @@ contextBridge.exposeInMainWorld('ipcChannel', {
       return ipcRenderer.invoke(channel, args);
     }
     return undefined;
-  }
+  },
+
+  removeAllListeners: (channel: string) => ipcRenderer.removeAllListeners(channel)
 });
 
 contextBridge.exposeInMainWorld('ipcStorage', {

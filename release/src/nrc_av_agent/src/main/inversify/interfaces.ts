@@ -1,4 +1,3 @@
-/* eslint-disable max-len */
 import {
   PathOrFileDescriptor,
   ObjectEncodingOptions,
@@ -8,8 +7,21 @@ import {
   NoParamCallback,
   WriteFileOptions
 } from 'fs';
-import { App } from 'electron';
-import { ConfigProps } from '../service/configuration/types';
+/* eslint-disable max-len */
+import { App, BrowserWindow } from 'electron';
+import { Ros } from 'roslib';
+import { ConfigType } from '../../shared/configurationTypes';
+import {
+  IResponse,
+  ROSNode,
+  ROSNodeArr,
+  Interface,
+  InterfaceStatus,
+  InterfaceCommand,
+  AgentInterface,
+  AgentMap,
+  EnumStatusRunAllCommands
+} from '../../shared/constants';
 
 // ------------- NodeJS built-in ------------- //
 export interface IFileSystem {
@@ -111,7 +123,14 @@ export interface IPath {
 
 export interface IChildProcess {
   execAndForget(command: string): void;
+  executeAndIgnoreOutput(command: string): void;
+  executeAndValid(command: string, replyOnChannel: (response: IResponse) => void): void;
   execAndWait(command: string): Promise<string>;
+  buildCommand(command: string, path: string): string;
+  waitForResultAndReturn(
+    replyOnChannel: (response: IResponse) => void,
+    nodeName: string
+  ): Promise<string>;
 }
 // ------------------------------------------- //
 
@@ -146,11 +165,7 @@ export interface IElectronWrapper {
   ): string;
   getResourcesPath(): string;
   getApp(): App;
-}
-
-export interface IElectronStore {
-  get(key: string, defaultValue?: any): any;
-  set(key: string, value?: any): void;
+  quit(): void;
 }
 
 export interface IAutoUpdater {
@@ -162,15 +177,17 @@ export interface ICommunication {
   connect(address: string, options?: any): Promise<boolean>;
   disconnect(): void;
   send(eventName: string, ...eventParams: any[]): Promise<any>;
+  sendNoAck(eventName: string, ...eventParams: any[]): any;
+  getConnectionStatus(): boolean | undefined;
   addEventHandler(eventName: string, eventHandler: (...args: any) => void): void;
 }
 
 export interface IConfiguration {
   initConfigs(): void;
   loadConfigs(configName: string): boolean;
-  getConfigs(configName: string): ConfigProps | undefined;
-  getConfig(configName: string, propName: keyof ConfigProps): string | undefined;
-  updateConfig(configName: string, newConfigs: ConfigProps): void;
+  createConfig<T extends ConfigType>(configName: string, value: T): void;
+  getConfigs<T extends ConfigType>(configName: string): T | undefined;
+  getConfig<T extends ConfigType>(configName: string, propName: keyof T): T[keyof T] | undefined;
 }
 
 export interface IWebStorage {
@@ -179,5 +196,67 @@ export interface IWebStorage {
 
 export interface ILogic {
   init(): void;
+  reInit(): void;
   cleanup(): void;
+  getStatusVehicle(): void;
+  updateVehicle(): any;
+}
+
+export interface IStatusROSNode {
+  initStatusChecking(rosNodes: ROSNode[]): void;
+  startNodes(rosNodes: ROSNode[]): void;
+  reportStatus(rosNodes: ROSNode[], replyOnChannel: (response: IResponse) => void): void;
+}
+
+export interface IStatusInterfaceFile {
+  initStatusChecking(): void;
+  startInterfaceFiles(fileName: string): void;
+  reportStatus(_: unknown, replyOnChannel: (response: IResponse) => void): void;
+}
+
+export interface IStatusInterfaceService {
+  initStatusChecking(): void;
+  setStatusInterface(fileNames: AgentInterface): Promise<void>;
+  clearCache(): void;
+  interfaceRunning(): InterfaceStatus;
+}
+
+export interface IStatusInterfaceRosBridgeService {
+  initStatusChecking(): Promise<void>;
+  setStatusInterface(fileNames: AgentInterface): Promise<void>;
+  clearCache(): void;
+  interfaceRunning(): InterfaceStatus;
+  getRosBridgeConnection(): Ros;
+  getRosNodes(): Promise<string[]>;
+  rosBridgeConnect(connectionAttempt?: number): Promise<void>;
+}
+
+export interface ILog {
+  init(): void;
+}
+
+export interface IInterfaceFileService {
+  runInterface(data: Interface, replyOnChannel: (response: IResponse) => void): void;
+  stopInterface(data: string, replyOnChannel: (response: IResponse) => void): void;
+  getInterfacePath(): string;
+}
+
+export interface IBrowserWindowService {
+  init(browserWindow: BrowserWindow): void;
+  sendToRenderer(channel: string, data: any): void;
+  reload(): void;
+  getBrowserWindow(): BrowserWindow;
+}
+
+export interface IRosService {
+  runRosMaster(_: unknown, replyOnChannel: (response: IResponse) => void): void;
+  runRosNode(data: ROSNodeArr, replyOnChannel: (response: IResponse) => void): void;
+  listROSNodes(): Promise<ROSNode[]>;
+  resultsROSNodes(_: unknown, replyOnChannel: (response: IResponse) => void): void;
+  runCommands(command: string, replyOnChannel: (response: IResponse) => void): void;
+  runAllCommands(commands: InterfaceCommand[], replyOnChannel: (response: IResponse) => void): void;
+  stopCommands(command: string, replyOnChannel: (response: IResponse) => void): void;
+  changeMap(mapName: AgentMap, replyOnChannel: (response: IResponse) => void): void;
+  setStatusRunAllCommands(newStatus: EnumStatusRunAllCommands): void;
+  getStatusRunAllCommands(): EnumStatusRunAllCommands;
 }

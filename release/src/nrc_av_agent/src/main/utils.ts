@@ -59,6 +59,12 @@ function installExtensions() {
   });
 }
 
+function delayInMs(time: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, time);
+  });
+}
+
 export {
   isDebug,
   getAssetsPath,
@@ -66,5 +72,6 @@ export {
   getHtmlPath,
   getPreloadPath,
   installExtensions,
-  getWorkerPath
+  getWorkerPath,
+  delayInMs
 };

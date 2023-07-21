@@ -1,40 +1,92 @@
-import { Button, Typography } from 'antd';
+import { faUser } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Avatar, Dropdown, MenuProps, Typography } from 'antd';
 import { Header as HeaderA } from 'antd/es/layout/layout';
+import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { logout } from '../api/auth';
 import Container from '../components/Container';
-import { store } from '../store';
+import { store, useStoreUser } from '../store';
 import { userThunk } from '../store/user/thunks';
 
 const { Title } = Typography;
 
-const Header = () => (
-  <HeaderA>
-    <Container style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-      <Title
-        level={2}
-        style={{
-          textAlign: 'center',
-          color: 'white',
-          fontWeight: 'bold',
-          margin: 0,
-          flex: 1
-        }}
-      >
-        Nissan-Kelly
-      </Title>
-      <Button
-        type="primary"
-        size="large"
-        onClick={() => {
-          logout();
-          store.dispatch(userThunk.getCurrentUser());
-          window.location.replace(window.location.origin);
-        }}
-      >
-        Logout
-      </Button>
-    </Container>
-  </HeaderA>
-);
+const Header = () => {
+  const user = useStoreUser();
+  const navigate = useNavigate();
+  const items = useMemo<MenuProps['items']>(
+    () => [
+      {
+        label: 'Manage Interfaces',
+        key: '1',
+        onClick: () => {
+          navigate('/interface/management');
+        }
+      },
+      {
+        label: 'Log out',
+        key: '2',
+        onClick: () => {
+          logout().then(() => {
+            store.dispatch(userThunk.getCurrentUser());
+          });
+        }
+      }
+    ],
+    [navigate]
+  );
+
+  return (
+    <HeaderA>
+      <Container style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+        <Title
+          level={2}
+          style={{
+            textAlign: 'center',
+            color: 'white',
+            fontWeight: 'bold',
+            margin: 0,
+            flex: 1
+          }}
+          onClick={() => navigate('/vehicle/registration')}
+        >
+          Nissan-Kelly
+        </Title>
+
+        {user.id && (
+          <Dropdown menu={{ items }} trigger={['click']}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10
+              }}
+            >
+              <Avatar
+                style={{
+                  cursor: 'pointer',
+                  backgroundColor: 'white',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center'
+                }}
+                size={40}
+                icon={<FontAwesomeIcon icon={faUser} color="black" />}
+              />
+              <Typography.Text
+                style={{
+                  color: 'white',
+                  fontWeight: 600
+                }}
+              >
+                Hello, {user.username}
+              </Typography.Text>
+            </div>
+          </Dropdown>
+        )}
+      </Container>
+    </HeaderA>
+  );
+};
 
 export default Header;

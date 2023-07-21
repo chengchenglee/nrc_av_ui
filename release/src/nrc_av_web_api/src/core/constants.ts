@@ -36,5 +36,15 @@ export const message = Object.freeze({
   duplicatedField: 'Duplicated field',
   agentError: 'Agent error',
   vehicleNotFound: 'Vehicle not found',
-  modelNotFound: 'Model not found'
+  modelNotFound: 'Model not found',
+  rosNodeNotFound: 'Ros node not found',
+  agentIsOffline: 'Agent is offline',
+  fileNameRequired: 'File name is required',
+  machineNotFound: 'Machine not found',
+  interfaceNotFound: 'Interface not found',
+  interfaceExisted: 'Interface already exists',
+  commandNotFound: 'Command not found',
+  interfaceNoCommand: 'The interface does not have any commands',
+  notHavePermission: 'You do not have permission',
+  agentTimeout: 'Agent timeout'
 });

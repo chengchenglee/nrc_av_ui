@@ -86,11 +86,11 @@ To deploy the Nissan AV Agent on a vehicle's computer, follow these steps:
 
 ### **II. Setting up ROS Nodes on a Car**
 
-> **Step 1: Install ROS Melodic on Ubuntu 18.04**
-> To install ROS Melodic on Ubuntu 18.04, follow the installation instructions provided on the ROS Wiki page [here](http://wiki.ros.org/melodic/Installation/Ubuntu)
+> **Step 1: Install ROS Noetic on Ubuntu 20.04**
+> To install ROS Noetic on Ubuntu 20.04, follow the installation instructions provided on the ROS Wiki page [here](http://wiki.ros.org/noetic/Installation/Ubuntu)
 >
 > **Step 2: Verify ROS Environment Setup**
-> After successfully installing ROS Melodic, verify that the ROS environment has been properly set up by running the following command:
+> After successfully installing ROS Noetic, verify that the ROS environment has been properly set up by running the following command:
 >
 > ```bash
 > printenv | grep ROS
@@ -99,14 +99,14 @@ To deploy the Nissan AV Agent on a vehicle's computer, follow these steps:
 > If the ROS install successfully, results is:
 >
 > ```bash
-> ROS_ETC_DIR=/opt/ros/melodic/etc/ros
-> ROS_ROOT=/opt/ros/melodic/share/ros
-> ROS_MASTER_URI=http://localhost:11311
 > ROS_VERSION=1
-> ROS_PYTHON_VERSION=2
-> ROS_PACKAGE_PATH=/opt/ros/melodic/share
-> ROSLISP_PACKAGE_DIRECTORIES=
-> ROS_DISTRO=melodic
+> ROS_PYTHON_VERSION=3
+> ROS_PACKAGE_PATH=/home/agent/projects/nrc_ws/src:/opt/ros/noetic/share
+> ROSLISP_PACKAGE_DIRECTORIES=/home/agent/projects/nrc_ws/devel/share/common-lisp
+> ROS_ETC_DIR=/opt/ros/noetic/etc/ros
+> ROS_MASTER_URI=http://localhost:11311
+> ROS_ROOT=/opt/ros/noetic/share/ros
+> ROS_DISTRO=noetic
 > ```
 >
 > **Step 3: Create a New Workspace**
@@ -127,3 +127,23 @@ To deploy the Nissan AV Agent on a vehicle's computer, follow these steps:
 >
 > **Step 5: Clone Projects nrc_av_ui to Workspace and build**
 > After **nrc_msgs** build finished clone the **nrc_av_ui** projects to the **nrc_ws** and follow commands **Step 4**.
+>
+> **Step 6: Install package "python-is-python3" on Ubuntu 20.04**
+>
+> ```
+> sudo apt install python-is-python3
+> ```
+>
+> **Step 7: Install package rosbridge**
+>
+> On **Ubuntu 20.04** ros-noetic-rosbridge-suite
+>
+> ```
+> sudo apt install ros-noetic-rosbridge-suite
+> ```
+>
+> On **Ubuntu 18.04** ros-melodic-rosbridge-suite
+>
+> ```
+> sudo apt install ros-melodic-rosbridge-suite
+> ```

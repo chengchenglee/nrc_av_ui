@@ -1,7 +1,7 @@
 import { publicClient } from '../config/axios/publicClient';
 import { BASE_URL } from '../constants/config';
-import { ApiResponse } from '../interfaces/api';
-import { LoginDTO } from '../interfaces/dtos/login';
+import { LoginDTO } from '../dtos/login';
+import { ApiResponse } from '../types/types';
 
 const url = BASE_URL + '/auth';
 

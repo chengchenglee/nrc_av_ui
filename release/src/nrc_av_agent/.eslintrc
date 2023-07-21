@@ -154,7 +154,7 @@
       }
     ],
     "no-empty": "error",
-    "no-empty-function": "error",
+    "no-empty-function": ["error", { "allow": ["constructors"] }],
     "no-extra-parens": [
       "error",
       "all",
@@ -206,6 +206,7 @@
     "require-await": "error",
     "semi": ["error"],
     "space-before-blocks": "error",
-    "object-curly-newline": "off"
+    "object-curly-newline": "off",
+    "react-hooks/exhaustive-deps": "warn"
   }
 }

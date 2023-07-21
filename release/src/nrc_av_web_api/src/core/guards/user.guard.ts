@@ -6,20 +6,17 @@ import {
   HttpStatus
 } from '@nestjs/common';
 import { Request } from 'express';
+import { DataSource } from 'typeorm';
 import { AuthService } from '../../auth/auth.service';
-import { DatabaseService } from '../database';
 import { User } from '../models';
 
 export interface JwtToken {
-  id: string;
+  id: number;
 }
 
 @Injectable()
 export class UserGuard implements CanActivate {
-  constructor(
-    private readonly authService: AuthService,
-    private readonly databaseService: DatabaseService
-  ) {}
+  constructor(private readonly authService: AuthService, private readonly dataSource: DataSource) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req: Request = context.switchToHttp().getRequest();
@@ -30,7 +27,9 @@ export class UserGuard implements CanActivate {
       throw new HttpException({}, HttpStatus.UNAUTHORIZED);
     }
 
-    const user = await this.databaseService.getOneByField(User, 'id', data.id);
+    const user = await this.dataSource.getRepository(User).findOne({
+      where: { id: data.id }
+    });
 
     if (!user) {
       throw new HttpException({}, HttpStatus.UNAUTHORIZED);

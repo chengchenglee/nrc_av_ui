@@ -3,10 +3,10 @@ import joi from 'joi';
 import { userValidateSchema } from '../../core/models';
 
 export class LoginDTO {
-  @ApiProperty({ description: 'username', example: 'nissan' })
+  @ApiProperty({ description: 'username', example: 'username' })
   username: string;
 
-  @ApiProperty({ description: 'Password', example: '123456' })
+  @ApiProperty({ description: 'Password', example: 'password' })
   password: string;
 }
 

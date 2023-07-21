@@ -1,309 +1,274 @@
-import { MessageChannelMain, UtilityProcess, utilityProcess } from 'electron';
-import { createSharedStore } from 'electron-shared-state';
+import log from 'electron-log';
 import { inject, injectable } from 'inversify';
-import { APP_CONFIG, COMMUNICATION, ROS, ROS_COMMAND, SOCKET } from '../../constants';
+import {
+  IResponse,
+  EnumVehicleStatusState,
+  EnumVehicleConnectionState
+} from '../../../shared/constants';
+import ipcMsg from '../../../shared/ipcMsg';
+import { APP_CONFIG, COMMUNICATION, SOCKET } from '../../constants';
 import TYPES from '../../inversify/types';
-import { getAVPath, getWorkerPath } from '../../utils';
-import { IVehicleInfoProps } from '../configuration/types';
+import { logMethod } from '../log/logDecorator';
+import type { IHostConfig, IVehicleInfoConfig } from '../../../shared/configurationTypes';
 import type {
-  IChildProcess,
+  IBrowserWindowService,
   ICommunication,
   IConfiguration,
   ILogic,
-  IPath
+  IStatusROSNode,
+  IStatusInterfaceFile,
+  IStatusInterfaceService,
+  IInterfaceFileService,
+  IRosService,
+  IChildProcess
 } from '../../inversify/interfaces';
 
-interface ROSNode {
-  packageName: string;
-  name: string;
-}
-enum ROSNodeStatusType {
-  NOT_STARTED = 'NOT_STARTED',
-  RUNNING = 'RUNNING',
-  STOPPED = 'STOPPED'
-}
-interface ROSNodeStatus extends ROSNode {
-  status: ROSNodeStatusType;
-}
+enum SocketEventEnum {
+  REGISTRATION_REQUEST = 'nissan/vehicle/registration-request',
+  VEHICLE_REGISTRATION = 'nissan/vehicle/registration',
+  REGISTRATION_RESPONSE = 'nissan/vehicle/registration-response',
+  VEHICLE_ACTIVATION = 'nissan/vehicle/activation',
+  VEHICLE_STATUS = 'nissan/vehicle/status',
+  VEHICLE_MACHINES_STATUS = 'nissan/vehicle/machines/status',
+  VEHICLE_MACHINES_STATUS_TEXT = 'nissan/vehicle/machines/status/text',
+  VEHICLE_UPDATION = 'nissan/vehicle/updation',
 
-interface ROSNodeArr {
-  nodeArr: ROSNode[];
+  RUN_ROS_MASTER = 'nissan/ros/master',
+  RUN_COMMANDS = 'nissan/interface/exec/command',
+  RUN_ALL_INTERFACE_COMMANDS = 'nissan/interface/exec-all/command',
+  STOP_COMMANDS = 'nissan/interface/stop/command',
+  RUN_ROS_NODE = 'nissan/ros/node',
+  GET_ROS_NODES = 'nissan/ros/nodes',
+  GET_ROS_LAUNCH_FILES = 'nissan/ros/launch-files',
+  GET_STATUS_ROS_NODES = 'nissan/ros/nodes-status',
+  CHANGE_MAP = 'nissan/interface/changemap',
+
+  RUN_INTERFACE = 'nissan/interface/run',
+  GET_INTERFACE_STATUS = 'nissan/interface/status',
+  STOP_INTERFACE = 'nissan/interface/stop'
 }
 
 @injectable()
 export default class LogicService implements ILogic {
-  private previousRes: string;
-
-  private rosNodeArr;
-
-  private workerRosNodeHealthcheck!: UtilityProcess;
-
   constructor(
     @inject(TYPES.Communication) private commSvc: ICommunication,
     @inject(TYPES.Configuration) private configSvc: IConfiguration,
-    @inject(TYPES.ChildProcess) private childProcessSvc: IChildProcess,
-    @inject(TYPES.Path) private pathSvc: IPath
+    @inject(TYPES.StatusROSNode) private rosStatusSvc: IStatusROSNode,
+    @inject(TYPES.StatusInterfaceFile) private interfaceFileStatusSvc: IStatusInterfaceFile,
+    @inject(TYPES.BrowserWindowService) private browserWindowService: IBrowserWindowService,
+    @inject(TYPES.StatusInterfaceService)
+    private statusInterfaceSvc: IStatusInterfaceService,
+    @inject(TYPES.InterfaceFileService) private interfaceFileSvc: IInterfaceFileService,
+    @inject(TYPES.RosService) private rosSvc: IRosService,
+    @inject(TYPES.ChildProcess) private childProcessSvc: IChildProcess
   ) {
-    // Adding Set to the initial State create error
-    const initialRosNodeArr: ROSNodeStatus[] = [];
-    this.initStateROSNodes().then((nodes) => {
-      initialRosNodeArr.push(...nodes);
+    this.rosSvc.listROSNodes().then((nodes) => {
+      const initialNodes = [
+        ...nodes,
+        // add ROSCore to check status
+        {
+          name: 'rosout',
+          packageName: undefined
+        }
+      ];
+      this.rosStatusSvc.initStatusChecking(initialNodes);
     });
-    this.previousRes = '';
-    this.rosNodeArr = createSharedStore(initialRosNodeArr);
-    this.workerHealthCheckLoop();
+    this.interfaceFileStatusSvc.initStatusChecking();
+    this.statusInterfaceSvc.initStatusChecking();
   }
 
+  @logMethod('[LogicService][init]')
   init(): void {
-   const idSaved = this.configSvc.getConfig(APP_CONFIG.VEHICLE, 'certKey');
-    this.commSvc
-      .connect(`${this.configSvc.getConfig(APP_CONFIG.CONNECTION, 'host')}/${SOCKET.NAME_SPACE}`, {query: `certKey=${idSaved}`})
-      .then(() => {
-        this.registerVehicle();
-      })
-      .catch(console.error);
+    try {
+      const certKey = this.configSvc.getConfig<IVehicleInfoConfig>(APP_CONFIG.VEHICLE, 'certKey');
+      const name = this.configSvc.getConfig<IVehicleInfoConfig>(APP_CONFIG.VEHICLE, 'name');
+      const model = this.configSvc.getConfig<IVehicleInfoConfig>(APP_CONFIG.VEHICLE, 'model');
+      log.info('[LogicService][init] certKey: ', certKey);
 
-    this.commSvc.addEventHandler('registrationResponse', (data, callback) => {
-      callback(data.certKey);
-    });
+      const serverUrl = `${this.configSvc.getConfig<IHostConfig>(APP_CONFIG.CONNECTION, 'host')}/${
+        SOCKET.NAME_SPACE
+      }`;
+      log.info('[LogicService][init] connect to: ', serverUrl);
+      this.commSvc
+        .connect(serverUrl, {
+          extraHeaders: {
+            certkey: certKey,
+            name,
+            model
+          }
+        })
+        .catch((err) => {
+          log.error('[LogicService][init] connect socket failed: ', err);
+        });
 
-    this.commSvc.addEventHandler('vehicleActivation', (data: IVehicleInfoProps, callback) => {
-      const idReceived = data.certKey;
-      const idSaved = this.configSvc.getConfig(APP_CONFIG.VEHICLE, 'certKey');
-      if (idReceived === idSaved) {
-        callback(idSaved);
-      }
-      callback('CertKey Not Found');
-    });
-
-    this.commSvc.addEventHandler('nissan/ros/master', this.runRosMaster.bind(this));
-    this.commSvc.addEventHandler('nissan/ros/node', this.runRosNode.bind(this));
-    this.commSvc.addEventHandler('nissan/ros/nodes', this.resultsROSNodes.bind(this));
-    this.commSvc.addEventHandler('nissan/ros/nodes-status', this.pingRosNode.bind(this));
-    this.commSvc.addEventHandler('connect', this.registerVehicle.bind(this));
-  }
-
-  cleanup(): void {
-    this.commSvc.disconnect();
-  }
-
-  private workerHealthCheckLoop() {
-    // Make sure the 'exit' event only triggered when the worker is dead not killed.
-    if (this.workerRosNodeHealthcheck) {
-      this.workerRosNodeHealthcheck.removeAllListeners();
-      this.workerRosNodeHealthcheck.kill();
-    }
-    const { port1 } = new MessageChannelMain();
-    this.workerRosNodeHealthcheck = utilityProcess.fork(
-      getWorkerPath('workerROSNodeHealthcheck.js')
-    );
-    this.workerRosNodeHealthcheck.once('message', (res) => {
-      // Not an error
-      if (!res.type) {
-        const nodeStatusArr: ROSNodeStatus[] = res;
-        this.updateRosNodeStatusState(nodeStatusArr);
-      }
-      this.workerHealthCheckLoop();
-    });
-    this.workerRosNodeHealthcheck.postMessage(this.rosNodeArr.getState(), [port1]);
-    this.workerRosNodeHealthcheck.once('exit', () => {
-      this.workerHealthCheckLoop();
-    });
-  }
-
-  private updateRosNodeStatusState(rosNodeStatusArr: ROSNodeStatus[]): ROSNodeStatus[] {
-    if (!rosNodeStatusArr || !rosNodeStatusArr.length) return this.rosNodeArr.getState();
-    this.rosNodeArr.setState((currentRosNodeArr) => {
-      rosNodeStatusArr.forEach((rosNodeStatus) => {
-        const nodeItem = currentRosNodeArr.find(
-          (node) =>
-            node.name === rosNodeStatus.name && node.packageName === rosNodeStatus.packageName
-        );
-
-        if (nodeItem) {
-          nodeItem.status = rosNodeStatus.status;
-        } else {
-          currentRosNodeArr.push(rosNodeStatus);
-        }
-      });
-    });
-    return this.rosNodeArr.getState();
-  }
-
-  private registerVehicle() {
-    const vehicleInfo: IVehicleInfoProps | undefined = this.configSvc.getConfigs(
-      APP_CONFIG.VEHICLE
-    );
-    this.commSvc.send('join', vehicleInfo);
-  }
-
-  private buildCommand(command: string, path = '') {
-    const setupPath = this.pathSvc.join(
-      this.configSvc.getConfig(APP_CONFIG.CONNECTION, 'rosWorkspace') || '',
-      'devel/setup.sh'
-    );
-    const execPath = this.pathSvc.join(path, command);
-    const res = `. ${setupPath} && ${execPath}`;
-    return res;
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private async runRosMaster(_: any, callback: any) {
-    const command = this.buildCommand('kelly_interface.py', `python ${getAVPath()}`);
-    this.childProcessSvc.execAndForget(command);
-    const results = await this.waitForResultAndReturn(callback, '/rosout');
-    callback(results);
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private async runRosNode(data: ROSNodeArr, callback: any) {
-    const rosNodesNotExist = await this.checkROSNodesExist(data);
-    if (rosNodesNotExist.length !== 0) {
-      let resultsNodeNotExist = '';
-      rosNodesNotExist.forEach((node) => {
-        resultsNodeNotExist += `${node.name}, `;
-      });
-      callback({ error: `${resultsNodeNotExist.slice(0, -2)} ${ROS.NOT_EXIST}` });
-    }
-
-    let nodeName = '';
-    data.nodeArr.forEach((node) => {
-      nodeName = `${node.packageName}__${node.name}`;
-      this.childProcessSvc.execAndForget(
-        this.buildCommand(`rosrun ${node.packageName} ${node.name} __name:=${nodeName}`)
+      log.info('[LogicService][init] register event listeners ');
+      this.commSvc.addEventHandler(
+        SocketEventEnum.REGISTRATION_REQUEST,
+        this.registerVehicle.bind(this)
       );
-    });
-    this.updateRosNodeStatusState(
-      data.nodeArr.map((node) => ({ ...node, status: ROSNodeStatusType.RUNNING }))
-    );
-    const results = await this.waitForResultAndReturn(callback, nodeName);
-    if (results === ROS.SUCCESS) {
-      callback(`${nodeName} ${ROS.SUCCESS}`);
-    }
-  }
 
-  private async waitForResultAndReturn(callback: any, nodeName: string) {
-    let res = '';
-    let timeout = false;
-    const timeoutId = setTimeout(() => {
-      timeout = true;
-    }, COMMUNICATION.RUN_ROS_TIME_OUT);
-    do {
-      // eslint-disable-next-line no-await-in-loop
-      res = await this.childProcessSvc.execAndWait(`${ROS_COMMAND.PING_NODE} ${nodeName}`);
-      // eslint-disable-next-line no-await-in-loop, no-promise-executor-return
-      await new Promise((resolve) => setTimeout(resolve, 200));
-    } while (
-      (res.includes(`cannot ping [${nodeName}]: unknown node`) && !timeout) ||
-      (res === '' && !timeout)
-    );
-
-    clearTimeout(timeoutId);
-    if (timeout) {
-      if (res === '') {
-        callback({ error: ROS.ROS_CORE_NOT_START });
-      } else callback({ error: ROS.ROS_NODES_NOT_START });
-    } else {
-      return ROS.SUCCESS;
-    }
-    return '';
-  }
-
-  private async listROSNodes(): Promise<ROSNode[]> {
-    const workspace = this.configSvc.getConfig(APP_CONFIG.CONNECTION, 'rosWorkspace') || '';
-    const rosPackage = await this.listRosPackageInWs(workspace);
-    const rosNode = await this.listRosNodeInPackage(rosPackage);
-    const currentRosNodeArray = this.rosNodeArr.getState();
-    const extraRosNode: ROSNodeStatus[] = rosNode
-      .filter(
-        (listNode: ROSNode) =>
-          !currentRosNodeArray.find(
-            (currentNode) =>
-              listNode.name === currentNode.name && listNode.packageName === currentNode.packageName
-          )
-      )
-      .map((node: ROSNode) => ({ ...node, status: ROSNodeStatusType.NOT_STARTED }));
-    this.updateRosNodeStatusState(extraRosNode);
-    return rosNode;
-  }
-
-  private async initStateROSNodes(): Promise<ROSNodeStatus[]> {
-    const workspace = this.configSvc.getConfig(APP_CONFIG.CONNECTION, 'rosWorkspace') || '';
-    const rosPackage = await this.listRosPackageInWs(workspace);
-    const rosNode = await this.listRosNodeInPackage(rosPackage);
-    const rosNodeStatus: ROSNodeStatus[] = rosNode.map((node) => ({
-      ...node,
-      status: ROSNodeStatusType.NOT_STARTED
-    }));
-    return rosNodeStatus;
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private async resultsROSNodes(_: any, callback: any) {
-    const rosNodes = await this.listROSNodes();
-    callback(rosNodes);
-  }
-
-  private async checkROSNodesExist(nodes: ROSNodeArr) {
-    const rosNodes = await this.listROSNodes();
-    const existingNodes = rosNodes.map((node) => ({
-      packageName: node.packageName,
-      name: node.name
-    }));
-
-    const filteredNodes = nodes.nodeArr.filter(
-      (node) => !existingNodes.some((existingNode) => existingNode.name === node.name)
-    );
-    return filteredNodes;
-  }
-
-  private async listRosPackageInWs(workspace: string) {
-    const command = this.buildCommand(`${ROS_COMMAND.GET_LIST_ROS_PACK} ${workspace}`);
-    const listROSPackage = await this.childProcessSvc.execAndWait(command);
-    const rosPackageName = listROSPackage.split('\n');
-    const listROSPackageName: string[] = rosPackageName.map((str: string): string => {
-      const segments: string[] = str.split('/');
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const packageName: string = segments.length > 0 ? segments.pop()!.trim().split(' ')[0] : '';
-      return packageName;
-    });
-    listROSPackageName.pop();
-    return listROSPackageName;
-  }
-
-  private async listRosNodeInPackage(listPackage: string[]) {
-    const listROSNode: ROSNode[] = [];
-    // eslint-disable-next-line no-restricted-syntax
-    for (const packageROS of listPackage) {
-      const execListNode = this.buildCommand(`ros-list-pack.sh ${packageROS}`, getAVPath());
-      // eslint-disable-next-line no-await-in-loop
-      const rosNodeName = await this.childProcessSvc.execAndWait(execListNode);
-
-      if (rosNodeName !== '') {
-        const names = rosNodeName.trim().split('\n');
-        // eslint-disable-next-line no-restricted-syntax
-        for (const name of names) {
-          const rosNode: ROSNode = {
-            packageName: packageROS,
-            name
-          };
-          listROSNode.push(rosNode);
+      this.commSvc.addEventHandler(
+        SocketEventEnum.REGISTRATION_RESPONSE,
+        (data, replyOnChannel) => {
+          replyOnChannel({
+            status: 'success',
+            data: data.certKey
+          });
         }
-      }
+      );
+      this.commSvc.addEventHandler(
+        SocketEventEnum.VEHICLE_ACTIVATION,
+        this.handleActivation.bind(this)
+      );
+
+      this.commSvc.addEventHandler(SocketEventEnum.VEHICLE_STATUS, this.handleStatus.bind(this));
+
+      this.commSvc.addEventHandler(
+        SocketEventEnum.RUN_COMMANDS,
+        this.rosSvc.runCommands.bind(this.rosSvc)
+      );
+      this.commSvc.addEventHandler(
+        SocketEventEnum.RUN_ALL_INTERFACE_COMMANDS,
+        this.rosSvc.runAllCommands.bind(this.rosSvc)
+      );
+      this.commSvc.addEventHandler(
+        SocketEventEnum.STOP_COMMANDS,
+        this.rosSvc.stopCommands.bind(this.rosSvc)
+      );
+      this.commSvc.addEventHandler(
+        SocketEventEnum.GET_INTERFACE_STATUS,
+        this.interfaceFileStatusSvc.reportStatus.bind(this.interfaceFileStatusSvc)
+      );
+      this.commSvc.addEventHandler(
+        SocketEventEnum.RUN_INTERFACE,
+        this.interfaceFileSvc.runInterface.bind(this.interfaceFileSvc)
+      );
+      this.commSvc.addEventHandler(
+        SocketEventEnum.CHANGE_MAP,
+        this.rosSvc.changeMap.bind(this.rosSvc)
+      );
+      this.commSvc.addEventHandler(
+        SocketEventEnum.STOP_INTERFACE,
+        this.interfaceFileSvc.stopInterface.bind(this.interfaceFileSvc)
+      );
+      this.commSvc.addEventHandler('disconnect', this.onDisconnect.bind(this));
+      this.commSvc.addEventHandler('connect', this.onConnect.bind(this));
+    } catch (err) {
+      log.error(`[LogicService][init] ${err}`);
     }
-    return listROSNode;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private pingRosNode(listROSNode: ROSNode[], callback: any) {
-    callback(
-      this.rosNodeArr
-        .getState()
-        .filter((node) =>
-          listROSNode.find(
-            (rosNode) => rosNode.name === node.name && rosNode.packageName === node.packageName
-          )
-        )
-    );
+  @logMethod('[LogicService][reInit]')
+  reInit(): void {
+    this.commSvc.disconnect();
+    this.init();
+    this.browserWindowService.reload();
+  }
+
+  @logMethod('[LogicService][cleanup]')
+  cleanup(): void {
+    try {
+      this.childProcessSvc.execAndForget('pkill -f ros');
+      this.commSvc.disconnect();
+    } catch (err) {
+      log.error(`[LogicService][cleanup] ${err}`);
+    }
+  }
+
+  @logMethod('[LogicService][onDisconnect]')
+  private onDisconnect(reason: string) {
+    this.browserWindowService.sendToRenderer(ipcMsg.M2R.VEHICLE_CONNECTION_STATUS, {
+      vehicleConnectionStatus: EnumVehicleConnectionState.OFFLINE,
+      vehicleOfflineReason: reason
+    });
+    log.info(`[LogicService][onDisconnect] ${reason}`);
+  }
+
+  @logMethod('[LogicService][onConnect]')
+  private onConnect() {
+    this.browserWindowService.sendToRenderer(ipcMsg.M2R.VEHICLE_CONNECTION_STATUS, {
+      vehicleConnectionStatus: EnumVehicleConnectionState.ONLINE
+    });
+    log.info('[LogicService][onConnect] Connected to server');
+  }
+
+  @logMethod('[LogicService][registerVehicle]')
+  private registerVehicle(_: unknown, replyOnChannel: (response: IResponse) => void) {
+    try {
+      const vehicleInfo = this.configSvc.getConfigs<IVehicleInfoConfig>(APP_CONFIG.VEHICLE);
+      log.debug(`[LogicService][registerVehicle] vehicleInfo: ${JSON.stringify(vehicleInfo)}`);
+      this.commSvc.send(SocketEventEnum.VEHICLE_REGISTRATION, vehicleInfo);
+      replyOnChannel({
+        status: 'success',
+        data: vehicleInfo
+      });
+      log.info('[LogicService][registerVehicle] success');
+    } catch (err) {
+      log.error(`[LogicService][registerVehicle] ${err}`);
+    }
+  }
+
+  @logMethod('[LogicService][updateVehicle]')
+  async updateVehicle(): Promise<any> {
+    try {
+      const vehicleInfo = this.configSvc.getConfigs<IVehicleInfoConfig>(APP_CONFIG.VEHICLE);
+      log.debug(`[LogicService][updateVehicle] vehicleInfo: ${JSON.stringify(vehicleInfo)}`);
+      const response = await this.commSvc.send(SocketEventEnum.VEHICLE_UPDATION, vehicleInfo);
+      log.info('[LogicService][updateVehicle] success');
+      return response;
+    } catch (err) {
+      log.error(`[LogicService][updateVehicle] ${err}`);
+    }
+    return undefined;
+  }
+
+  @logMethod('[LogicService][getStatusVehicle]')
+  getStatusVehicle() {
+    try {
+      this.commSvc.sendNoAck(SocketEventEnum.VEHICLE_STATUS);
+      log.info('[LogicService][getStatusVehicle] success');
+    } catch (err) {
+      log.error(`[LogicService][getStatusVehicle] ${err}`);
+    }
+  }
+
+  @logMethod('[LogicService][handleActivation]')
+  private handleActivation(
+    data: IVehicleInfoConfig,
+    replyOnChannel: (response: IResponse) => void
+  ) {
+    try {
+      const idReceived = data.certKey;
+      const idSaved = this.configSvc.getConfig<IVehicleInfoConfig>(APP_CONFIG.VEHICLE, 'certKey');
+      log.debug(`[LogicService][handleActivation] serverCertkey: ${idReceived}`);
+      log.debug(`[LogicService][handleActivation] agentCertkey: ${idSaved}`);
+      if (idReceived === idSaved) {
+        replyOnChannel({
+          status: 'success',
+          data: idSaved
+        });
+        log.info('[LogicService][handleActivation] activated: ', idSaved);
+      } else {
+        replyOnChannel({
+          status: 'error',
+          message: COMMUNICATION.CERTKEY_NOT_FOUND
+        });
+        log.warn('[LogicService][handleActivation] ', COMMUNICATION.CERTKEY_NOT_FOUND);
+      }
+    } catch (err) {
+      log.error(`[LogicService][handleActivation] ${err}`);
+    }
+  }
+
+  @logMethod('[LogicService][handleStatus]', log.debug)
+  private handleStatus(
+    data: EnumVehicleStatusState,
+    replyOnChannel: (response: IResponse) => void
+  ) {
+    this.browserWindowService.sendToRenderer(ipcMsg.M2R.VEHICLE_STATUS, data);
+    replyOnChannel({
+      status: 'success',
+      data
+    });
   }
 }

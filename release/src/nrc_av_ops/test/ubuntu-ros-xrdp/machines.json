@@ -1,0 +1,12 @@
+[
+    {
+        "name": "Agent_0",
+        "xrdp_port": 30089,
+        "ssh_port": 30022
+    },
+    {
+        "name": "Agent_1",
+        "xrdp_port": 30189,
+        "ssh_port": 30122
+    }
+]

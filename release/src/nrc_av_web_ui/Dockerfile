@@ -1,5 +1,7 @@
 FROM node:hydrogen-alpine3.17 AS build
 
+ARG VITE_BASE_URL=${VITE_BASE_URL}
+
 RUN apk add xdg-utils --update
 
 WORKDIR /app

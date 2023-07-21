@@ -1,0 +1,16 @@
+.interface-information {
+  .machine-state {
+    &.pass,
+    &.good {
+      background-color: rgba($color: #00ff00, $alpha: 0.4);
+    }
+
+    &.fail,
+    &.bad {
+      background-color: rgba($color: #ff4d4f, $alpha: 0.4);
+    }
+    &.terrible {
+      background-color: rgba($color: #ffa500, $alpha: 0.4);
+    }
+  }
+}

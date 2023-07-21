@@ -1,9 +1,0 @@
-# Dependency directories
-node_modules/
-
-# Temporary folders
-build/
-
-# Temporary files
-package-lock.json
-yarn.lock

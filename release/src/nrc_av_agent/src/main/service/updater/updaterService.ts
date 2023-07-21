@@ -16,7 +16,7 @@ export default class UpdaterService implements IAutoUpdater {
     this.isUpdating = false;
     autoUpdater.logger = log;
     log.transports.file.level = 'info';
-    log.info('App is starting...');
+    log.debug('App is starting...');
 
     if (process.env.NODE_ENV === 'development') {
       autoUpdater.forceDevUpdateConfig = true;
@@ -47,22 +47,22 @@ export default class UpdaterService implements IAutoUpdater {
   private initEventHandler() {
     autoUpdater.on('checking-for-update', () => {
       this.isUpdating = true;
-      log.info('Checking for update...');
+      log.debug('Checking for update...');
     });
 
     autoUpdater.on('update-available', (info) => {
       this.isUpdating = true;
-      log.info('Update available.', info);
+      log.debug('Update available.', info);
     });
 
     autoUpdater.on('update-not-available', (info) => {
       this.isUpdating = false;
-      log.info('Update not available.', info);
+      log.debug('Update not available.', info);
     });
 
     autoUpdater.on('error', (err) => {
       this.isUpdating = false;
-      log.info(`Error in auto-updater. ${err}`);
+      log.debug(`Error in auto-updater. ${err}`);
     });
 
     autoUpdater.on('download-progress', (speed) => {
@@ -70,12 +70,12 @@ export default class UpdaterService implements IAutoUpdater {
       let logMessage = `Downloading speed: ${speed.bytesPerSecond}`;
       logMessage = `${logMessage} - Downloaded ${speed.percent}%`;
       logMessage = `${logMessage} (${speed.transferred}/${speed.total})`;
-      log.info(logMessage);
+      log.debug(logMessage);
     });
 
     autoUpdater.on('update-downloaded', (info) => {
       this.isUpdating = false;
-      log.info('Update downloaded', info);
+      log.debug('Update downloaded', info);
       autoUpdater.quitAndInstall(true, true);
     });
   }

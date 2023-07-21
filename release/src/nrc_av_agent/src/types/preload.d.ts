@@ -5,6 +5,7 @@ declare global {
       send(channel: string, ...args: any[]): void;
       receive(channel: string, callback: (...args: any[]) => void): void;
       sendAndReceive: (channel: string, ...args: any[]) => Promise<any> | undefined;
+      removeAllListeners: (channel: string) => void;
     };
     ipcStorage: {
       /* ELECTRON IPC TYPES */

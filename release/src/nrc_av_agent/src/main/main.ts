@@ -1,6 +1,15 @@
 import { app, BrowserWindow, Menu, shell } from 'electron';
+import log from 'electron-log';
+import { ILogConfig } from '../shared/configurationTypes';
+import { EnumVehicleStatusState } from '../shared/constants';
+import ipcMsg from '../shared/ipcMsg';
 import { APP_CONFIG } from './constants';
-import { /* IAutoUpdater, */ IConfiguration, ILogic } from './inversify/interfaces';
+import {
+  /* IAutoUpdater, */ IConfiguration,
+  ILog,
+  ILogic,
+  IBrowserWindowService
+} from './inversify/interfaces';
 import diContainer from './inversify/inversify.config';
 import TYPES from './inversify/types';
 import menu from './menu';
@@ -11,12 +20,24 @@ const createWindow = () => {
   const mainWindow = new BrowserWindow({
     icon: getAssetsPath('icon.ico'),
     width: 900,
-    height: 600,
+    height: 700,
     webPreferences: {
       devTools: isDebug,
       preload: getPreloadPath('preload.js')
     }
   });
+  const browserWindowService = diContainer.get<IBrowserWindowService>(TYPES.BrowserWindowService);
+  browserWindowService.init(mainWindow);
+
+  if (!app.requestSingleInstanceLock()) {
+    // If another instance of the app is already running, quit this instance
+    app.quit();
+  } else if (mainWindow) {
+    app.on('second-instance', () => {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    });
+  }
 
   mainWindow.loadURL(getHtmlPath('index.html'));
 
@@ -37,21 +58,56 @@ const createWindow = () => {
 };
 
 const loadConfigs = () => {
-  const vehicleSuccess = diContainer
-    .get<IConfiguration>(TYPES.Configuration)
-    .loadConfigs(APP_CONFIG.VEHICLE);
-  const connectionSuccess = diContainer
-    .get<IConfiguration>(TYPES.Configuration)
-    .loadConfigs(APP_CONFIG.CONNECTION);
-  if (vehicleSuccess && connectionSuccess) {
-    diContainer.get<ILogic>(TYPES.Logic).init();
+  const configSvc = diContainer.get<IConfiguration>(TYPES.Configuration);
+
+  // config log
+  const logExist = configSvc.loadConfigs(APP_CONFIG.LOG);
+  if (!logExist) {
+    configSvc.createConfig<ILogConfig>(APP_CONFIG.LOG, {
+      enable: 'off',
+      logLevel: 'info',
+      mode: 'file'
+    });
   }
+  diContainer.get<ILog>(TYPES.Log).init();
+  log.info('Application starting...');
+  // eslint-disable-next-line no-console
+  console.log('Application starting...');
+
+  // config agent
+  const vehicleSuccess = configSvc.loadConfigs(APP_CONFIG.VEHICLE);
+  const connectionSuccess = configSvc.loadConfigs(APP_CONFIG.CONNECTION);
+  return vehicleSuccess && connectionSuccess;
 };
 
 app.whenReady().then(() => {
+  const configStatus = loadConfigs();
   createWindow();
-  loadConfigs();
-
+  diContainer
+    .get<IBrowserWindowService>(TYPES.BrowserWindowService)
+    .getBrowserWindow()
+    .once('ready-to-show', () => {
+      // await diContainer
+      //   .get<IStatusInterfaceRosBridgeService>(TYPES.StatusInterfaceRosBridgeService)
+      //   .initStatusChecking()
+      //   .catch((err) => {
+      //     const messageBoxOptions = {
+      //       type: 'error',
+      //       message: err.toString()
+      //     };
+      //     dialog.showMessageBoxSync(messageBoxOptions);
+      //   });
+      // await diContainer
+      //   .get<IStatusInterfaceRosBridgeService>(TYPES.StatusInterfaceRosBridgeService)
+      //   .rosBridgeConnect()
+      //   .catch((err) => {
+      //     log.error(`Unable to connect to Ros-Bridge: ${err.toString()}`);
+      //   });
+      diContainer
+        .get<IBrowserWindowService>(TYPES.BrowserWindowService)
+        .sendToRenderer(ipcMsg.M2R.VEHICLE_STATUS, EnumVehicleStatusState.FETCHING);
+      if (configStatus) diContainer.get<ILogic>(TYPES.Logic).init();
+    });
   // temporary disable feature auto-update
   /* AUTO UPDATER INVOKE */
   // diContainer.get<IAutoUpdater>(TYPES.AutoUpdater).initUpdater();
@@ -64,6 +120,9 @@ app.whenReady().then(() => {
 
   app.on('quit', () => {
     diContainer.get<ILogic>(TYPES.Logic).cleanup();
+    log.info('Application exiting...');
+    // eslint-disable-next-line no-console
+    console.log('Application exiting...');
   });
 });
 

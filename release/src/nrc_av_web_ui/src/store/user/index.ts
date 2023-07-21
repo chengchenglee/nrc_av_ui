@@ -1,18 +1,20 @@
 import { createSlice } from '@reduxjs/toolkit';
 import Cookies from 'universal-cookie';
-import { User } from '../../interfaces/models/user';
+import { UserDTO } from '../../dtos/user';
 import { userThunk } from './thunks';
 
-export interface UserState extends User {
-  id: any;
+export interface UserState extends UserDTO {
+  id: number;
   isLogin: boolean;
+  loading: boolean;
 }
 
 const initialState: UserState = {
   id: 0,
   username: '',
   password: '',
-  isLogin: false
+  isLogin: false,
+  loading: true
 };
 
 const reducer = createSlice({
@@ -20,19 +22,20 @@ const reducer = createSlice({
   initialState,
   reducers: {
     resetState: () => ({ ...initialState }),
-    updateLogin: (state) => ({ ...state, isLogin: true })
+    updateLogin: (state) => ({ ...state, isLogin: false })
   },
   extraReducers: (builder) => {
     builder.addCase(userThunk.getCurrentUser.fulfilled, (state, { payload }) => ({
       ...state,
       ...payload,
-      isLogin: true
+      isLogin: true,
+      loading: false
     }));
-    builder.addCase(userThunk.getCurrentUser.rejected, (state) => {
+    builder.addCase(userThunk.getCurrentUser.rejected, () => {
       const cookies = new Cookies();
       cookies.set('access-token', '', { maxAge: -999 });
 
-      return { ...state, isLogin: true };
+      return { ...initialState, loading: false };
     });
   }
 });

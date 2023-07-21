@@ -30,6 +30,7 @@
   "plugins": ["react", "react-hooks", "@typescript-eslint", "prettier", "import"],
   "rules": {
     // plugin 'prettier'
+    "react-hooks/exhaustive-deps": "warn",
     "prettier/prettier": [
       "error",
       {
@@ -132,7 +133,10 @@
         "code": 100
       }
     ],
-    "max-lines-per-function": ["error", 100],
+    "max-lines-per-function": [
+      "error",
+      { "max": 100, "skipBlankLines": true, "skipComments": true }
+    ],
     "no-case-declarations": "error",
     "no-confusing-arrow": "error",
     "no-console": [
@@ -155,7 +159,8 @@
     ],
     "no-empty": "error",
     "no-empty-function": "error",
-    "no-extra-parens": [
+    "no-extra-parens": "off",
+    "@typescript-eslint/no-extra-parens": [
       "error",
       "all",
       {

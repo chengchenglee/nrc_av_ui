@@ -15,4 +15,5 @@ export const store = configureStore({
   reducer: reducers
 });
 
+export type Store = typeof store;
 export const useStoreUser = () => useSelector<RootState, UserState>((state) => state.user);

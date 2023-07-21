@@ -1,15 +1,6 @@
+/* eslint-disable no-console */
 import { exec } from 'child_process';
-
-enum ROSNodeStatus {
-  NOT_STARTED = 'NOT_STARTED',
-  RUNNING = 'RUNNING',
-  STOPPED = 'STOPPED'
-}
-interface ROSNode {
-  packageName: string;
-  name: string;
-  status: ROSNodeStatus;
-}
+import { ROSNodeStatus, ROSNodeStatusType } from '../shared/constants';
 
 function execute(command: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -25,36 +16,44 @@ function execute(command: string): Promise<string> {
   });
 }
 
-async function assignNodeStatus(rosNode: ROSNode): Promise<ROSNode> {
-  const statusRosNode: ROSNode = rosNode;
-  const rosNodeName = `${rosNode.packageName}__${rosNode.name}`;
+async function assignNodeStatus(rosNode: ROSNodeStatus): Promise<ROSNodeStatus> {
+  const statusRosNode: ROSNodeStatus = rosNode;
+  const rosNodeName = rosNode.packageName
+    ? `${rosNode.packageName}__${rosNode.name}`
+    : `${rosNode.name}`;
+
   try {
     await execute(`rosnode ping ${rosNodeName} -c 1`);
-    statusRosNode.status = ROSNodeStatus.RUNNING;
+    statusRosNode.status = ROSNodeStatusType.RUNNING;
   } catch (err) {
-    statusRosNode.status = ROSNodeStatus.STOPPED;
+    if (statusRosNode.status === ROSNodeStatusType.UNKNOWN) {
+      statusRosNode.status = ROSNodeStatusType.NOT_STARTED;
+    } else if (statusRosNode.status === ROSNodeStatusType.RUNNING) {
+      statusRosNode.status = ROSNodeStatusType.STOPPED;
+    }
   }
   return statusRosNode;
 }
 
 process.parentPort.on('message', (e) => {
-  const rosNode: ROSNode[] = e.data;
-  const promise: Promise<ROSNode>[] = [];
-  rosNode
+  const rosNodes: ROSNodeStatus[] = e.data;
+  const promises: Promise<ROSNodeStatus>[] = [];
+  // console.log(`[worker-rosnode-status] check status of: ${JSON.stringify(rosNodes)}`);
+  rosNodes
     .filter(
-      (node) => node.status === ROSNodeStatus.RUNNING || node.status === ROSNodeStatus.STOPPED
+      (node) =>
+        node.status === ROSNodeStatusType.UNKNOWN || node.status === ROSNodeStatusType.RUNNING
     )
     .forEach((node) => {
-      promise.push(assignNodeStatus(node));
+      promises.push(assignNodeStatus(node));
     });
-  Promise.all(promise)
+  Promise.all(promises)
     .then((result) => {
       process.parentPort.postMessage(result);
     })
     .catch((err) => {
-      console.error(err);
+      console.error(`[worker-rosnode-status] ${err}`);
       const errorObject = { status: 'All connections failed!', type: 'error' };
       process.parentPort.postMessage(errorObject);
     });
 });
-export {};

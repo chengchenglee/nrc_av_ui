@@ -1,7 +1,7 @@
 import { inject, injectable } from 'inversify';
 import { APP_CONFIG_FOLDER_NAME } from 'src/main/constants';
+import { ConfigType } from '../../../shared/configurationTypes';
 import TYPES from '../../inversify/types';
-import { ConfigProps } from './types';
 import type {
   IConfiguration,
   IElectronWrapper,
@@ -11,7 +11,7 @@ import type {
 
 @injectable()
 export default class ConfigurationService implements IConfiguration {
-  private configs: Map<string, ConfigProps>;
+  private configs: Map<string, ConfigType>;
 
   private configFolderPath!: string;
 
@@ -20,7 +20,7 @@ export default class ConfigurationService implements IConfiguration {
     @inject(TYPES.FileSystem) private fsService: IFileSystem,
     @inject(TYPES.Path) private pathService: IPath
   ) {
-    this.configs = new Map<string, ConfigProps>();
+    this.configs = new Map<string, ConfigType>();
     this.initConfigs();
   }
 
@@ -54,18 +54,18 @@ export default class ConfigurationService implements IConfiguration {
     return true;
   }
 
-  getConfigs(configName: string): ConfigProps | undefined {
-    return this.configs.get(configName);
-  }
-
-  getConfig(configName: string, propName: keyof ConfigProps): string | undefined {
-    return this.getConfigs(configName)?.[propName];
-  }
-
-  updateConfig(configName: string, newConfigs: ConfigProps): void {
-    this.configs.set(configName, newConfigs);
+  createConfig<T extends ConfigType>(configName: string, value: T): void {
+    this.configs.set(configName, value);
     const filePath = this.pathService.join(this.configFolderPath, `${configName}.json`);
-    this.fsService.writeFile(filePath, JSON.stringify(newConfigs, null, 2), null, () => {});
+    this.fsService.writeFile(filePath, JSON.stringify(value, null, 2), null, () => undefined);
+  }
+
+  getConfigs<T extends ConfigType>(configName: string): T | undefined {
+    return this.configs.get(configName) as T;
+  }
+
+  getConfig<T extends ConfigType>(configName: string, propName: keyof T): T[keyof T] | undefined {
+    return this.getConfigs<T>(configName)?.[propName];
   }
 
   private isConfigFolderExist(): boolean {

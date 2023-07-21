@@ -1,0 +1,30 @@
+.model-custom {
+  .item-state {
+    .ant-list-item-meta-avatar {
+      padding: 5px 0px;
+      margin-inline-end: 5px !important;
+    }
+
+    .ant-list-item-meta-content {
+      position: relative;
+
+      .ant-list-item-meta-title {
+        margin: 0px;
+        border-radius: 5px;
+        padding: 5px 10px;
+      }
+    }
+
+    &.added .ant-list-item-meta-title {
+      background-color: rgba($color: #00ff00, $alpha: 0.4);
+    }
+
+    &.removed .ant-list-item-meta-title {
+      background-color: rgba($color: #ff0000, $alpha: 0.4);
+    }
+
+    &.same .ant-list-item-meta-title {
+      background-color: rgba($color: #a1a1a1, $alpha: 0.4);
+    }
+  }
+}

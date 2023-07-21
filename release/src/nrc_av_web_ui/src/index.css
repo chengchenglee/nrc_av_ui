@@ -15,3 +15,7 @@ html {
   max-width: 1360px;
   margin: auto;
 }
+
+.collapse-no-padding .ant-collapse-header {
+  padding: 0px 12px !important;
+}

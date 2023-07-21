@@ -12,9 +12,9 @@ files:
 
 extraResources:
   - './assets/**'
-  - './app-config/**'
   - './av/**'
 
+electronLanguages: 'en-US'
 directories:
   app: 'app'
   buildResources: 'assets'
@@ -82,8 +82,6 @@ linux:
   icon: './assets/icon.icns'
   target:
     - 'AppImage'
-    - 'deb'
-    - 'snap'
   maintainer: 'AJAY'
   packageCategory: 'Utility'
   category: Utility

@@ -2,15 +2,24 @@ import { Module } from '@nestjs/common';
 import { forwardRef } from '@nestjs/common/utils';
 import { AgentModule } from '../agent/agent.module';
 import { AuthModule } from '../auth/auth.module';
-import { DatabaseModule } from '../core/database/database.module';
+import { CommandModule } from '../command/command.module';
+import { InterfaceModule } from '../interface/interface.module';
+import { LoggerModule } from '../logger/logger.module';
+import { ModelModule } from '../model/model.module';
 import { VehicleController } from './vehicle.controller';
-import { VehicleGateway } from './vehicle.gateway';
 import { VehicleService } from './vehicle.service';
 
 @Module({
-  imports: [DatabaseModule, forwardRef(() => AgentModule), AuthModule],
+  imports: [
+    forwardRef(() => AgentModule),
+    AuthModule,
+    InterfaceModule,
+    CommandModule,
+    LoggerModule,
+    ModelModule
+  ],
   controllers: [VehicleController],
-  providers: [VehicleService, VehicleGateway],
-  exports: [VehicleService, VehicleGateway]
+  providers: [VehicleService],
+  exports: [VehicleService]
 })
 export class VehicleModule {}

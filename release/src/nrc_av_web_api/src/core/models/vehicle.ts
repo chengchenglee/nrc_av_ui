@@ -1,15 +1,10 @@
-import joi from 'joi';
-import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, OneToMany, JoinTable } from 'typeorm';
+import { Column, Entity, ManyToOne } from 'typeorm';
 import { VehicleStatus } from '../enums';
-import { Agent } from './agent';
+import { BaseModel } from './base';
 import { Model } from './model';
-import { Node } from './node';
 
 @Entity()
-export class Vehicle {
-  @PrimaryGeneratedColumn('increment')
-  id: number;
-
+export class Vehicle extends BaseModel {
   @Column({ nullable: true })
   name: string;
 
@@ -19,24 +14,18 @@ export class Vehicle {
   @Column({ nullable: false, unique: true })
   certKey: string;
 
+  @Column({ nullable: false, default: false })
+  isOnline: boolean;
+
   @Column()
   lastConnected: Date;
 
   @Column({ default: VehicleStatus.WAITING })
   status: VehicleStatus;
 
-  @ManyToOne(() => Model, (model) => model.vehicles, { eager: true })
+  @Column({ default: null })
+  agentVersion: string;
+
+  @ManyToOne(() => Model, (model) => model.vehicles)
   model: Model;
-
-  @ManyToOne(() => Agent, (agent) => agent.vehicles, { eager: true })
-  agent: Agent;
-
-  @OneToMany(() => Node, (node) => node.vehicle, { eager: true })
-  @JoinTable({ name: 'nodeList' })
-  nodes: Node[];
 }
-
-export const vehicleValidateSchema = {
-  name: joi.string().min(0).max(40).trim(),
-  macAddress: joi.string().min(0).max(40).trim()
-};

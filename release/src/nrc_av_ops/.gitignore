@@ -1,0 +1,2 @@
+test/ubuntu-ros-xrdp/resources/.ssh/*
+!test/ubuntu-ros-xrdp/resources/.ssh/.gitkeep
