@@ -8,14 +8,14 @@ const TYPES = {
   Configuration: Symbol.for('IConfiguration'),
   WebStorage: Symbol.for('IWebStorage'),
   Logic: Symbol.for('ILogic'),
-  StatusROSNode: Symbol.for('IStatusROSNode'),
-  StatusInterfaceFile: Symbol.for('IStatusInterfaceFile'),
   Log: Symbol.for('ILog'),
   BrowserWindowService: Symbol.for('IBrowserWindowService'),
-  StatusInterfaceService: Symbol.for('IStatusInterfaceService'),
   StatusInterfaceRosBridgeService: Symbol.for('IStatusInterfaceRosBridgeService'),
   InterfaceFileService: Symbol.for('IInterfaceFileService'),
-  RosService: Symbol.for('IRosService')
+  RosService: Symbol.for('IRosService'),
+  RosBridgeServerService: Symbol.for('IRosBridgeServerService'),
+  RosBridgeConnectionService: Symbol.for('IRosBridgeConnectionService'),
+  StatusCommandsService: Symbol.for('IStatusCommands')
 };
 
 export default TYPES;

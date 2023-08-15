@@ -131,19 +131,27 @@ To deploy the Nissan AV Agent on a vehicle's computer, follow these steps:
 > **Step 6: Install package "python-is-python3" on Ubuntu 20.04**
 >
 > ```
-> sudo apt install python-is-python3
+> sudo apt install -y python-is-python3
 > ```
 >
 > **Step 7: Install package rosbridge**
 >
-> On **Ubuntu 20.04** ros-noetic-rosbridge-suite
+> On **Ubuntu 20.04** ros-noetic-rosbridge-server
 >
 > ```
-> sudo apt install ros-noetic-rosbridge-suite
+> sudo apt install -y ros-noetic-rosbridge-server
 > ```
 >
-> On **Ubuntu 18.04** ros-melodic-rosbridge-suite
+> ```
+> sudo apt install -y netcat
+> ```
+>
+> On **Ubuntu 18.04** ros-melodic-rosbridge-server
 >
 > ```
-> sudo apt install ros-melodic-rosbridge-suite
+> sudo apt install -y ros-melodic-rosbridge-server
+> ```
+>
+> ```
+> sudo apt install -y netcat
 > ```

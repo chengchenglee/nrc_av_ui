@@ -1,5 +1,6 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { plainToInstance } from 'class-transformer';
 import { DataSource } from 'typeorm';
 import { AgentGateway } from '../agent/agent.gateway';
 import { CommandService } from '../command/command.service';
@@ -12,7 +13,8 @@ import {
   ISuccessResponse,
   IVehicleStatus,
   SocketEventEnum,
-  EventEmitterNameSpace
+  EventEmitterNameSpace,
+  Interface
 } from '../core';
 import { InterfaceService } from '../interface/interface.service';
 import { LoggerService } from '../logger/logger.service';
@@ -147,7 +149,23 @@ export class VehicleService {
     if (vehicle) {
       vehicle.isOnline = false;
       await this.dataSource.getRepository(Vehicle).save(vehicle);
+      this.eventEmitter.emit(
+        `${EventEmitterNameSpace.VEHICLE_DISCONNECT}.${vehicle.id}`,
+        vehicle.name
+      );
     }
+  }
+
+  async isVehicleOnline(id: number): Promise<boolean> {
+    const vehicle = await this.dataSource.getRepository(Vehicle).findOne({
+      where: {
+        id
+      }
+    });
+    if (!vehicle.isOnline) {
+      return false;
+    }
+    return true;
   }
 
   async handleVehicleConnection(certKey: string): Promise<Vehicle> {
@@ -166,15 +184,6 @@ export class VehicleService {
       return vehicle;
     } else {
       return null;
-    }
-  }
-
-  async sendROSMasterCommand(vehicleId: number) {
-    const vehicle = await this.getVehicle(vehicleId);
-    try {
-      return await this.getResultFromAgent(vehicle, SocketEventEnum.RUN_ROS_MASTER, {});
-    } catch (error) {
-      throw new HttpException(error, HttpStatus.SERVICE_UNAVAILABLE);
     }
   }
 
@@ -201,11 +210,12 @@ export class VehicleService {
 
   async startInterfaceFiles(vehicleId: number, interfaceId: number, mapName: string) {
     const vehicle = await this.getVehicle(vehicleId);
-    const agentInterface = await this.interfaceService.getInterfaceWithAllRelations(interfaceId);
+    let agentInterface = await this.interfaceService.getInterfaceWithAllRelations(interfaceId);
     if (!agentInterface) {
       throw new HttpException(message.interfaceNotFound, HttpStatus.NOT_FOUND);
     }
-    const data = { mapName, agentInterface };
+    agentInterface = plainToInstance(Interface, agentInterface, { excludeExtraneousValues: true });
+    const data = { mapName, ...agentInterface };
     try {
       return await this.getResultFromAgent(vehicle, SocketEventEnum.RUN_INTERFACE, data);
     } catch (err) {
@@ -220,42 +230,6 @@ export class VehicleService {
       return await this.getResultFromAgent(vehicle, SocketEventEnum.CHANGE_MAP, data);
     } catch (err) {
       throw new HttpException(err, HttpStatus.SERVICE_UNAVAILABLE);
-    }
-  }
-
-  async getInterfaceFilesStatus(vehicleId: number) {
-    const vehicle = await this.getVehicle(vehicleId);
-    let resultFromAgent: ISuccessResponse;
-    try {
-      resultFromAgent = await this.getResultFromAgent(
-        vehicle,
-        SocketEventEnum.GET_INTERFACE_STATUS,
-        {}
-      );
-    } catch (err) {
-      throw new HttpException(err, HttpStatus.SERVICE_UNAVAILABLE);
-    }
-
-    try {
-      const interfaceNamesForQuering = resultFromAgent.data.map(
-        (interfaceFile: { fileName: string; status: string }) => interfaceFile.fileName
-      );
-      const interfaces = await this.interfaceService.getInterfaceByNames(interfaceNamesForQuering);
-      return resultFromAgent.data.map((interfaceFile: { fileName: string; status: string }) => {
-        const interfaceFileFromDB = interfaces.find(
-          (interfaceFileFromDB) => interfaceFileFromDB.name === interfaceFile.fileName
-        );
-        if (interfaceFileFromDB) {
-          return {
-            ...interfaceFile,
-            id: interfaceFileFromDB.id
-          };
-        } else {
-          return interfaceFile;
-        }
-      });
-    } catch (err) {
-      throw new HttpException(err, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -277,11 +251,7 @@ export class VehicleService {
     const vehicle = await this.getVehicle(vehicleId);
     const command = await this.commandService.getCommand(interfaceId, commandId);
     try {
-      return await this.getResultFromAgent(
-        vehicle,
-        SocketEventEnum.RUN_INTERFACE_COMMAND,
-        command.command
-      );
+      return await this.getResultFromAgent(vehicle, SocketEventEnum.RUN_INTERFACE_COMMAND, command);
     } catch (err) {
       throw new HttpException(err, HttpStatus.SERVICE_UNAVAILABLE);
     }
@@ -294,7 +264,7 @@ export class VehicleService {
       return await this.getResultFromAgent(
         vehicle,
         SocketEventEnum.STOP_INTERFACE_COMMAND,
-        command.command
+        command
       );
     } catch (err) {
       throw new HttpException(err, HttpStatus.SERVICE_UNAVAILABLE);

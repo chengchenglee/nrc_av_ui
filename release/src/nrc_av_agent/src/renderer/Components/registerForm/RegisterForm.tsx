@@ -27,8 +27,8 @@ const RegisterForm = ({ mode, connectionInfo, vehicleInfo }: RegisterFormProps) 
 
   const onFinish = (registerInfo: IRegisterInfo) => {
     const { name, model, host, rosWorkspace } = registerInfo;
-    const newVehicleInfo = { name, model };
-    const newConnectionInfo = { host, rosWorkspace };
+    const newVehicleInfo = { name: name.trim(), model: model.trim() };
+    const newConnectionInfo = { host: host.trim(), rosWorkspace: rosWorkspace.trim() };
 
     if (mode === 'ADD') {
       window.ipcChannel.send(ipcMsg.R2M.REGISTER_INFO, newVehicleInfo, newConnectionInfo);

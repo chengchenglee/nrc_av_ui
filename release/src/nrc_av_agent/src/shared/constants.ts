@@ -1,11 +1,9 @@
-export enum ROSNodeStatusType {
-  NOT_STARTED = 'NOT_STARTED',
+export enum InterfaceFileStatusType {
   RUNNING = 'RUNNING',
-  STOPPED = 'STOPPED',
-  UNKNOWN = 'UNKNOWN'
+  STOPPED = 'STOPPED'
 }
 
-export enum InterfaceFileStatusType {
+export enum CommandsStatusType {
   RUNNING = 'RUNNING',
   STOPPED = 'STOPPED'
 }
@@ -20,17 +18,6 @@ export enum RosTopicStatusType {
   BAD = 'BAD',
   TERRIBLE = 'TERRIBLE'
 }
-export interface ROSNode {
-  packageName?: string;
-  name: string;
-}
-export interface ROSLaunchFile {
-  packageName: string;
-  launchName: string;
-}
-export interface ROSNodeStatus extends ROSNode {
-  status: ROSNodeStatusType;
-}
 
 export interface InterfaceFile {
   pID?: string;
@@ -42,9 +29,15 @@ export enum EnumStatusRunAllCommands {
   DEACTIVE = 'DEACTIVE'
 }
 
-export interface InterfaceFileStatus extends InterfaceFile {
-  status: InterfaceFileStatusType;
-  statusRunAll: EnumStatusRunAllCommands;
+export interface Command {
+  id: number;
+  command: string;
+  name: string;
+  pid: number;
+}
+
+export interface CommandsStatus extends Command {
+  status: string;
 }
 
 export interface Machine {
@@ -100,6 +93,7 @@ interface IErrorResponse {
 interface ISuccessResponse {
   status: 'success';
   data?: any;
+  pid?: any;
 }
 
 export interface IErrorCommand {
@@ -126,7 +120,7 @@ export const sharedState = {
   initialVehicleStatusState: EnumVehicleStatusState.WAITING
 };
 
-export interface AgentInterface {
+export interface Interface {
   name: string;
   mapName: string;
   machines: Machine[];
@@ -134,31 +128,38 @@ export interface AgentInterface {
   algorithms: Algorithm[];
 }
 
-export interface Interface {
-  mapName: string;
-  agentInterface: AgentInterface;
-}
-
 export interface AgentMap {
   mapName: string;
 }
 
-export interface InterfaceCommand {
-  id: number;
-  command: string;
-}
 export interface InterfaceStatus {
   interfaceName: string;
   machines: MachinesStatus[];
   sensors: SensorsStatus[];
   algorithms: AlgorithmsStatus[];
   status?: InterfaceFileStatusType;
+  statusRunAll: EnumStatusRunAllCommands;
+  statusCommands: CommandsStatus[];
+  anyStatusUpdate: boolean;
 }
 
 export interface InterfaceFiles {
   interfaces: Interface[];
 }
 
-export interface ROSNodeArr {
-  nodeArr: ROSNode[];
+export const ROS_BRIDGE_SOCKET = {
+  SOCKET_PORT: 9090,
+  SOCKET_URL: 'ws://127.0.0.1'
+};
+
+export interface ROSBridgeHealthcheckData {
+  socketPort: number;
+  socketUrl: string;
 }
+
+export const ROS_BRIDGE_WORKER_HEALTHCHECK = {
+  ROS_BRIDGE_PING_RETRY: 5,
+  ROS_BRIDGE_PING_BUFFER_TIME: 2500,
+  ROS_BRIDGE_PING_TIMEOUT: 2500,
+  ROS_BRIDGE_PING_INTERVAL: 2500
+};

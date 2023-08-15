@@ -4,16 +4,16 @@ import { IHostConfig } from '../../../shared/configurationTypes';
 import * as constants from '../../../shared/constants';
 import { APP_CONFIG, INTERFACE_FILE, ROS, ROS_BRIDGE, ROS_COMMAND } from '../../constants';
 import TYPES from '../../inversify/types';
-import { getAVPath } from '../../utils';
 import { logMethod } from '../log/logDecorator';
 import type {
   IChildProcess,
   IConfiguration,
   IInterfaceFileService,
+  IRosBridgeConnectionService,
+  IRosBridgeServerService,
   IRosService,
-  IStatusInterfaceFile,
   IStatusInterfaceRosBridgeService,
-  IStatusInterfaceService
+  IStatusCommands
 } from '../../inversify/interfaces';
 
 @injectable()
@@ -21,11 +21,13 @@ export default class InterfaceFileService implements IInterfaceFileService {
   constructor(
     @inject(TYPES.Configuration) private configSvc: IConfiguration,
     @inject(TYPES.ChildProcess) private childProcessSvc: IChildProcess,
-    @inject(TYPES.StatusInterfaceFile) private interfaceFileStatusSvc: IStatusInterfaceFile,
-    @inject(TYPES.StatusInterfaceService) private statusInterfaceSvc: IStatusInterfaceService,
     @inject(TYPES.RosService) private rosSvc: IRosService,
     @inject(TYPES.StatusInterfaceRosBridgeService)
-    private statusInterfaceRosBridgeSvc: IStatusInterfaceRosBridgeService
+    private statusInterfaceRosBridgeSvc: IStatusInterfaceRosBridgeService,
+    @inject(TYPES.RosBridgeServerService) private rosBridgeServerService: IRosBridgeServerService,
+    @inject(TYPES.RosBridgeConnectionService)
+    private rosBridgeConnectionService: IRosBridgeConnectionService,
+    @inject(TYPES.StatusCommandsService) private commandsStatusSvc: IStatusCommands
   ) {}
 
   @logMethod('[InterfaceFileService][runInterface]')
@@ -34,21 +36,16 @@ export default class InterfaceFileService implements IInterfaceFileService {
     replyOnChannel: (response: constants.IResponse) => void
   ) {
     try {
-      log.debug(
-        '[InterfaceFileService][runInterface] fileName: ',
-        dataInterface.agentInterface.mapName
-      );
-      const checkRosCore = await this.childProcessSvc.execAndWait(
-        `ps aux | grep  ${getAVPath()}/ros_core`
-      );
-      const interfaceRunning = this.statusInterfaceSvc.interfaceRunning();
+      log.debug('[InterfaceFileService][runInterface] fileName: ', dataInterface.name);
+
+      const interfaceRunning = this.statusInterfaceRosBridgeSvc.interfaceRunning();
       const pingRosCore = await this.childProcessSvc.execAndWait(
         this.childProcessSvc.buildCommand(`${ROS_COMMAND.PING_NODE} rosout`, '')
       );
       if (
         interfaceRunning.status === constants.InterfaceFileStatusType.RUNNING &&
-        pingRosCore.length > 0 &&
-        checkRosCore.includes(`python ${getAVPath()}/ros_core.py`)
+        interfaceRunning.interfaceName !== '' &&
+        pingRosCore.length > 0
       ) {
         replyOnChannel({
           status: 'error',
@@ -56,10 +53,11 @@ export default class InterfaceFileService implements IInterfaceFileService {
         });
         return;
       }
+      this.rosSvc.setStatusRunAllCommands(constants.EnumStatusRunAllCommands.DEACTIVE);
       try {
-        throw new Error();
-        const nodes = await this.statusInterfaceRosBridgeSvc.getRosNodes();
-        this.statusInterfaceRosBridgeSvc.clearCache();
+        const rosConnection = await this.rosBridgeConnectionService.getRosBridgeConnection(5);
+        const nodes = await this.statusInterfaceRosBridgeSvc.getRosNodes(rosConnection);
+        await this.statusInterfaceRosBridgeSvc.clearCache();
         const nodesName = nodes.map((a) => a.replace('/', ''));
         const filteredNodes = nodesName.filter(
           (item) => !ROS_BRIDGE.ROS_NODES_ARR.includes(item) && !item.includes('listener')
@@ -67,32 +65,24 @@ export default class InterfaceFileService implements IInterfaceFileService {
         this.childProcessSvc.execAndForget(
           this.childProcessSvc.buildCommand(`rosnode kill ${filteredNodes.join(' ')}`, '')
         );
-        this.stopRosCoreProcesses();
-        this.statusInterfaceSvc.clearCache();
-        this.runRosCoreProcesses();
         const results = await this.childProcessSvc.waitForResultAndReturn(
           replyOnChannel,
           '/rosout'
         );
         log.debug(`[InterfaceFileService][runInterface] results: ${results}`);
         if (results === ROS.SUCCESS) {
-          // this.setParams(dataInterface.agentInterface.name, dataInterface.mapName);
+          this.setParams(dataInterface.name, dataInterface.mapName);
           replyOnChannel({ status: 'success', data: ROS.SUCCESS });
         }
         // Kill all process echo topic before run new interface
         this.killProcessEchoTopic();
-        this.interfaceFileStatusSvc.startInterfaceFiles(dataInterface.agentInterface.name);
-        this.statusInterfaceSvc.setStatusInterface(dataInterface.agentInterface);
-        await this.statusInterfaceRosBridgeSvc.setStatusInterface(dataInterface.agentInterface);
+        await this.statusInterfaceRosBridgeSvc.setStatusInterface(dataInterface);
       } catch (err) {
-        this.stopRosCoreProcesses();
         this.stopAllNodes();
-        // await this.statusInterfaceRosBridgeSvc.initStatusChecking();
-        // await this.statusInterfaceRosBridgeSvc.rosBridgeConnect();
-        this.statusInterfaceRosBridgeSvc.clearCache();
+        await this.rosBridgeServerService.rosBridgeReInit(true, true);
+        await this.rosBridgeConnectionService.getRosBridgeConnection();
+        await this.statusInterfaceRosBridgeSvc.clearCache();
         log.error(`[InterfaceFileService][runInterface] ${err}`);
-        this.statusInterfaceSvc.clearCache();
-        this.runRosCoreProcesses();
         const results = await this.childProcessSvc.waitForResultAndReturn(
           replyOnChannel,
           '/rosout'
@@ -100,13 +90,11 @@ export default class InterfaceFileService implements IInterfaceFileService {
         log.debug(`[InterfaceFileService][runInterface] results: ${results}`);
         if (results === ROS.SUCCESS) {
           replyOnChannel({ status: 'success', data: ROS.SUCCESS });
-          this.setParams(dataInterface.agentInterface.name, dataInterface.mapName);
+          this.setParams(dataInterface.name, dataInterface.mapName);
         }
         // Kill all process echo topic before run new interface
         this.killProcessEchoTopic();
-        this.interfaceFileStatusSvc.startInterfaceFiles(dataInterface.agentInterface.name);
-        this.statusInterfaceSvc.setStatusInterface(dataInterface.agentInterface);
-        // await this.statusInterfaceRosBridgeSvc.setStatusInterface(dataInterface.agentInterface);
+        await this.statusInterfaceRosBridgeSvc.setStatusInterface(dataInterface);
       }
     } catch (err) {
       log.error(`[InterfaceFileService][runInterface] error: ${err}`);
@@ -120,15 +108,14 @@ export default class InterfaceFileService implements IInterfaceFileService {
   ): Promise<void> {
     try {
       log.debug('[InterfaceFileService][stopInterface] fileName: ', interfaceName);
-      const interfaceRunning = await this.statusInterfaceSvc.interfaceRunning();
-      this.statusInterfaceRosBridgeSvc.clearCache();
+      const interfaceRunning = await this.statusInterfaceRosBridgeSvc.interfaceRunning();
       if (interfaceRunning.interfaceName === interfaceName) {
         log.info(
           '[InterfaceFileService][stopInterface] interface is running, start killing interface...'
         );
         try {
-          throw new Error();
-          const nodes = await this.statusInterfaceRosBridgeSvc.getRosNodes();
+          const rosConnection = await this.rosBridgeConnectionService.getRosBridgeConnection(5);
+          const nodes = await this.statusInterfaceRosBridgeSvc.getRosNodes(rosConnection);
           const nodesName = nodes.map((a) => a.replace('/', ''));
           const filteredNodes = nodesName.filter(
             (item) => !ROS_BRIDGE.ROS_NODES_ARR.includes(item) && !item.includes('listener')
@@ -136,20 +123,21 @@ export default class InterfaceFileService implements IInterfaceFileService {
           this.childProcessSvc.execAndForget(
             this.childProcessSvc.buildCommand(`rosnode kill ${filteredNodes.join(' ')}`, '')
           );
-          this.stopRosCoreProcesses();
         } catch (err) {
-          this.stopRosCoreProcesses();
           this.stopAllNodes();
-          // await this.statusInterfaceRosBridgeSvc.initStatusChecking();
+          await this.rosBridgeServerService.rosBridgeReInit(true, true);
+          await this.rosBridgeConnectionService.getRosBridgeConnection();
           log.error(`[InterfaceFileService][stopInterface] ${err}`);
+        } finally {
+          await this.statusInterfaceRosBridgeSvc.clearCache();
+          this.deleteParams();
+          this.commandsStatusSvc.resetState();
+          this.rosSvc.setStatusRunAllCommands(constants.EnumStatusRunAllCommands.DEACTIVE);
         }
         replyOnChannel({
           status: 'success',
           data: `${interfaceName} ${INTERFACE_FILE.STOP_SUCESSFULLY}`
         });
-        this.deleteParams();
-        this.rosSvc.setStatusRunAllCommands(constants.EnumStatusRunAllCommands.DEACTIVE);
-        this.statusInterfaceSvc.clearCache();
         log.info('[InterfaceFileService][stopInterface] interface is killed!');
         return;
       }
@@ -167,18 +155,6 @@ export default class InterfaceFileService implements IInterfaceFileService {
     const rosWS = this.configSvc.getConfig<IHostConfig>(APP_CONFIG.CONNECTION, 'rosWorkspace');
     const interfacePath = `${rosWS}/src/nrc_av_ui/av_interface`;
     return interfacePath;
-  }
-
-  private runRosCoreProcesses(): void {
-    this.childProcessSvc.executeAndIgnoreOutput(
-      this.childProcessSvc.buildCommand('ros_core.py', `python ${getAVPath()}`)
-    );
-  }
-
-  private stopRosCoreProcesses(): void {
-    this.childProcessSvc.execAndForget(
-      this.childProcessSvc.buildCommand('kill $(pgrep -f ros_core)', '')
-    );
   }
 
   private stopAllNodes(): void {

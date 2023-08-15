@@ -1,9 +1,11 @@
+import { Expose } from 'class-transformer';
 import joi from 'joi';
 import { Column, Entity, JoinTable, ManyToMany } from 'typeorm';
 import { BaseModel } from './base';
 import { Interface } from './interface';
 @Entity()
 export class User extends BaseModel {
+  @Expose()
   @Column({ unique: true })
   username: string;
 

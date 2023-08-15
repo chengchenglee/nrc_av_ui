@@ -41,9 +41,10 @@ export const ROS_COMMAND = {
 };
 
 export const ROS_BRIDGE = {
-  SOCKET_PORT: 9090,
-  SOCKET_URL: 'ws://127.0.0.1',
   ROS_BRIDGE_SERVER_TIMEOUT: 10000,
+  ROS_BRIDGE_SERVER_PING_RETRY: 15,
+  ROS_BRIDGE_SERVER_PING_BUFFER_TIME: 2500,
+  ROS_BRIDGE_SERVER_PING_TIMEOUT: 10000,
   ROS_BRIDGE_CONNECTION_TIMEOUT: 10000,
   ROS_BRIDGE_CONNECTION_RETRY: 15,
   ROS_BRIDGE_CONNECTION_BUFFER_TIME: 2000,
@@ -58,6 +59,31 @@ export interface IRosBridgeMessage {
   header: {
     stamp: {
       secs: number;
+    };
+  };
+  pose: {
+    position: {
+      x: number;
+      y: number;
+      z: number;
+    };
+    orientation: {
+      x: number;
+      y: number;
+      z: number;
+      w: number;
+    };
+  };
+  twist: {
+    linear: {
+      x: number;
+      y: number;
+      z: number;
+    };
+    angular: {
+      x: number;
+      y: number;
+      z: number;
     };
   };
 }

@@ -8,5 +8,20 @@
         "name": "Agent_1",
         "xrdp_port": 30189,
         "ssh_port": 30122
+    },
+    {
+        "name": "Agent_2",
+        "xrdp_port": 30289,
+        "ssh_port": 30222
+    },
+    {
+        "name": "Agent_3",
+        "xrdp_port": 30389,
+        "ssh_port": 30322
+    },
+    {
+        "name": "Agent_4",
+        "xrdp_port": 30489,
+        "ssh_port": 30422
     }
 ]

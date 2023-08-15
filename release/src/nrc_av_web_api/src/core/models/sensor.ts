@@ -1,21 +1,27 @@
+import { Expose } from 'class-transformer';
 import { Column, Entity, ManyToOne } from 'typeorm';
 import { BaseModel } from './base';
 import { Interface } from './interface';
 
 @Entity()
 export class Sensor extends BaseModel {
+  @Expose()
   @Column()
   name: string;
 
+  @Expose()
   @Column({ type: 'float' })
   errRate: number;
 
+  @Expose()
   @Column({ type: 'float' })
   warnRate: number;
 
+  @Expose()
   @Column()
   topicName: string;
 
+  @Expose()
   @Column()
   topicType: string;
 

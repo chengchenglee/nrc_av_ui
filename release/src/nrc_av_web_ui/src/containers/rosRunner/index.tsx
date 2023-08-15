@@ -1,14 +1,19 @@
 import { Collapse, Descriptions, Empty, Form, Select, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/es/select';
 import * as React from 'react';
+import { useDispatch } from 'react-redux';
 import { VehicleDTO } from '../../dtos/vehicle';
 import { useActiveVehicles } from '../../hooks/queries/vehicle';
+import { useStoreVehicle } from '../../store';
+import { setSelectedVehicle } from '../../store/vehicle';
 import InterfaceExecutor from './executor/interfaceExecutor';
 
 const { Title } = Typography;
 
 const ROSRunner = () => {
-  const [selectedVehicle, setSelectedVehicle] = React.useState<VehicleDTO | undefined>(undefined);
+  const selectedVehicle = useStoreVehicle();
+
+  const dispatch = useDispatch();
 
   const { data: activeVehicles, isFetching: isActiveVehiclesFetching } = useActiveVehicles();
 
@@ -25,13 +30,13 @@ const ROSRunner = () => {
   const selectVehicle = React.useCallback(
     (value: number) => {
       if (!activeVehicles) {
-        setSelectedVehicle(undefined);
+        dispatch(setSelectedVehicle(undefined));
         return;
       }
       const selected = activeVehicles.find((vehicle: VehicleDTO) => vehicle.id === value);
-      setSelectedVehicle(selected);
+      dispatch(setSelectedVehicle(selected));
     },
-    [activeVehicles]
+    [activeVehicles, dispatch]
   );
 
   return (
@@ -58,6 +63,7 @@ const ROSRunner = () => {
             onChange={selectVehicle}
             loading={isActiveVehiclesFetching}
             disabled={isActiveVehiclesFetching}
+            value={selectedVehicle?.id}
           />
         </Form.Item>
       </div>

@@ -1,16 +1,36 @@
 import { Button, Pagination } from 'antd';
 import Table, { ColumnsType } from 'antd/es/table';
-import { FC, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
 import { InterfaceListItem } from '../../dtos/interface';
 import { useGetInterfaceList } from '../../hooks/queries/interface';
+import CloneModal from '../CloneInterfaceModal';
+import DeleteModal from '../DeleteInterfaceModal';
 
 interface InterfaceListProps {
   onUpdateIdChange?: (id: number) => void;
 }
 
+// eslint-disable-next-line max-lines-per-function
 const InterfaceList: FC<InterfaceListProps> = ({ onUpdateIdChange }) => {
   const [currentPage, setCurrentPage] = useState<number>(0);
-  const { data, isFetching } = useGetInterfaceList({ currentPage });
+  const { data, isFetching, refetch } = useGetInterfaceList({ currentPage });
+  const [showModalUpdate, setShowModalUpdate] = useState(false);
+  const [showModalDelete, setShowModalDelete] = useState(false);
+  const [idInterface, setIdInterface] = useState(Number);
+
+  useEffect(() => {
+    refetch();
+  }, [currentPage, refetch]);
+
+  const handleCloneButtonClick = (id: number) => {
+    setIdInterface(id);
+    setShowModalUpdate(true);
+  };
+
+  const handleDeleteButtonClick = (id: number) => {
+    setIdInterface(id);
+    setShowModalDelete(true);
+  };
 
   const columns: ColumnsType<InterfaceListItem> = [
     {
@@ -34,9 +54,25 @@ const InterfaceList: FC<InterfaceListProps> = ({ onUpdateIdChange }) => {
       width: '15%',
       render(_, record) {
         return (
-          <Button onClick={() => onUpdateIdChange?.(record.id)} type="primary">
-            Update
-          </Button>
+          <div style={{ display: 'flex' }}>
+            <Button onClick={() => onUpdateIdChange?.(record.id)} type="primary">
+              Update
+            </Button>
+            <Button
+              style={{ marginLeft: '10px' }}
+              onClick={() => handleCloneButtonClick(record.id)}
+              type="primary"
+            >
+              Clone
+            </Button>
+            <Button
+              style={{ marginLeft: '10px' }}
+              onClick={() => handleDeleteButtonClick(record.id)}
+              type="primary"
+            >
+              Delete
+            </Button>
+          </div>
         );
       }
     }
@@ -44,6 +80,14 @@ const InterfaceList: FC<InterfaceListProps> = ({ onUpdateIdChange }) => {
 
   const onPaginationChange = (page: number) => {
     setCurrentPage(page - 1);
+  };
+
+  const handleModalCancel = () => {
+    setShowModalUpdate(false);
+  };
+
+  const handleModalDeleteCancel = () => {
+    setShowModalDelete(false);
   };
 
   return (
@@ -67,6 +111,19 @@ const InterfaceList: FC<InterfaceListProps> = ({ onUpdateIdChange }) => {
           showSizeChanger={false}
         />
       </div>
+
+      <CloneModal
+        currentPage={currentPage}
+        showModal={showModalUpdate}
+        id={idInterface}
+        onCancel={handleModalCancel}
+      />
+      <DeleteModal
+        currentPage={currentPage}
+        showModal={showModalDelete}
+        id={idInterface}
+        onCancel={handleModalDeleteCancel}
+      />
     </>
   );
 };

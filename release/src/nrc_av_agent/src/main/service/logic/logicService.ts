@@ -15,12 +15,11 @@ import type {
   ICommunication,
   IConfiguration,
   ILogic,
-  IStatusROSNode,
-  IStatusInterfaceFile,
-  IStatusInterfaceService,
   IInterfaceFileService,
   IRosService,
-  IChildProcess
+  IChildProcess,
+  IStatusInterfaceRosBridgeService,
+  IStatusCommands
 } from '../../inversify/interfaces';
 
 enum SocketEventEnum {
@@ -30,21 +29,14 @@ enum SocketEventEnum {
   VEHICLE_ACTIVATION = 'nissan/vehicle/activation',
   VEHICLE_STATUS = 'nissan/vehicle/status',
   VEHICLE_MACHINES_STATUS = 'nissan/vehicle/machines/status',
-  VEHICLE_MACHINES_STATUS_TEXT = 'nissan/vehicle/machines/status/text',
   VEHICLE_UPDATION = 'nissan/vehicle/updation',
 
-  RUN_ROS_MASTER = 'nissan/ros/master',
   RUN_COMMANDS = 'nissan/interface/exec/command',
   RUN_ALL_INTERFACE_COMMANDS = 'nissan/interface/exec-all/command',
   STOP_COMMANDS = 'nissan/interface/stop/command',
-  RUN_ROS_NODE = 'nissan/ros/node',
-  GET_ROS_NODES = 'nissan/ros/nodes',
-  GET_ROS_LAUNCH_FILES = 'nissan/ros/launch-files',
-  GET_STATUS_ROS_NODES = 'nissan/ros/nodes-status',
   CHANGE_MAP = 'nissan/interface/changemap',
 
   RUN_INTERFACE = 'nissan/interface/run',
-  GET_INTERFACE_STATUS = 'nissan/interface/status',
   STOP_INTERFACE = 'nissan/interface/stop'
 }
 
@@ -53,28 +45,16 @@ export default class LogicService implements ILogic {
   constructor(
     @inject(TYPES.Communication) private commSvc: ICommunication,
     @inject(TYPES.Configuration) private configSvc: IConfiguration,
-    @inject(TYPES.StatusROSNode) private rosStatusSvc: IStatusROSNode,
-    @inject(TYPES.StatusInterfaceFile) private interfaceFileStatusSvc: IStatusInterfaceFile,
     @inject(TYPES.BrowserWindowService) private browserWindowService: IBrowserWindowService,
-    @inject(TYPES.StatusInterfaceService)
-    private statusInterfaceSvc: IStatusInterfaceService,
     @inject(TYPES.InterfaceFileService) private interfaceFileSvc: IInterfaceFileService,
     @inject(TYPES.RosService) private rosSvc: IRosService,
-    @inject(TYPES.ChildProcess) private childProcessSvc: IChildProcess
+    @inject(TYPES.ChildProcess) private childProcessSvc: IChildProcess,
+    @inject(TYPES.StatusInterfaceRosBridgeService)
+    private statusInterfaceRosBridgeSvc: IStatusInterfaceRosBridgeService,
+    @inject(TYPES.StatusCommandsService) private commandsStatusSvc: IStatusCommands
   ) {
-    this.rosSvc.listROSNodes().then((nodes) => {
-      const initialNodes = [
-        ...nodes,
-        // add ROSCore to check status
-        {
-          name: 'rosout',
-          packageName: undefined
-        }
-      ];
-      this.rosStatusSvc.initStatusChecking(initialNodes);
-    });
-    this.interfaceFileStatusSvc.initStatusChecking();
-    this.statusInterfaceSvc.initStatusChecking();
+    this.statusInterfaceRosBridgeSvc.initStatusInterface();
+    this.commandsStatusSvc.initStatusChecking();
   }
 
   @logMethod('[LogicService][init]')
@@ -134,10 +114,6 @@ export default class LogicService implements ILogic {
       this.commSvc.addEventHandler(
         SocketEventEnum.STOP_COMMANDS,
         this.rosSvc.stopCommands.bind(this.rosSvc)
-      );
-      this.commSvc.addEventHandler(
-        SocketEventEnum.GET_INTERFACE_STATUS,
-        this.interfaceFileStatusSvc.reportStatus.bind(this.interfaceFileStatusSvc)
       );
       this.commSvc.addEventHandler(
         SocketEventEnum.RUN_INTERFACE,

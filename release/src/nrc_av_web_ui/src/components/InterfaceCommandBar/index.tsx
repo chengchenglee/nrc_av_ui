@@ -1,30 +1,44 @@
-import { faPlay, faStop } from '@fortawesome/free-solid-svg-icons';
+/* eslint-disable prefer-const */
+/* eslint-disable prettier/prettier */
+/* eslint-disable max-lines-per-function */
+import { faCircleNotch, faPlay, faStop } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button } from 'antd';
-import { FC, ReactNode, useCallback, useEffect, useState } from 'react';
+import { FC, ReactNode, useCallback, useEffect, useState, useContext } from 'react';
+import {
+  InterfaceExecutorContext,
+  InterfaceExecutorContextProps
+} from '../../containers/rosRunner/executor/interfaceExecutor/index';
 import { useExecuteCommand, useStopCommand } from '../../hooks/queries/vehicle';
-
 interface InterfaceCommonBarProps {
   body: ReactNode;
   vehicleId?: number;
   interfaceId?: number;
   commandId?: number;
   message: any[];
+  isStartingAllCommands: boolean;
+  commandRunning?: boolean;
 }
 
-// eslint-disable-next-line max-lines-per-function
+// eslint-disable-next-line complexity
 const InterfaceCommandBar: FC<InterfaceCommonBarProps> = ({
   body,
   interfaceId,
   vehicleId,
   commandId,
-  message
+  message,
+  isStartingAllCommands,
+  commandRunning
 }) => {
-  // eslint-disable-next-line prefer-const
-  let { data, executeCommand, isExecutingCommand } = useExecuteCommand();
+  let { dataExecute, executeCommand, isExecutingCommand } = useExecuteCommand();
   const { mutate: stopCommand, isLoading: isStoppingCommand } = useStopCommand();
   const [errorText, setErrorText] = useState<any>('');
   const [isBodyExpanded, setIsBodyExpanded] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [eventClicked, setEventClicked] = useState(Boolean);
+
+  const context = useContext<InterfaceExecutorContextProps | undefined>(InterfaceExecutorContext);
+  const { interfaceCommands } = context || {};
 
   const handleExecuteCommand = useCallback(() => {
     setErrorText('');
@@ -41,15 +55,15 @@ const InterfaceCommandBar: FC<InterfaceCommonBarProps> = ({
     if (Array.isArray(message)) {
       filteredData = message.filter((item) => item.idCommand === commandId);
     }
-    if (data !== '' && filteredData.length === 0) {
-      setErrorText(data);
+    if (dataExecute !== '' && filteredData.length === 0) {
+      setErrorText(dataExecute);
     } else {
       setErrorText('');
     }
     if (filteredData.length > 0) {
       setErrorText(filteredData[0].error);
     }
-  }, [commandId, data, message]);
+  }, [commandId, commandRunning, dataExecute, interfaceCommands, isProcessing, message]);
 
   const handleStopCommand = useCallback(() => {
     if (!commandId || !vehicleId || !interfaceId) {
@@ -63,6 +77,29 @@ const InterfaceCommandBar: FC<InterfaceCommonBarProps> = ({
   const toggleBodyExpansion = () => {
     setIsBodyExpanded((prevExpanded) => !prevExpanded);
   };
+
+  const handleClick = () => {
+    setIsProcessing(true);
+
+    if (!commandRunning) {
+      if (!(isProcessing || isStartingAllCommands)) {
+        handleExecuteCommand();
+        setEventClicked(true);
+      }
+    } else {
+      handleStopCommand();
+      setEventClicked(false);
+    }
+  };
+
+  useEffect(() => {
+    if ((eventClicked && commandRunning) || errorText) {
+      setIsProcessing(false);
+    }
+    if ((!eventClicked && !commandRunning) || errorText) {
+      setIsProcessing(false);
+    }
+  }, [commandRunning, errorText, eventClicked]);
 
   const getTruncatedText = (text: string | undefined) => {
     const maxLength = 25;
@@ -123,30 +160,35 @@ const InterfaceCommandBar: FC<InterfaceCommonBarProps> = ({
 
         <div style={{ display: 'flex', gap: '0' }}>
           <Button
-            type="primary"
             shape="circle"
-            style={{ marginLeft: '10px', backgroundColor: '#00c853' }}
-            loading={isExecutingCommand}
-            onClick={handleExecuteCommand}
-          >
-            {!isExecutingCommand && <FontAwesomeIcon icon={faPlay} style={{ color: '#ffffff' }} />}
-          </Button>
-          <Button
-            danger
+            htmlType="submit"
+            style={{
+              marginLeft: '10px',
+              backgroundColor:
+                isProcessing || isStartingAllCommands ? 'grey' : commandRunning ? 'red' : 'green'
+            }}
+            disabled={isExecutingCommand || isStoppingCommand || isStartingAllCommands}
             type="primary"
-            shape="circle"
-            style={{ marginLeft: '10px' }}
-            loading={isStoppingCommand}
-            onClick={handleStopCommand}
+            onClick={handleClick}
           >
-            {!isStoppingCommand && <FontAwesomeIcon icon={faStop} style={{ color: '#ffffff' }} />}
+            {isProcessing || isStartingAllCommands ? (
+              <FontAwesomeIcon icon={faCircleNotch} spin style={{ color: '#ffffff' }} />
+            ) : (
+              // eslint-disable-next-line max-len
+              <FontAwesomeIcon
+                icon={commandRunning ? faStop : faPlay}
+                style={{ color: '#ffffff' }}
+              />
+            )}
           </Button>
         </div>
       </div>
-      {errorText !== '' && data ? (
-        <div style={{ color: 'red', marginTop: '10px' }}>{getTruncatedText(errorText)}</div>
+      {errorText !== '' && dataExecute ? (
+        <div style={{ color: '#cc0000', marginTop: '10px' }}>{getTruncatedText(errorText)}</div>
       ) : (
-        <div style={{ color: 'red', marginTop: '10px' }}>{getTruncatedText(errorText || data)}</div>
+        <div style={{ color: '#cc0000', marginTop: '10px' }}>
+          {getTruncatedText(errorText || dataExecute)}
+        </div>
       )}
     </>
   );

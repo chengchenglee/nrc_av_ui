@@ -76,7 +76,7 @@ export default defineConfig({
         }
       },
       {
-        entry: './src/worker/workerROSNodeHealthcheck.ts',
+        entry: './src/worker/workerRosBridgeServerHealthcheck.ts',
         onstart(options) {
           // Notify the Renderer-Process to reload the page
           // when the Preload-Scripts build is complete,
@@ -96,27 +96,7 @@ export default defineConfig({
         }
       },
       {
-        entry: './src/worker/workerInterfaceFileHealthcheck.ts',
-        onstart(options) {
-          // Notify the Renderer-Process to reload the page
-          // when the Preload-Scripts build is complete,
-          // instead of restarting the entire Electron App.
-          options.reload();
-        },
-        vite: {
-          build: {
-            assetsDir: '',
-            sourcemap: isDebug,
-            outDir: resolve('./app/dist/worker')
-          },
-          plugins: [
-            EnvironmentPlugin('all', { prefix: '' }),
-            TsConfigPaths({ projects: [resolve(__dirname, '../tsconfig.json')] })
-          ]
-        }
-      },
-      {
-        entry: './src/worker/workerInterfaceHealthcheck.ts',
+        entry: './src/worker/workerCommandsStatusHealthcheck.ts',
         onstart(options) {
           // Notify the Renderer-Process to reload the page
           // when the Preload-Scripts build is complete,

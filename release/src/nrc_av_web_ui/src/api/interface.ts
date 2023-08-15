@@ -27,3 +27,5 @@ export const getInterfaceByIdApi = (id: number) =>
 
 export const editInterfaceApi = (id: number, data: AddEditInterfaceDTO) =>
   publicClient.put(`/interface/${id}`, data);
+
+export const deleteInterfaceApi = (id: number) => publicClient.delete(`/interface/${id}`);

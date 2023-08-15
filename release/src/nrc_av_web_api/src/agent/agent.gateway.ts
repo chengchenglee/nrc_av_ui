@@ -209,14 +209,39 @@ export class AgentGateway {
   ) {
     const clientKey = client.handshake.headers.certkey as string;
     const vehicle = await this.vehicleService.getVehicleOnCertKey(clientKey);
-    const { interfaceName, algorithms, machines, sensors } = data;
+    const { interfaceName, algorithms, machines, sensors, status, statusRunAll, statusCommands } =
+      data;
     const agentInterface = await this.interfaceService.getInterfaceByName(interfaceName);
     if (!agentInterface) {
+      this.eventEmitter.emit(
+        EventEmitterNameSpace.VEHICLE_INTERFACE_DETAIL_STATUS,
+        new InterfaceInformationDTO(
+          vehicle.id,
+          null,
+          '',
+          machines,
+          algorithms,
+          sensors,
+          statusCommands,
+          status,
+          statusRunAll
+        )
+      );
       return;
     }
     this.eventEmitter.emit(
       EventEmitterNameSpace.VEHICLE_INTERFACE_DETAIL_STATUS,
-      new InterfaceInformationDTO(vehicle.id, agentInterface.id, machines, algorithms, sensors)
+      new InterfaceInformationDTO(
+        vehicle.id,
+        agentInterface.id,
+        interfaceName,
+        machines,
+        algorithms,
+        sensors,
+        statusCommands,
+        status,
+        statusRunAll
+      )
     );
   }
 

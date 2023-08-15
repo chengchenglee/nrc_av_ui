@@ -1,3 +1,4 @@
+import { Expose } from 'class-transformer';
 import { Column, Entity, ManyToMany, OneToMany } from 'typeorm';
 import { BaseModel } from './base';
 import { InterfaceDestination } from './interfaceDestination';
@@ -5,12 +6,15 @@ import { MultiDestination } from './multiDestination';
 
 @Entity()
 export class Destination extends BaseModel {
+  @Expose()
   @Column({ type: 'float' })
   posX: number;
 
+  @Expose()
   @Column({ type: 'float' })
   posY: number;
 
+  @Expose()
   @Column({ type: 'float' })
   posTh: number;
 

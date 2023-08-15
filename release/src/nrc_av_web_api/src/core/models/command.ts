@@ -1,24 +1,31 @@
+import { Expose } from 'class-transformer';
 import { Column, Entity, ManyToOne } from 'typeorm';
 import { BaseModel } from './base';
 import { Interface } from './interface';
 
 @Entity()
 export class Command extends BaseModel {
+  @Expose()
   @Column()
   name: string;
 
+  @Expose()
   @Column()
   command: string;
 
+  @Expose()
   @Column({ nullable: true })
   nodes: string;
 
+  @Expose()
   @Column({ default: false })
   inclByDef: boolean;
 
+  @Expose()
   @Column({ default: false })
   autoStart: boolean;
 
+  @Expose()
   @Column({ default: false })
   autoRecord: boolean;
 

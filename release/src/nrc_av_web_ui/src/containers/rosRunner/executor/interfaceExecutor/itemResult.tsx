@@ -4,37 +4,27 @@ import Title from 'antd/es/typography/Title';
 import * as React from 'react';
 import InterfaceCommandBar from '../../../../components/InterfaceCommandBar';
 import InterfaceInformation from '../../../../components/interfaceInformation';
-import { InterfaceFileStatusDTO } from '../../../../dtos/interface-file';
+import { CommandsStatus } from '../../../../constants/executionStatus';
 import { useGetInterfaceById } from '../../../../hooks/queries/interface';
 import { useRunAllCommands } from '../../../../hooks/queries/vehicle';
 import { InterfaceExecutorContext } from '.';
 
 interface IProps {
   vehicleId?: number;
-  interfaceId?: number;
-  item: InterfaceFileStatusDTO;
   mapName: string;
 }
 
 const ItemResult: React.FC<IProps> = (props) => {
-  const { vehicleId, item, interfaceId } = props;
+  const { vehicleId } = props;
 
   const {
     dataRunAllCommands,
     runAllCommands: runAllCommands,
     isExecutingCommand: isStartingAllCommands
   } = useRunAllCommands();
-  const { data: interfaceData } = useGetInterfaceById(interfaceId);
   const context = React.useContext(InterfaceExecutorContext);
+  const { data: interfaceData } = useGetInterfaceById(context?.interfaceNameId);
   const [runAllCommandsData, setRunAllCommandsData] = React.useState<any>();
-
-  React.useEffect(() => {
-    if (context?.setStatus) {
-      context.setStatus(props.item.status);
-    }
-    // NOTE: should not have context as dependencies here
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.item.status]);
 
   React.useEffect(() => {
     setRunAllCommandsData(dataRunAllCommands);
@@ -44,11 +34,13 @@ const ItemResult: React.FC<IProps> = (props) => {
     if (!vehicleId) {
       return;
     }
-    runAllCommands({
-      vehicleId,
-      interfaceId: item.id
-    });
-  }, [vehicleId, runAllCommands, item.id]);
+    if (context?.interfaceNameId) {
+      runAllCommands({
+        vehicleId,
+        interfaceId: context.interfaceNameId
+      });
+    }
+  }, [vehicleId, runAllCommands, context]);
 
   return (
     <div
@@ -74,7 +66,7 @@ const ItemResult: React.FC<IProps> = (props) => {
       {/* <List.Item.Meta
         title={
           <InterfaceStatusBar
-            body={item.fileName}
+            body={context?.interfaceName}
             status={context?.status}
             runningButtonProps={{
               loading: isStopping,
@@ -120,8 +112,16 @@ const ItemResult: React.FC<IProps> = (props) => {
                 body={item.name}
                 commandId={item.id}
                 vehicleId={vehicleId}
-                interfaceId={interfaceId}
+                interfaceId={context?.interfaceNameId}
                 message={runAllCommandsData?.message || ''}
+                isStartingAllCommands={isStartingAllCommands}
+                commandRunning={
+                  !!context?.interfaceCommands?.reduce(
+                    (acc, cmd) =>
+                      acc || (cmd.id === item.id && cmd.status === CommandsStatus.RUNNING),
+                    false
+                  )
+                }
               />
             }
           />
@@ -131,7 +131,7 @@ const ItemResult: React.FC<IProps> = (props) => {
       <Title level={5} style={{ marginTop: 0 }}>
         Interface information
       </Title>
-      <InterfaceInformation vehicleId={vehicleId} item={item} />
+      <InterfaceInformation />
     </div>
   );
 };

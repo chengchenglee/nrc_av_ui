@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, shell } from 'electron';
+import { app, BrowserWindow, dialog, Menu, shell } from 'electron';
 import log from 'electron-log';
 import { ILogConfig } from '../shared/configurationTypes';
 import { EnumVehicleStatusState } from '../shared/constants';
@@ -8,7 +8,9 @@ import {
   /* IAutoUpdater, */ IConfiguration,
   ILog,
   ILogic,
-  IBrowserWindowService
+  IBrowserWindowService,
+  IRosBridgeConnectionService,
+  IRosBridgeServerService
 } from './inversify/interfaces';
 import diContainer from './inversify/inversify.config';
 import TYPES from './inversify/types';
@@ -86,23 +88,24 @@ app.whenReady().then(() => {
   diContainer
     .get<IBrowserWindowService>(TYPES.BrowserWindowService)
     .getBrowserWindow()
-    .once('ready-to-show', () => {
-      // await diContainer
-      //   .get<IStatusInterfaceRosBridgeService>(TYPES.StatusInterfaceRosBridgeService)
-      //   .initStatusChecking()
-      //   .catch((err) => {
-      //     const messageBoxOptions = {
-      //       type: 'error',
-      //       message: err.toString()
-      //     };
-      //     dialog.showMessageBoxSync(messageBoxOptions);
-      //   });
-      // await diContainer
-      //   .get<IStatusInterfaceRosBridgeService>(TYPES.StatusInterfaceRosBridgeService)
-      //   .rosBridgeConnect()
-      //   .catch((err) => {
-      //     log.error(`Unable to connect to Ros-Bridge: ${err.toString()}`);
-      //   });
+    .once('ready-to-show', async () => {
+      await diContainer
+        .get<IRosBridgeServerService>(TYPES.RosBridgeServerService)
+        .rosBridgeInit()
+        .catch((err) => {
+          const messageBoxOptions = {
+            type: 'error',
+            message: err.toString()
+          };
+          dialog.showMessageBoxSync(messageBoxOptions);
+        });
+      diContainer.get<IRosBridgeServerService>(TYPES.RosBridgeServerService).rosBridgeHealthcheck();
+      await diContainer
+        .get<IRosBridgeConnectionService>(TYPES.RosBridgeConnectionService)
+        .getRosBridgeConnection()
+        .catch((err) => {
+          log.error(`Unable to connect to Ros-Bridge: ${err.toString()}`);
+        });
       diContainer
         .get<IBrowserWindowService>(TYPES.BrowserWindowService)
         .sendToRenderer(ipcMsg.M2R.VEHICLE_STATUS, EnumVehicleStatusState.FETCHING);

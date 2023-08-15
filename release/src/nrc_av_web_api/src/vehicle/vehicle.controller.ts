@@ -17,7 +17,8 @@ import { Listener } from 'eventemitter2';
 import { Response } from 'express';
 import { Subject, map } from 'rxjs';
 import { InterfaceInformationDTO } from '../agent/dto/interfaceInformation.dto';
-import { UserGuard, EventEmitterNameSpace } from '../core';
+import { SSE_TIMEOUT } from '../constants';
+import { UserGuard, EventEmitterNameSpace, Vehicle, Serialize, ControllerResponse } from '../core';
 import { TimeoutInterceptor } from '../core/interceptors';
 import { VehicleService } from './vehicle.service';
 
@@ -33,37 +34,39 @@ export class VehicleController {
   ) {}
 
   @Get('/active')
+  @Serialize(Vehicle)
   async listActiveVehicle(@Res() res: Response) {
-    return res.status(HttpStatus.OK).send(await this.vehicleService.getActiveOnlineVehicles());
+    return new ControllerResponse(
+      res,
+      await this.vehicleService.getActiveOnlineVehicles(),
+      HttpStatus.OK
+    );
   }
 
   @Get('/waiting')
+  @Serialize(Vehicle)
   async listWaitingVehicle(@Res() res: Response) {
-    return res.status(HttpStatus.OK).send(await this.vehicleService.getWaitingOnlineVehicles());
+    return new ControllerResponse(
+      res,
+      await this.vehicleService.getWaitingOnlineVehicles(),
+      HttpStatus.OK
+    );
   }
 
   @Get('/:id')
+  @Serialize(Vehicle)
   async getVehicleById(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
-    return res.status(HttpStatus.OK).send(await this.vehicleService.getVehicle(id));
-  }
-
-  @Get('/:id/interface-files/status')
-  async getVehicleInterfaceFilesStatus(
-    @Param('id', ParseIntPipe) id: number,
-    @Res() res: Response
-  ) {
-    return res.send(await this.vehicleService.getInterfaceFilesStatus(id));
+    return new ControllerResponse(res, await this.vehicleService.getVehicle(id), HttpStatus.OK);
   }
 
   @Put('/:id/activation')
+  @Serialize(Vehicle)
   async activateVehicle(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
-    return res.status(HttpStatus.OK).send(await this.vehicleService.activateVehicle(id));
-  }
-
-  @Post('/:id/execution/ros-core')
-  async runROSmaster(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
-    const result = await this.vehicleService.sendROSMasterCommand(id);
-    return res.status(HttpStatus.OK).send(result);
+    return new ControllerResponse(
+      res,
+      await this.vehicleService.activateVehicle(id),
+      HttpStatus.OK
+    );
   }
 
   @Post('/:id/execution/interface-files/:interfaceId/:mapName')
@@ -133,28 +136,70 @@ export class VehicleController {
       .send(await this.vehicleService.stopInterfaceCommand(id, interfaceId, commandId));
   }
 
-  @Sse('/:id/interface/:interface/details-status')
-  sseInterfaceDetailsStatus(
-    @Param('id', ParseIntPipe) id: number,
-    @Param('interface', ParseIntPipe) paramInterfaceId: number,
-    @Res() res: Response
-  ) {
+  @Sse('/:id/interface/details-status')
+  sseInterfaceDetailsStatus(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
     const subject = new Subject();
+    const subjectTimeoutError = () => {
+      subject.error(new Error(`Vehicle ${id} timeout after ${SSE_TIMEOUT} ms`));
+    };
+    let subjectTimeout = setTimeout(subjectTimeoutError, SSE_TIMEOUT);
     const listener: Listener = this.eventEmitter.on(
       EventEmitterNameSpace.VEHICLE_INTERFACE_DETAIL_STATUS,
       (data: InterfaceInformationDTO) => {
-        const { algorithms, interfaceId, machines, sensors, vehicleId } = data;
-        if (id !== vehicleId || paramInterfaceId !== interfaceId) {
+        const {
+          algorithms,
+          machines,
+          sensors,
+          statusCommands,
+          vehicleId,
+          interfaceName,
+          status,
+          interfaceId,
+          statusRunAll
+        } = data;
+        if (id !== vehicleId) {
           return;
         }
-        subject.next({ machines, algorithms, sensors });
+        clearTimeout(subjectTimeout);
+        subjectTimeout = setTimeout(subjectTimeoutError, SSE_TIMEOUT);
+        subject.next({
+          machines,
+          algorithms,
+          sensors,
+          statusCommands,
+          interfaceName,
+          interfaceId,
+          status,
+          statusRunAll
+        });
       },
       {
         objectify: true
       }
     ) as Listener;
+    const vehicleConnectionlistener: Listener = this.eventEmitter.on(
+      `${EventEmitterNameSpace.VEHICLE_DISCONNECT}.${id}`,
+      (err) => {
+        subject.error(new Error(`Vehicle ${err} disconnected`));
+      },
+      {
+        objectify: true
+      }
+    ) as Listener;
+    this.vehicleService
+      .isVehicleOnline(id)
+      .then((isOnline) => {
+        if (!isOnline) {
+          subject.error(new Error(`Vehicle ${id} not online`));
+        }
+      })
+      .catch((err) => {
+        subject.error(err);
+      });
     res.once('close', () => {
+      clearTimeout(subjectTimeout);
       listener.off();
+      vehicleConnectionlistener.off();
     });
     return subject.pipe(map((data) => ({ data })));
   }

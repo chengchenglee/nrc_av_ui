@@ -4,11 +4,11 @@ import ConfigurationService from '../service/configuration/configurationService 
 import LogService from '../service/log/logService';
 import InterfaceFileService from '../service/logic/interfaceFileService';
 import LogicService from '../service/logic/logicService';
+import RosBridgeConnectionService from '../service/logic/rosBridgeConnectionService';
+import RosBridgeServerService from '../service/logic/rosBridgeServerService';
 import RosService from '../service/logic/rosService';
-import StatusInterfaceFileService from '../service/logic/statusInterfaceFileService';
+import StatusCommandsService from '../service/logic/statusCommandsService';
 import StatusInterfaceRosBridgeService from '../service/logic/statusInterfaceRosBridgeService';
-import StatusInterfaceService from '../service/logic/statusInterfaceService';
-import StatusROSNodeService from '../service/logic/statusROSNodeService';
 import AzureService from '../service/storage/azureService';
 import BrowserWindowService from '../service/system/browserWindowService';
 import ChildProcessService from '../service/system/childProcessService';
@@ -27,13 +27,13 @@ import {
   ILog,
   ILogic,
   IPath,
-  IStatusROSNode,
-  IStatusInterfaceFile,
   IWebStorage,
   IInterfaceFileService,
   IRosService,
-  IStatusInterfaceService,
-  IStatusInterfaceRosBridgeService
+  IStatusInterfaceRosBridgeService,
+  IRosBridgeServerService,
+  IRosBridgeConnectionService,
+  IStatusCommands
 } from './interfaces';
 import TYPES from './types';
 
@@ -53,14 +53,16 @@ diContainer.bind<IWebStorage>(TYPES.WebStorage).to(AzureService);
 
 diContainer.bind<IAutoUpdater>(TYPES.AutoUpdater).to(UpdaterService);
 
-diContainer.bind<IStatusROSNode>(TYPES.StatusROSNode).to(StatusROSNodeService);
-diContainer.bind<IStatusInterfaceFile>(TYPES.StatusInterfaceFile).to(StatusInterfaceFileService);
 diContainer.bind<ILogic>(TYPES.Logic).to(LogicService);
-diContainer.bind<IStatusInterfaceService>(TYPES.StatusInterfaceService).to(StatusInterfaceService);
+diContainer.bind<IRosBridgeServerService>(TYPES.RosBridgeServerService).to(RosBridgeServerService);
+diContainer
+  .bind<IRosBridgeConnectionService>(TYPES.RosBridgeConnectionService)
+  .to(RosBridgeConnectionService);
 diContainer
   .bind<IStatusInterfaceRosBridgeService>(TYPES.StatusInterfaceRosBridgeService)
   .to(StatusInterfaceRosBridgeService);
 diContainer.bind<IInterfaceFileService>(TYPES.InterfaceFileService).to(InterfaceFileService);
 diContainer.bind<IRosService>(TYPES.RosService).to(RosService);
+diContainer.bind<IStatusCommands>(TYPES.StatusCommandsService).to(StatusCommandsService);
 
 export default diContainer;

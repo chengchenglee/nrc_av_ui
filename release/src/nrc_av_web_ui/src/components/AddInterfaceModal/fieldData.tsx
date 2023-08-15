@@ -71,40 +71,6 @@ export const fieldDataList: FieldData[] = [
       {
         title: 'Command',
         dataIndex: 'command'
-      },
-      {
-        title: 'Nodes',
-        dataIndex: 'nodes'
-      },
-      {
-        title: 'inclByDef',
-        dataIndex: 'inclByDef',
-        inputType: 'select',
-        defaultValue: false,
-        options: [
-          { label: 'Yes', value: true },
-          { label: 'No', value: false }
-        ]
-      },
-      {
-        title: 'autoStart',
-        dataIndex: 'autoStart',
-        inputType: 'select',
-        defaultValue: false,
-        options: [
-          { label: 'Yes', value: true },
-          { label: 'No', value: false }
-        ]
-      },
-      {
-        title: 'autoRecord',
-        dataIndex: 'autoRecord',
-        inputType: 'select',
-        defaultValue: false,
-        options: [
-          { label: 'Yes', value: true },
-          { label: 'No', value: false }
-        ]
       }
     ]
   },

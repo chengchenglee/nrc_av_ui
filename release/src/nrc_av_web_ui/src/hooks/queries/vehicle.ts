@@ -12,15 +12,13 @@ import {
   runROSNodes,
   runROSCore,
   runInterface,
-  getInterfaceFilesStatus,
   stopInterfaceFile,
   executeInterfaceCommand,
   stopInterfaceCommand,
   runAllCommands
 } from '../../api/vehicle';
-import { ExecutionStatus, STATUS_INTERVAL } from '../../constants/executionStatus';
+import { STATUS_INTERVAL } from '../../constants/executionStatus';
 import {
-  INTERFACE_FILES_STATUS,
   ROS_NODES,
   ROS_NODES_STATUS,
   ROS_NODE_SYNCER,
@@ -137,28 +135,6 @@ export const useExecuteInterface = () =>
     }
   });
 
-export const useInterfaceFilesStatus = (vehicleId: number | undefined) => {
-  const queryClient = useQueryClient();
-  return useQuery(
-    [INTERFACE_FILES_STATUS, vehicleId],
-    () => {
-      if (!vehicleId) {
-        return Promise.reject(new Error('Invalid vehicle id!'));
-      }
-      return getInterfaceFilesStatus(vehicleId);
-    },
-    {
-      select: (res) => res.data.filter((i) => i.status === ExecutionStatus.RUNNING),
-      enabled: !!vehicleId,
-      refetchInterval: STATUS_INTERVAL,
-      refetchIntervalInBackground: true,
-      onError: () => {
-        queryClient.setQueryData([INTERFACE_FILES_STATUS, vehicleId], []);
-      }
-    }
-  );
-};
-
 export const useStopInterface = () =>
   useMutation(stopInterfaceFile, {
     onSuccess: () => {
@@ -193,7 +169,7 @@ export const useExecuteCommand = () => {
   };
 
   return {
-    data: getDataExecuted(),
+    dataExecute: getDataExecuted(),
     executeCommand: mutation.mutate,
     isExecutingCommand: mutation.isLoading
   };
@@ -208,7 +184,6 @@ export const useStopCommand = () =>
       message.error(`Failed to stop command: ${err?.response?.data?.message}`);
     }
   });
-
 export const useRunAllCommands = () => {
   const mutation = useMutation(runAllCommands, {
     onSuccess: () => {

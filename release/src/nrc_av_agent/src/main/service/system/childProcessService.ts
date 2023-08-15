@@ -36,10 +36,14 @@ export default class ChildProcessService implements IChildProcess {
   }
 
   @logMethod('[ChildProcessService][executeAndValid]')
-  executeAndValid(command: string, replyOnChannel: (response: IResponse) => void): void {
+  executeAndValid(
+    command: string,
+    waitingTime: number,
+    replyOnChannel: (response: IResponse) => void
+  ): number {
     log.debug(`[ChildProcessService][executeAndValid] Executing command: ${command}`);
     const args: readonly string[] | undefined = [];
-    const options = { shell: true };
+    const options = { shell: true, detached: true, env: { ...process.env } };
 
     const child = spawn(command, args, options);
 
@@ -68,7 +72,8 @@ export default class ChildProcessService implements IChildProcess {
       if (stdoutData === '' && cleanedError === '') {
         replyOnChannel({
           status: 'success',
-          data: 'success'
+          data: 'success',
+          pid: child.pid
         });
       } else {
         replyOnChannel({
@@ -78,17 +83,20 @@ export default class ChildProcessService implements IChildProcess {
       }
     });
 
-    const timeoutMillis = 3000;
-
     setTimeout(() => {
       if (stdoutData === '' && stdoutError === '') {
         replyOnChannel({
           status: 'success',
-          data: 'success'
+          data: 'success',
+          pid: child.pid
         });
       }
       child.kill('SIGINT');
-    }, timeoutMillis);
+    }, waitingTime);
+    if (child.pid !== undefined) {
+      return child.pid;
+    }
+    return 0;
   }
 
   @logMethod('[ChildProcessService][execAndWait]', log.debug)

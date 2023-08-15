@@ -1,3 +1,4 @@
+import { Expose } from 'class-transformer';
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
 import { BaseRelationModel } from './baseRelation';
 import { Destination } from './destination';
@@ -15,10 +16,12 @@ export class InterfaceDestination extends BaseRelationModel {
   @JoinColumn({ name: 'interfaceId' })
   public interface: Interface;
 
+  @Expose()
   @ManyToOne(() => Destination, (destination) => destination.id, { cascade: true })
   @JoinColumn({ name: 'destinationId' })
   public destination: Destination;
 
+  @Expose()
   @Column()
   name: string;
 

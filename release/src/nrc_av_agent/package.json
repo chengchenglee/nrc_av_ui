@@ -1,6 +1,6 @@
 {
   "name": "nrc_av_agent",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "type": "module",
   "main": "app/dist/main/main.js",
   "scripts": {
@@ -43,6 +43,7 @@
     "electron-shared-state": "^1.1.0",
     "electron-store": "^8.1.0",
     "electron-updater": "^5.3.0",
+    "eventemitter2": "^6.4.9",
     "getmac": "^5.20.0",
     "inversify": "^6.0.1",
     "node-schedule": "^2.1.1",

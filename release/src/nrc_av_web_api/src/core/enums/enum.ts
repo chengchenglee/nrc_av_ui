@@ -26,13 +26,7 @@ export enum SocketEventEnum {
   VEHICLE_STATUS = 'nissan/vehicle/status',
   GET_INTERFACE_DETAIL_STATUS = 'nissan/vehicle/interface/detail/status',
 
-  RUN_ROS_MASTER = 'nissan/ros/master',
-  RUN_ROS_NODE = 'nissan/ros/node',
-  GET_ROS_NODES = 'nissan/ros/nodes',
-  GET_STATUS_ROS_NODES = 'nissan/ros/nodes-status',
-
   RUN_INTERFACE = 'nissan/interface/run',
-  GET_INTERFACE_STATUS = 'nissan/interface/status',
   STOP_INTERFACE = 'nissan/interface/stop',
   RUN_INTERFACE_COMMAND = 'nissan/interface/exec/command',
   STOP_INTERFACE_COMMAND = 'nissan/interface/stop/command',
@@ -42,7 +36,8 @@ export enum SocketEventEnum {
 
 export enum EventEmitterNameSpace {
   VEHICLE_STATUS = 'vehicle.status',
-  VEHICLE_INTERFACE_DETAIL_STATUS = 'vehicle.interface.detail.status'
+  VEHICLE_INTERFACE_DETAIL_STATUS = 'vehicle.interface.detail.status',
+  VEHICLE_DISCONNECT = 'vehicle.disconnect'
 }
 
 export enum Alias {

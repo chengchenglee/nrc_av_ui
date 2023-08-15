@@ -1,3 +1,4 @@
+/* eslint-disable indent */
 /* eslint-disable max-lines-per-function */
 import { faTrashAlt } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -6,6 +7,7 @@ import { Rule } from 'antd/es/form';
 import { NamePath } from 'antd/es/form/interface';
 import { ColumnType, TableProps } from 'antd/es/table';
 import * as React from 'react';
+import './styles.scss';
 
 export interface OptionConfig<T> {
   label: string;
@@ -65,14 +67,15 @@ const EditableTableC = <T extends HasKeyField>({
                 return (
                   <Form.Item
                     style={{
-                      marginBottom: 0
+                      margin: 0,
+                      padding: 0
                     }}
                     initialValue={defaultValue ?? null}
                     key={record.keyField}
                     name={[index, dataIndex]}
                     rules={rules}
                   >
-                    <Input type={valueType} />
+                    <Input style={{ padding: '1px 3px' }} type={valueType} />
                   </Form.Item>
                 );
               case 'select':
@@ -125,6 +128,8 @@ const EditableTableC = <T extends HasKeyField>({
                 return <></>;
             }
           },
+          // Set the width for the column with dataIndex equal to 'someColumnIndex'
+          width: dataIndex === 'command' ? '75%' : undefined,
           ...rest
         };
       }
@@ -134,7 +139,7 @@ const EditableTableC = <T extends HasKeyField>({
       ...result,
       {
         title: 'Actions',
-        width: '10vw',
+        width: '4vw',
         dataIndex: 'operation',
         render: (_, record) => (
           <Popconfirm
@@ -146,7 +151,7 @@ const EditableTableC = <T extends HasKeyField>({
               <FontAwesomeIcon
                 style={{ display: 'flex', margin: '0 auto' }}
                 icon={faTrashAlt}
-                size="lg"
+                size="1x"
                 color="gray"
               />
             </a>
@@ -159,7 +164,7 @@ const EditableTableC = <T extends HasKeyField>({
   return (
     <Form.List name={name}>
       {(fields, { add, remove }) => (
-        <div>
+        <div style={{ padding: '0px' }}>
           <Form.Item>
             <Button onClick={() => add()} type="primary">
               {addTitle}
@@ -178,6 +183,8 @@ const EditableTableC = <T extends HasKeyField>({
             columns={columns as any}
             pagination={false}
             scroll={{ y: '38vh' }}
+            style={{ padding: '0px', margin: '0px' }}
+            size="small"
             {...tableProps}
           />
         </div>

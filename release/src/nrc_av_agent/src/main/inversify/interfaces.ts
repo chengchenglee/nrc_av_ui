@@ -13,14 +13,12 @@ import { Ros } from 'roslib';
 import { ConfigType } from '../../shared/configurationTypes';
 import {
   IResponse,
-  ROSNode,
-  ROSNodeArr,
   Interface,
   InterfaceStatus,
-  InterfaceCommand,
-  AgentInterface,
   AgentMap,
-  EnumStatusRunAllCommands
+  EnumStatusRunAllCommands,
+  CommandsStatus,
+  Command
 } from '../../shared/constants';
 
 // ------------- NodeJS built-in ------------- //
@@ -124,7 +122,11 @@ export interface IPath {
 export interface IChildProcess {
   execAndForget(command: string): void;
   executeAndIgnoreOutput(command: string): void;
-  executeAndValid(command: string, replyOnChannel: (response: IResponse) => void): void;
+  executeAndValid(
+    command: string,
+    waitingTime: number,
+    replyOnChannel: (response: IResponse) => void
+  ): number | undefined;
   execAndWait(command: string): Promise<string>;
   buildCommand(command: string, path: string): string;
   waitForResultAndReturn(
@@ -202,33 +204,35 @@ export interface ILogic {
   updateVehicle(): any;
 }
 
-export interface IStatusROSNode {
-  initStatusChecking(rosNodes: ROSNode[]): void;
-  startNodes(rosNodes: ROSNode[]): void;
-  reportStatus(rosNodes: ROSNode[], replyOnChannel: (response: IResponse) => void): void;
-}
-
-export interface IStatusInterfaceFile {
-  initStatusChecking(): void;
-  startInterfaceFiles(fileName: string): void;
-  reportStatus(_: unknown, replyOnChannel: (response: IResponse) => void): void;
-}
-
-export interface IStatusInterfaceService {
-  initStatusChecking(): void;
-  setStatusInterface(fileNames: AgentInterface): Promise<void>;
-  clearCache(): void;
-  interfaceRunning(): InterfaceStatus;
-}
-
 export interface IStatusInterfaceRosBridgeService {
-  initStatusChecking(): Promise<void>;
-  setStatusInterface(fileNames: AgentInterface): Promise<void>;
-  clearCache(): void;
+  initStatusInterface(): void;
+  setStatusInterface(fileNames: Interface): Promise<void>;
+  clearCache(): Promise<void>;
   interfaceRunning(): InterfaceStatus;
-  getRosBridgeConnection(): Ros;
-  getRosNodes(): Promise<string[]>;
-  rosBridgeConnect(connectionAttempt?: number): Promise<void>;
+  getRosNodes(rosConnection: Ros): Promise<string[]>;
+}
+
+export interface IRosBridgeServerService {
+  rosBridgeInit(maxInitAttempt?: number): Promise<void>;
+  rosBridgeReInit(
+    createNewHealthcheck?: boolean,
+    forceReInit?: boolean,
+    maxInitAttempt?: number
+  ): Promise<void>;
+  isRosBridgeStartedOnPort(): Promise<boolean>;
+  startRosBridgeServer(): Promise<void>;
+  rosBridgeHealthcheck(forced?: boolean): void;
+}
+
+export interface IRosBridgeConnectionService {
+  getRosBridgeConnection(maxConnectionAttempt?: number): Promise<Ros>;
+}
+export interface IStatusCommands {
+  initStatusChecking(): void;
+  setState(command: string, pid: number, name: string, id: number): void;
+  reportStatus(_: unknown, replyOnChannel: (response: IResponse) => void): void;
+  resetState(): void;
+  getState(): CommandsStatus[];
 }
 
 export interface ILog {
@@ -249,13 +253,9 @@ export interface IBrowserWindowService {
 }
 
 export interface IRosService {
-  runRosMaster(_: unknown, replyOnChannel: (response: IResponse) => void): void;
-  runRosNode(data: ROSNodeArr, replyOnChannel: (response: IResponse) => void): void;
-  listROSNodes(): Promise<ROSNode[]>;
-  resultsROSNodes(_: unknown, replyOnChannel: (response: IResponse) => void): void;
-  runCommands(command: string, replyOnChannel: (response: IResponse) => void): void;
-  runAllCommands(commands: InterfaceCommand[], replyOnChannel: (response: IResponse) => void): void;
-  stopCommands(command: string, replyOnChannel: (response: IResponse) => void): void;
+  runCommands(command: Command, replyOnChannel: (response: IResponse) => void): void;
+  runAllCommands(commands: Command[], replyOnChannel: (response: IResponse) => void): void;
+  stopCommands(command: Command, replyOnChannel: (response: IResponse) => void): void;
   changeMap(mapName: AgentMap, replyOnChannel: (response: IResponse) => void): void;
   setStatusRunAllCommands(newStatus: EnumStatusRunAllCommands): void;
   getStatusRunAllCommands(): EnumStatusRunAllCommands;

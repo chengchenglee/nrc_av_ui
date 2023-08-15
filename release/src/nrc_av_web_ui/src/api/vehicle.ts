@@ -1,6 +1,5 @@
 import { publicClient } from '../config/axios/publicClient';
 import { BASE_URL } from '../constants/config';
-import { InterfaceFileStatusDTO } from '../dtos/interface-file';
 import {
   ROSNodeDTO,
   ROSNodeStatusDTO,
@@ -55,9 +54,6 @@ export const updateMap = (data: {
   mapName: string;
 }): ApiResponse<string> =>
   publicClient.post(`${url}/${data.vehicleId}/change-map/interface-files/${data.mapName}`);
-
-export const getInterfaceFilesStatus = (vehicleId: number): ApiResponse<InterfaceFileStatusDTO[]> =>
-  publicClient.get(`${url}/${vehicleId}/interface-files/status`);
 
 export const stopInterfaceFile = (data: {
   vehicleId: number;

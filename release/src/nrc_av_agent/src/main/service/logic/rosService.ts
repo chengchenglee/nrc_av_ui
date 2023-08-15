@@ -1,186 +1,29 @@
 import log from 'electron-log';
 import { inject, injectable } from 'inversify';
-import { IHostConfig } from '../../../shared/configurationTypes';
 import * as constants from '../../../shared/constants';
-import { APP_CONFIG, ROS, ROS_COMMAND } from '../../constants';
+import { ROS_COMMAND } from '../../constants';
 import TYPES from '../../inversify/types';
-import { getAVPath } from '../../utils';
 import { logMethod } from '../log/logDecorator';
-import type {
-  IChildProcess,
-  IConfiguration,
-  IRosService,
-  IStatusROSNode
-} from '../../inversify/interfaces';
+import type { IChildProcess, IRosService, IStatusCommands } from '../../inversify/interfaces';
 
 let statusRunAllCommands = constants.EnumStatusRunAllCommands.DEACTIVE;
 @injectable()
 export default class RosService implements IRosService {
   constructor(
-    @inject(TYPES.Configuration) private configSvc: IConfiguration,
     @inject(TYPES.ChildProcess) private childProcessSvc: IChildProcess,
-    @inject(TYPES.StatusROSNode) private rosStatusSvc: IStatusROSNode
+    @inject(TYPES.StatusCommandsService) private commandsStatusSvc: IStatusCommands
   ) {}
 
-  @logMethod('[RosService][runRosMaster]')
-  async runRosMaster(_: unknown, replyOnChannel: (response: constants.IResponse) => void) {
-    try {
-      const command = this.childProcessSvc.buildCommand('ros_core.py', `python ${getAVPath()}`);
-      this.childProcessSvc.executeAndIgnoreOutput(command);
-      const results = await this.childProcessSvc.waitForResultAndReturn(replyOnChannel, '/rosout');
-      replyOnChannel({
-        status: 'success',
-        data: results
-      });
-      this.rosStatusSvc.startNodes([
-        {
-          name: 'rosout',
-          packageName: undefined
-        }
-      ]);
-      log.info('[RosService][runRosMaster] success: ', results);
-    } catch (err) {
-      log.error(`[RosService][runRosMaster] ${err}`);
-    }
-  }
-
-  @logMethod('[RosService][runRosNode]')
-  async runRosNode(
-    data: constants.ROSNodeArr,
-    replyOnChannel: (response: constants.IResponse) => void
-  ) {
-    try {
-      log.info(`[RosService][runRosNode] node for running: ${JSON.stringify(data)}`);
-      const rosNodesNotExist = await this.checkROSNodesExist(data);
-      if (rosNodesNotExist.length !== 0) {
-        let resultsNodeNotExist = '';
-        rosNodesNotExist.forEach((node) => {
-          resultsNodeNotExist += `${node.name}, `;
-        });
-        replyOnChannel({
-          status: 'error',
-          message: `${resultsNodeNotExist.slice(0, -2)} ${ROS.NOT_EXIST}`
-        });
-
-        log.debug(`[RosService][runRosNode] nodes not exist: ${JSON.stringify(rosNodesNotExist)}`);
-      }
-
-      let nodeName = '';
-      data.nodeArr.forEach((node) => {
-        nodeName = `${node.packageName}__${node.name}`;
-        log.debug(`[RosService][runRosNode] nodeName: ${nodeName}`);
-        this.childProcessSvc.execAndForget(
-          this.childProcessSvc.buildCommand(
-            `rosrun ${node.packageName} ${node.name} __name:=${nodeName}`,
-            ''
-          )
-        );
-      });
-
-      const results = await this.childProcessSvc.waitForResultAndReturn(replyOnChannel, nodeName);
-      log.info(`[RosService][runRosNode] results: ${results}`);
-      if (results === ROS.SUCCESS) {
-        replyOnChannel({
-          status: 'success',
-          data: `${nodeName} ${ROS.SUCCESS}`
-        });
-      }
-      this.rosStatusSvc.startNodes(data.nodeArr);
-    } catch (err) {
-      log.error(`[RosService][runRosNode] ${err}`);
-    }
-  }
-
-  @logMethod('[RosService][resultsROSNodes]')
-  async resultsROSNodes(_: unknown, replyOnChannel: (response: constants.IResponse) => void) {
-    try {
-      log.info('[RosService][resultsROSNodes] start');
-      const rosNodes = await this.listROSNodes();
-      log.debug(`[RosService][resultsROSNodes] rosNodes: ${JSON.stringify(rosNodes)}`);
-      replyOnChannel({
-        status: 'success',
-        data: rosNodes
-      });
-      log.info('[RosService][resultsROSNodes] done');
-    } catch (err) {
-      log.error(`[RosService][resultsROSNodes] ${err}`);
-    }
-  }
-
-  @logMethod('[RosService][checkROSNodesExist]')
-  private async checkROSNodesExist(nodes: constants.ROSNodeArr) {
-    const rosNodes = await this.listROSNodes();
-    const existingNodes = rosNodes.map((node) => ({
-      packageName: node.packageName,
-      name: node.name
-    }));
-
-    const filteredNodes = nodes.nodeArr.filter(
-      (node) => !existingNodes.some((existingNode) => existingNode.name === node.name)
-    );
-    return filteredNodes;
-  }
-
-  @logMethod('[RosService][listROSNodes]')
-  async listROSNodes(): Promise<constants.ROSNode[]> {
-    const workspace =
-      this.configSvc.getConfig<IHostConfig>(APP_CONFIG.CONNECTION, 'rosWorkspace') || '';
-    const rosPackage = await this.listRosPackageInWs(workspace);
-    const rosNode = await this.listRosNodeInPackage(rosPackage);
-    return rosNode;
-  }
-
-  @logMethod('[RosService][listRosPackageInWs]')
-  private async listRosPackageInWs(workspace: string) {
-    const command = this.childProcessSvc.buildCommand(
-      `${ROS_COMMAND.GET_LIST_ROS_PACK} ${workspace}`,
-      ''
-    );
-    const listROSPackage = await this.childProcessSvc.execAndWait(command);
-    const rosPackageName = listROSPackage.split('\n');
-    const listROSPackageName: string[] = rosPackageName.map((str: string): string => {
-      const segments: string[] = str.split('/');
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const packageName: string = segments.length > 0 ? segments.pop()!.trim().split(' ')[0] : '';
-      return packageName;
-    });
-    listROSPackageName.pop();
-    return listROSPackageName;
-  }
-
-  @logMethod('[RosService][listRosNodeInPackage]')
-  private async listRosNodeInPackage(listPackage: string[]) {
-    const listROSNode: constants.ROSNode[] = [];
-    // eslint-disable-next-line no-restricted-syntax
-    for (const packageName of listPackage) {
-      const execListNode = this.childProcessSvc.buildCommand(
-        `ros-list-pack.sh ${packageName}`,
-        getAVPath()
-      );
-      // eslint-disable-next-line no-await-in-loop
-      const rosNodeName = await this.childProcessSvc.execAndWait(execListNode);
-
-      if (rosNodeName !== '') {
-        const names = rosNodeName.trim().split('\n');
-        // eslint-disable-next-line no-restricted-syntax
-        for (const name of names) {
-          const rosNode: constants.ROSNode = {
-            packageName,
-            name
-          };
-          listROSNode.push(rosNode);
-        }
-      }
-    }
-    return listROSNode;
-  }
-
   @logMethod('[RosService][runCommands]')
-  runCommands(command: string, replyOnChannel: (response: constants.IResponse) => void) {
+  runCommands(command: constants.Command, replyOnChannel: (response: constants.IResponse) => void) {
     try {
       log.info('[RosService][runCommands] start');
-      const buildCmd = this.childProcessSvc.buildCommand(command, '');
-      this.childProcessSvc.executeAndValid(buildCmd, replyOnChannel);
+      const buildCmd = this.childProcessSvc.buildCommand(command.command, '');
+      const pid = this.childProcessSvc.executeAndValid(buildCmd, 3000, replyOnChannel);
+      if (pid !== undefined) {
+        this.commandsStatusSvc.setState(command.command, pid, command.name, command.id);
+      }
+
       log.info('[RosService][runCommands] done');
     } catch (err) {
       log.error(`[RosService]runCommands] ${err}`);
@@ -191,17 +34,26 @@ export default class RosService implements IRosService {
     }
   }
 
-  @logMethod('[RosService][runCommandsForAll]')
-  runCommandsForAll(command: string): Promise<constants.IResponse> {
-    return new Promise<constants.IResponse>((resolve, reject) => {
+  runCommandsForAll(command: constants.Command): Promise<constants.IResponse & { pid: number }> {
+    return new Promise<constants.IResponse & { pid: number }>((resolve, reject) => {
       try {
         log.info('[RosService][runCommandsForAll] start');
-        const buildCmd = this.childProcessSvc.buildCommand(command, '');
-        this.childProcessSvc.executeAndValid(buildCmd, (response: constants.IResponse) => {
+        const buildCmd = this.childProcessSvc.buildCommand(command.command, '');
+        this.childProcessSvc.executeAndValid(buildCmd, 10000, (response: constants.IResponse) => {
           if (response.status === 'error') {
             reject(response);
           } else {
-            resolve(response);
+            const responseWithPID: constants.IResponse & { pid: number } = {
+              ...response,
+              pid: response.pid
+            };
+            this.commandsStatusSvc.setState(
+              command.command,
+              response.pid,
+              command.name,
+              command.id
+            );
+            resolve(responseWithPID);
           }
         });
         log.info('[RosService][runCommandsForAll] done');
@@ -226,14 +78,26 @@ export default class RosService implements IRosService {
 
   @logMethod('[RosService][runAllCommands]')
   runAllCommands(
-    commands: constants.InterfaceCommand[],
+    commands: constants.Command[],
     replyOnChannel: (response: constants.IResponse) => void
   ) {
-    const promises: Promise<constants.IResponse>[] = commands.map((command) =>
-      this.runCommandsForAll(command.command)
-    );
+    const commandNotRunning: constants.Command[] = [];
+    // eslint-disable-next-line no-restricted-syntax
+    for (const command of commands) {
+      const listCommandStatus = this.commandsStatusSvc.getState();
+      if (
+        listCommandStatus.find((cmd) => cmd.id === command.id)?.status !==
+        constants.CommandsStatusType.RUNNING
+      ) {
+        commandNotRunning.push(command);
+      }
+    }
 
     this.setStatusRunAllCommands(constants.EnumStatusRunAllCommands.ACTIVE);
+
+    const promises: Promise<constants.IResponse>[] = commandNotRunning.map((command) =>
+      this.runCommandsForAll(command)
+    );
 
     Promise.allSettled(promises)
       .then((results: PromiseSettledResult<constants.IResponse>[]) => {
@@ -278,10 +142,13 @@ export default class RosService implements IRosService {
   }
 
   @logMethod('[RosService][stopCommands]')
-  async stopCommands(command: string, replyOnChannel: (response: constants.IResponse) => void) {
+  async stopCommands(
+    command: constants.Command,
+    replyOnChannel: (response: constants.IResponse) => void
+  ) {
     try {
       log.info('[RosService][stopCommands] start');
-      const cmdsGetNodeInFile = `${command} --nodes`;
+      const cmdsGetNodeInFile = `${command.command} --nodes`;
       const buildCmd = this.childProcessSvc.buildCommand(cmdsGetNodeInFile, '');
       const nodesInFile = await this.childProcessSvc.execAndWait(buildCmd);
       const nodes = nodesInFile.split('\n').slice(0, -1);

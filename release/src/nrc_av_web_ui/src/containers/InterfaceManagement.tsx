@@ -5,7 +5,7 @@ import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import AddEditInterfaceModel, {
   AddEditInterfaceModelMethods
-} from '../components/AddInterfaceModel';
+} from '../components/AddInterfaceModal';
 import InterfaceList from '../components/interfaceList';
 
 const InterfaceManagement = () => {

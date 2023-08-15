@@ -1,3 +1,4 @@
+import { Expose } from 'class-transformer';
 import {
   Column,
   CreateDateColumn,
@@ -8,6 +9,7 @@ import {
 
 @Entity()
 export class BaseModel {
+  @Expose()
   @PrimaryGeneratedColumn('increment')
   id: number;
 

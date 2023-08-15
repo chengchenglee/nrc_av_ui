@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   addInterfaceApi,
+  deleteInterfaceApi,
   editInterfaceApi,
   getInterfaceApi,
   getInterfaceByIdApi,
@@ -49,3 +50,5 @@ export const useGetInterfaceById = (id?: number) =>
 
 export const useEditInterface = () =>
   useMutation(({ id, data }: EditInterfaceDTO) => editInterfaceApi(id, data));
+
+export const useDeleteInterface = () => useMutation((id: number) => deleteInterfaceApi(id));

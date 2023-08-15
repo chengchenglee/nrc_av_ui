@@ -1,0 +1,12 @@
+/* EditableTable.scss */
+.ant-table-wrapper .ant-table.ant-table-small {
+  .ant-table-title,
+  .ant-table-footer,
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > th,
+  .ant-table-tbody > tr > td,
+  tfoot > tr > th,
+  tfoot > tr > td {
+    padding: 1px 3px;
+  }
+}
