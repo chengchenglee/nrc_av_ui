@@ -1,0 +1,172 @@
+Subsystem:
+ Car:
+  Type: Sensor
+  Description: “Car Connection”
+  HealthTopic: “/CtrlStateFLG”
+  HealthTopicType: CtrlStateFLG
+  WarnRate: “6"
+  ErrRate: “3”
+  Commands:
+   - Name: Can_Com_Car
+     Command: “roslaunch nrc_leaf can_communication_modular.launch numChannels:=4 CanZe1SvConsumer:=true CanZe1SvWriter:=true Eyeq3Prod:=true Eyeq3ProdCh:=1 Eyeq4Dev:=true Eyeq4DevCh:=2 Eyeq4DevWrite:=true Eyeq4DevWriteCh:=2 Eyeq4DevFS:=true Eyeq4DevFSCh:=3”
+     Type: Software
+  Depends:
+   Subsystem: “”
+  Diagnostic: “car_diag.py”
+  
+ GPS_Raw:
+  Type: Sensor
+  Description: “Raw GPS”
+  HealthTopic: “/dynamic_global_pose_conv"
+  HealthTopicType: DynamicPoseWithCovar
+  WarnRate: “80"
+  ErrRate: “60”
+  Commands:
+   - Name: GPS_Raw
+     Command: “roslaunch nrc_hw_svcs gps.launch q50:=false here2016:=false sanborn:=true oh_shift:=false startNtrip:=false”
+     Type: Software
+  Depends:
+   Subsystem: “”
+  Diagnostic: “gps_raw_diag.py”
+  
+ Pose:
+  Type: Algorithm
+  Description: “Vehicle Pose”
+  HealthTopic: “/dynamic_global_pose"
+  HealthTopicType: DynamicPoseWithCovar
+  WarnRate: “80"
+  ErrRate: “60”
+  Commands:
+   - Name: Car
+     Command: “roslaunch loc_svcs pose_estimators.launch sim_mode:=false use_map_pose:=false”
+     Type: Software
+  Depends:
+   Subsystem: “”
+  Diagnostic: “pose_diag.py”
+  
+ Eyeq5:
+  Type: Sensor
+  Description: “Mobileye Camera”
+  HealthTopic: “/ME5_ObjData”
+  HealthTopicType: “Mobileye5ObjectArray”
+  WarnRate: “0.3"
+  ErrRate: “0.2”
+  Commands:
+   - Name: Eyeq5H
+     Command: “rosrun nrc_hw_svcs start_eyeq5.launch”
+     Type: Hardware
+   - Name: Can_Com_Eyeq5
+     Command: “roslaunch nrc_leaf can_communication_modular.launch”
+     Type: Software
+  Depends:
+   Subsystem: “”
+  Diagnostic: “eyeq5_diag.py”
+  
+Velodyne:
+  Type: Sensor
+  Description: “Velodyne”
+  HealthTopic: “/velodyne_health"
+  HealthTopicType: DiagnosticArray
+  WarnRate: “8"
+  ErrRate: “1”
+  Commands:
+   - Name: VelodyneDriver
+     Command: “roslaunch velodyne_pointcloud VLS128_points.launch velodyne_machine:=local”
+     Type: Software
+  Depends:
+   Subsystem: “”
+  Diagnostic: “velo_diag.py”
+  
+TF_Sys:
+  Type: Algorithm
+  Description: TF_Sys
+  HealthTopic: 
+  HealthTopicType: 
+  WarnRate: 
+  ErrRate: 
+  Commands:
+   - Name: TF_Sys
+     Command: “roslaunch nrc_svcs leaf_tf_subsystem.launch sanborn:=true”
+     Type: Software
+  Depends:
+   Subsystem: “”
+  Diagnostic:
+  
+PCP:
+  Type: Algorithm
+  Description: Pointcloud_Processing
+  HealthTopic: "/pc_processor/multi_object_tracker/tracked_object_set"
+  HealthTopicType: TrackedObjectSet
+  WarnRate: 7
+  ErrRate: 3
+  Commands:
+   - Name: PCP
+     Command: “roslaunch nrc_pcp_svcs pc_processor.launch dynamic_global_pose_topic_name:=/dynamic_global_pose Leaf_Foxtrot:=true”
+     Type: Software
+  Depends:
+   Subsystem: “”
+  Diagnostic: "pcp_diag.py"
+  
+Me2Yolo:
+  Type: Algorithm
+  Description: Meye to Yolo
+  HealthTopic: 
+  HealthTopicType: 
+  WarnRate:
+  ErrRate:
+  Commands:
+   - Name: Me2Yolo
+     Command: “roslaunch nrc_perc_svcs mobileye_yolo_converters.launch”
+     Type: Software
+  Depends:
+   Subsystem: “”
+  Diagnostic:
+  
+WM:
+  Type: Algorithm
+  Description: World Model
+  HealthTopic: "/pc_processor/multi_object_tracker/tracked_object_set"
+  HealthTopicType: TrackedObjectSet
+  WarnRate:
+  ErrRate:
+  Commands:
+   - Name: Me2Yolo
+     Command: “roslaunch nrc_perc_svcs mobileye_yolo_converters.launch”
+     Type: Software
+  Depends:
+   Subsystem: “”
+  Diagnostic:
+  
+AutoGoals:
+  Type: Algorithm
+  Description: AutoGoals
+  HealthTopic: "/drive_plan"
+  HealthTopicType: DriveGoalList
+  WarnRate:
+  ErrRate:
+  Commands:
+   - Name: AutoGoals
+     Command: “rosrun nrc_wm2_svcs auto_goals2”
+     Type: Software
+  Depends:
+   Subsystem: “”
+  Diagnostic:
+  
+Trajectory:
+  Type: Algorithm
+  Description: Trajectory Planner/Follower
+  HealthTopic: 
+  - Topic: "/lane_planner_state"
+    Type: LanePlannerState
+  - Topic: "/lane_follower_state"
+    Type: TrajectoryControllerState
+  WarnRate:
+  ErrRate:
+  Commands:
+   - Name: Trajectory Planner
+     Command: “roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=LeafFS”
+     Type: Software
+  Depends:
+   Subsystem: “”
+  Diagnostic:
+  
