@@ -241,89 +241,97 @@ const InterfaceExecutor: React.FC<IProps> = (props) => {
           >
             <StatusButton status="none" />
             <div style={{ flex: 1, lineHeight: '32px' }}>
-              <Title level={3}>Interface</Title>
-              <Skeleton active loading={vehicleInit}>
-                <div style={{ display: 'flex' }}>
-                  <Form
-                    initialValues={{
-                      interfaceId: contextValue?.interfaceNameId
-                    }}
-                    form={formInterface}
-                    style={{ display: 'flex', width: '100%' }}
-                    onFinish={onFinish}
-                  >
-                    <Col xs={10} sm={10} md={11} lg={11} xl={11}>
-                      <Form.Item
-                        style={{
-                          marginRight: '5px',
-                          flex: 1
+              {vehicleId ? (
+                <>
+                  <Title level={3}>Interface</Title>
+                  <Skeleton active loading={vehicleInit}>
+                    <div style={{ display: 'flex' }}>
+                      <Form
+                        initialValues={{
+                          interfaceId: contextValue?.interfaceNameId
                         }}
-                        name="interfaceId"
+                        form={formInterface}
+                        style={{ display: 'flex', width: '100%' }}
+                        onFinish={onFinish}
                       >
-                        <Select
-                          disabled={
-                            !vehicleId ||
-                            !!contextValue?.interfaceNameId ||
-                            contextValue?.status === ExecutionStatus.RUNNING
-                          }
-                          placeholder="Select interface"
-                          style={{ width: '100%' }}
-                        >
-                          {interfaceList?.interfaces.map((item) => (
-                            <Select.Option key={item.id} value={item.id}>
-                              {item.name}
-                            </Select.Option>
-                          ))}
-                        </Select>
-                      </Form.Item>
-                    </Col>
-                    <Col xs={10} sm={10} md={11} lg={11} xl={11}>
-                      <Form.Item style={{ marginRight: '5px' }}>
-                        <Select
-                          disabled={
-                            contextValue?.status === ExecutionStatus.RUNNING &&
-                            contextValue?.interfaceStatusRunAll === StatusRunAll.ACTIVE
-                          }
-                          defaultValue={selectedMap}
-                          style={{ width: '100%' }}
-                          placeholder="Select map"
-                          options={mapOptions.map((option) => ({
-                            label: option.name,
-                            value: option.name
-                          }))}
-                          onChange={handleMapChange}
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Col xs={3} sm={3} md={2} lg={2} xl={2}>
-                      <Form.Item>
-                        <Button
-                          shape="circle"
-                          htmlType="submit"
-                          disabled={isLoading || isStopping}
-                          danger={contextValue?.status === ExecutionStatus.RUNNING}
-                          type="primary"
-                        >
-                          {isLoading || isStopping ? (
-                            <FontAwesomeIcon
-                              icon={faCircleNotch}
-                              spin
-                              style={{ color: '#ffffff' }}
-                            />
-                          ) : (
-                            <FontAwesomeIcon
-                              icon={
-                                contextValue?.status === ExecutionStatus.RUNNING ? faStop : faPlay
+                        <Col xs={10} sm={10} md={11} lg={11} xl={11}>
+                          <Form.Item
+                            style={{
+                              marginRight: '5px',
+                              flex: 1
+                            }}
+                            name="interfaceId"
+                          >
+                            <Select
+                              disabled={
+                                !vehicleId ||
+                                !!contextValue?.interfaceNameId ||
+                                contextValue?.status === ExecutionStatus.RUNNING
                               }
-                              style={{ color: '#ffffff' }}
+                              placeholder="Select interface"
+                              style={{ width: '100%' }}
+                            >
+                              {interfaceList?.interfaces.map((item) => (
+                                <Select.Option key={item.id} value={item.id}>
+                                  {item.name}
+                                </Select.Option>
+                              ))}
+                            </Select>
+                          </Form.Item>
+                        </Col>
+                        <Col xs={10} sm={10} md={11} lg={11} xl={11}>
+                          <Form.Item style={{ marginRight: '5px' }}>
+                            <Select
+                              disabled={
+                                contextValue?.status === ExecutionStatus.RUNNING &&
+                                contextValue?.interfaceStatusRunAll === StatusRunAll.ACTIVE
+                              }
+                              defaultValue={selectedMap}
+                              style={{ width: '100%' }}
+                              placeholder="Select map"
+                              options={mapOptions.map((option) => ({
+                                label: option.name,
+                                value: option.name
+                              }))}
+                              onChange={handleMapChange}
                             />
-                          )}
-                        </Button>
-                      </Form.Item>
-                    </Col>
-                  </Form>
-                </div>
-              </Skeleton>
+                          </Form.Item>
+                        </Col>
+                        <Col xs={3} sm={3} md={2} lg={2} xl={2}>
+                          <Form.Item>
+                            <Button
+                              shape="circle"
+                              htmlType="submit"
+                              disabled={isLoading || isStopping}
+                              danger={contextValue?.status === ExecutionStatus.RUNNING}
+                              type="primary"
+                            >
+                              {isLoading || isStopping ? (
+                                <FontAwesomeIcon
+                                  icon={faCircleNotch}
+                                  spin
+                                  style={{ color: '#ffffff' }}
+                                />
+                              ) : (
+                                <FontAwesomeIcon
+                                  icon={
+                                    contextValue?.status === ExecutionStatus.RUNNING
+                                      ? faStop
+                                      : faPlay
+                                  }
+                                  style={{ color: '#ffffff' }}
+                                />
+                              )}
+                            </Button>
+                          </Form.Item>
+                        </Col>
+                      </Form>
+                    </div>
+                  </Skeleton>
+                </>
+              ) : (
+                <div></div>
+              )}
             </div>
           </div>
         </Col>

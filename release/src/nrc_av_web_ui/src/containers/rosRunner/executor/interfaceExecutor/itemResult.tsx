@@ -116,10 +116,8 @@ const ItemResult: React.FC<IProps> = (props) => {
                 message={runAllCommandsData?.message || ''}
                 isStartingAllCommands={isStartingAllCommands}
                 commandRunning={
-                  !!context?.interfaceCommands?.reduce(
-                    (acc, cmd) =>
-                      acc || (cmd.id === item.id && cmd.status === CommandsStatus.RUNNING),
-                    false
+                  !!context?.interfaceCommands?.some(
+                    (cmd) => cmd.id === item.id && cmd.status === CommandsStatus.RUNNING
                   )
                 }
               />

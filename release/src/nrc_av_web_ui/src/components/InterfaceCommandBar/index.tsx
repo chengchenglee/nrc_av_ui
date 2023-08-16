@@ -1,3 +1,4 @@
+/* eslint-disable consistent-return */
 /* eslint-disable prefer-const */
 /* eslint-disable prettier/prettier */
 /* eslint-disable max-lines-per-function */
@@ -50,6 +51,28 @@ const InterfaceCommandBar: FC<InterfaceCommonBarProps> = ({
   }, [commandId, executeCommand, interfaceId, vehicleId]);
 
   useEffect(() => {
+    if (isStartingAllCommands && !commandRunning) {
+      setIsProcessing(true);
+      setEventClicked(true);
+    }
+
+    if ((eventClicked && commandRunning) || errorText) {
+      setIsProcessing(false);
+    }
+    if ((!eventClicked && !commandRunning) || errorText) {
+      setIsProcessing(false);
+    }
+
+    if (isProcessing) {
+      const timer = setTimeout(() => {
+        setIsProcessing(false);
+      }, 10000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [commandRunning, errorText, eventClicked, isProcessing, isStartingAllCommands]);
+
+  useEffect(() => {
     setErrorText('');
     let filteredData = [];
     if (Array.isArray(message)) {
@@ -91,15 +114,6 @@ const InterfaceCommandBar: FC<InterfaceCommonBarProps> = ({
       setEventClicked(false);
     }
   };
-
-  useEffect(() => {
-    if ((eventClicked && commandRunning) || errorText) {
-      setIsProcessing(false);
-    }
-    if ((!eventClicked && !commandRunning) || errorText) {
-      setIsProcessing(false);
-    }
-  }, [commandRunning, errorText, eventClicked]);
 
   const getTruncatedText = (text: string | undefined) => {
     const maxLength = 25;
@@ -164,14 +178,13 @@ const InterfaceCommandBar: FC<InterfaceCommonBarProps> = ({
             htmlType="submit"
             style={{
               marginLeft: '10px',
-              backgroundColor:
-                isProcessing || isStartingAllCommands ? 'grey' : commandRunning ? 'red' : 'green'
+              backgroundColor: isProcessing ? 'grey' : commandRunning ? 'red' : 'green'
             }}
             disabled={isExecutingCommand || isStoppingCommand || isStartingAllCommands}
             type="primary"
             onClick={handleClick}
           >
-            {isProcessing || isStartingAllCommands ? (
+            {isProcessing ? (
               <FontAwesomeIcon icon={faCircleNotch} spin style={{ color: '#ffffff' }} />
             ) : (
               // eslint-disable-next-line max-len
