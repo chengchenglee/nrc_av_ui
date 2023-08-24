@@ -1,3 +1,6 @@
+Configuration:
+ Name: foxtrot
+
 Subsystem:
  Car:
   Type: Sensor
