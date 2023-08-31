@@ -26,9 +26,11 @@ target_link_libraries(sim1
 # ${LIB_NAME}
  ${catkin_LIBRARIES}
 )
+add_dependencies(sim1 nrc_msgs_gencpp)
 
 add_executable(sim2 Sim2.cpp)
 target_link_libraries(sim2
 # ${LIB_NAME}
  ${catkin_LIBRARIES}
 )
+add_dependencies(sim2 nrc_msgs_gencpp)
