@@ -1,206 +1,205 @@
 Configuration:
- Name: foxtrot
+  Name: foxtrot
 
 Subsystem:
- Car:
-  Type: Sensor
-  Description: “Car Connection”
-  HealthTopics:
-  - HealthTopic: “/CtrlStateFLG”
-    HealthName: "Car"
-    HealthTopicType: CtrlStateFLG
-    NomWarnErrRate: 100, 60, 10
-  Commands:
-   - Name: Can_Com_Car
-     Command: “roslaunch nrc_leaf can_communication_modular.launch numChannels:=4 CanZe1SvConsumer:=true CanZe1SvWriter:=true Eyeq3Prod:=true Eyeq3ProdCh:=1 Eyeq4Dev:=true Eyeq4DevCh:=2 Eyeq4DevWrite:=true Eyeq4DevWriteCh:=2 Eyeq4DevFS:=true Eyeq4DevFSCh:=3”
-     Type: Software
-     LaunchTime: 1.0
-  DiagLED: 1
-  Depends:
-  Diagnostic: “car_diag.py”
-  
- GPS_Raw:
-  Type: Sensor
-  Description: “Raw GPS”
-  HealthTopics:
-  - HealthTopic: “/gps_state/dynamic_global_pose_oxts"
-    HealthName: "OxtsRaw"
-    HealthTopicType: DynamicPoseWithCovar
-    NomWarnErrRate: 100, 80, 60
-  Commands:
-   - Name: GPS_Raw
-     Command: “roslaunch nrc_hw_svcs gps.launch q50:=false here2016:=false sanborn:=true oh_shift:=false startNtrip:=false”
-     Type: Software
-     LaunchTime: 1.0
-  DiagLED: 2
-  Depends: “Car”
-  Diagnostic: “gps_raw_diag.py”
-  
- Pose:
-  Type: Algorithm
-  Description: “Vehicle Pose”
-  HealthTopics:
-  - HealthTopic: “/dynamic_global_pose"
-    HealthName: "DGP"
-    HealthTopicType: DynamicPoseWithCovar
-    NomWarnErrRate: 100, 80, 60
-  Commands:
-   - Name: GPS_Matched
-     Command: "rosrun nrc_wm2_svcs map_match name:=MapMatch_node _useOxts:=true"
-     Type: Software
-     LaunchTime: 3.0
-  DiagLED: 3
-  Depends: “GPS_Raw”
-  Diagnostic: “pose_diag.py”
-  
- Eyeq5:
-  Type: Sensor
-  Description: “Mobileye Camera”
-  HealthTopics:
-  - HealthTopic: “/ME5_ObjData”
-    HealthName: "ME5"
-    HealthTopicType: “Mobileye5ObjectArray”
-    NomWarnErrRate: 30, 20, 10
-  Commands:
-   - Name: Eyeq5H
-     Command: “rosrun nrc_hw_svcs start_eyeq5.launch”
-     Type: Hardware
-     LaunchTime: 30.0
-   - Name: Can_Com_Eyeq5
-     Command: “roslaunch nrc_leaf can_communication_modular.launch”
-     Type: Software
-     LaunchTime: 2.0
-  DiagLED: 4
-  Depends:
-  Diagnostic: “eyeq5_diag.py”
-  
-Velodyne:
-  Type: Sensor
-  Description: “Velodyne”
-  HealthTopics:
-  - HealthTopic: “/velodyne_health"
-    HealthName: "VLDY"
-    HealthTopicType: DiagnosticArray
-    NomWarnErrRate: 10, 6, 3
-  Commands:
-   - Name: VelodyneDriver
-     Command: “roslaunch velodyne_pointcloud VLS128_points.launch velodyne_machine:=local”
-     Type: Software
-     LaunchTime: 1.0
-  DiagLED:
-  Depends:
-  Diagnostic: “velo_diag.py”
-  
-TF_Sys:
-  Type: Algorithm
-  Description: TF_Sys
-  HealthTopics:
-  Commands:
-   - Name: TF_Sys
-     Command: “roslaunch nrc_svcs leaf_tf_subsystem.launch sanborn:=true”
-     Type: Software
-     LaunchTime: 1.0
-  DiagLED:
-  Depends: “Pose”
-  Diagnostic:
-  
-PCP:
-  Type: Algorithm
-  Description: Pointcloud_Processing
-  HealthTopics:
-  - HealthTopic: "/pc_processor/multi_object_tracker/tracked_object_set"
-    HealthName: "PCP_TOS"
-    HealthTopicType: TrackedObjectSet
-    NomWarnErrRate: 10, 7, 3
-  - HealthTopic: "/drivable_area_boundary_points"
-    HealthName: "PCP_DA"
-    HealthTopicType: PointCloud2
-    NomWarnErrRate: 10, 7, 3
-  Commands:
-   - Name: PCP
-     Command: “roslaunch nrc_pcp_svcs pc_processor.launch dynamic_global_pose_topic_name:=/dynamic_global_pose Leaf_Foxtrot:=true”
-     Type: Software
-     LaunchTime: 3.0
-  DiagLED: 5
-  Depends:
-  Diagnostic: "pcp_diag.py"
-  
-Me2Yolo:
-  Type: Algorithm
-  Description: Meye to Yolo
-  HealthTopics:
-  Commands:
-   - Name: Me2Yolo
-     Command: “roslaunch nrc_perc_svcs mobileye_yolo_converters.launch”
-     Type: Software
-     LaunchTime: 1.0
-  Depends:
-  Diagnostic:
-  
-WM:
-  Type: Algorithm
-  Description: World Model
-  HealthTopics:
-  - HealthTopic: "/object_tracker/health"
-    HealthName: "Fusion"
-    HealthTopicType: DiagnosticArray
-    WarnRate: 10, 6, 3
-  - HealthTopic: "/traffic_light/detection/health"
-    HealthName: "TLR"
-    HealthTopicType: DiagnosticArray
-    WarnRate: 10, 6, 3
-  - HealthTopic: "/ailsv_virtual_objects"
-    HealthName: "Virtual"
-    HealthTopicType: TrackedObjectSet
-    WarnRate: 10, 6, 3
-  - HealthTopic: "/master_filter/health"
-    HealthName: "WOS"
-    HealthTopicType: DiagnosticArray
-    WarnRate: 10, 6, 3
-  Commands:
-   - Name: Me2Yolo
-     Command: “roslaunch nrc_perc_svcs mobileye_yolo_converters.launch”
-     Type: Software
-     LaunchTime: 1.0
-  DiagLED: 6
-  Depends:
-  Diagnostic:
-  
-AutoGoals:
-  Type: Algorithm
-  Description: AutoGoals
-  HealthTopics:
-  - HealthTopic: "/drive_plan"
-    HealthName: "DRV_PLAN"
-    HealthTopicType: DriveGoalList
-    WarnRate: 10, 6, 3
-  Commands:
-   - Name: AutoGoals
-     Command: “rosrun nrc_wm2_svcs auto_goals2”
-     Type: Software
-     LaunchTime: 3.0
-  DiagLED: 7
-  Depends:
-  Diagnostic:
-  
-Trajectory:
-  Type: Algorithm
-  Description: Trajectory Planner/Follower
-  HealthTopics:
-  - HealthTopic: "/lane_planner_state"
-    HealthName: "TrajP"
-    HealthTopicType: LanePlannerState
-    WarnRate: 10, 6, 3
-  - HealthTopic:  "/lane_follower_state"
-    HealthName: "TrajC"
-    HealthTopicType: TrajectoryControllerState
-    WarnRate: 100, 60, 10
-  Commands:
-   - Name: Trajectory Planner
-     Command: “roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=LeafFS”
-     Type: Software
-     LaunchTime: 3.0
-  DiagLED: 8
-  Depends:
-  Diagnostic:
-  
+  Car:
+    Type: Sensor
+    Description: Car Connection
+    HealthTopics:
+      - HealthTopic: /CtrlStateFLG
+        HealthName: Car
+        HealthTopicType: CtrlStateFLG
+        NomWarnErrRate: 100, 60, 10
+    Commands:
+      - Name: Can_Com_Car
+        Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=4 CanZe1SvConsumer:=true CanZe1SvWriter:=true Eyeq3Prod:=true Eyeq3ProdCh:=1 Eyeq4Dev:=true Eyeq4DevCh:=2 Eyeq4DevWrite:=true Eyeq4DevWriteCh:=2 Eyeq4DevFS:=true Eyeq4DevFSCh:=3
+        Type: Software
+        LaunchTime: 1.0
+    DiagLED: 1
+    Depends:
+    Diagnostic: car_diag.py
+
+  GPS_Raw:
+    Type: Sensor
+    Description: Raw GPS
+    HealthTopics:
+      - HealthTopic: /gps_state/dynamic_global_pose_oxts
+        HealthName: OxtsRaw
+        HealthTopicType: DynamicPoseWithCovar
+        NomWarnErrRate: 100, 80, 60
+    Commands:
+      - Name: GPS_Raw
+        Command: roslaunch nrc_hw_svcs gps.launch q50:=false here2016:=false sanborn:=true oh_shift:=false startNtrip:=false
+        Type: Software
+        LaunchTime: 1.0
+    DiagLED: 2
+    Depends: Car
+    Diagnostic: gps_raw_diag.py
+
+  Pose:
+    Type: Algorithm
+    Description: Vehicle Pose
+    HealthTopics:
+      - HealthTopic: /dynamic_global_pose
+        HealthName: DGP
+        HealthTopicType: DynamicPoseWithCovar
+        NomWarnErrRate: 100, 80, 60
+    Commands:
+      - Name: GPS_Matched
+        Command: rosrun nrc_wm2_svcs map_match name:=MapMatch_node _useOxts:=true
+        Type: Software
+        LaunchTime: 3.0
+    DiagLED: 3
+    Depends: GPS_Raw
+    Diagnostic: pose_diag.py
+
+  Eyeq5:
+    Type: Sensor
+    Description: Mobileye Camera
+    HealthTopics:
+      - HealthTopic: /ME5_ObjData
+        HealthName: ME5
+        HealthTopicType: Mobileye5ObjectArray
+        NomWarnErrRate: 30, 20, 10
+    Commands:
+      - Name: Eyeq5H
+        Command: rosrun nrc_hw_svcs start_eyeq5.launch
+        Type: Hardware
+        LaunchTime: 30.0
+      - Name: Can_Com_Eyeq5
+        Command: roslaunch nrc_leaf can_communication_modular.launch
+        Type: Software
+        LaunchTime: 2.0
+    DiagLED: 4
+    Depends:
+    Diagnostic: eyeq5_diag.py
+
+  Velodyne:
+    Type: Sensor
+    Description: Velodyne
+    HealthTopics:
+      - HealthTopic: /velodyne_health
+        HealthName: VLDY
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: VelodyneDriver
+        Command: roslaunch velodyne_pointcloud VLS128_points.launch velodyne_machine:=local
+        Type: Software
+        LaunchTime: 1.0
+    DiagLED:
+    Depends:
+    Diagnostic: velo_diag.py
+
+  TF_Sys:
+    Type: Algorithm
+    Description: TF_Sys
+    HealthTopics:
+    Commands:
+      - Name: TF_Sys
+        Command: roslaunch nrc_svcs leaf_tf_subsystem.launch sanborn:=true
+        Type: Software
+        LaunchTime: 1.0
+    DiagLED:
+    Depends: Pose
+    Diagnostic:
+
+  PCP:
+    Type: Algorithm
+    Description: Pointcloud_Processing
+    HealthTopics:
+      - HealthTopic: /pc_processor/multi_object_tracker/tracked_object_set
+        HealthName: PCP_TOS
+        HealthTopicType: TrackedObjectSet
+        NomWarnErrRate: 10, 7, 3
+      - HealthTopic: /drivable_area_boundary_points
+        HealthName: PCP_DA
+        HealthTopicType: PointCloud2
+        NomWarnErrRate: 10, 7, 3
+    Commands:
+      - Name: PCP
+        Command: roslaunch nrc_pcp_svcs pc_processor.launch dynamic_global_pose_topic_name:=/dynamic_global_pose Leaf_Foxtrot:=true
+        Type: Software
+        LaunchTime: 3.0
+    DiagLED: 5
+    Depends:
+    Diagnostic: pcp_diag.py
+
+  Me2Yolo:
+    Type: Algorithm
+    Description: Meye to Yolo
+    HealthTopics:
+    Commands:
+      - Name: Me2Yolo
+        Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch
+        Type: Software
+        LaunchTime: 1.0
+    Depends:
+    Diagnostic:
+
+  WM:
+    Type: Algorithm
+    Description: World Model
+    HealthTopics:
+      - HealthTopic: /object_tracker/health
+        HealthName: Fusion
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /traffic_light/detection/health
+        HealthName: TLR
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /ailsv_virtual_objects
+        HealthName: Virtual
+        HealthTopicType: TrackedObjectSet
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /master_filter/health
+        HealthName: WOS
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: Me2Yolo
+        Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch
+        Type: Software
+        LaunchTime: 1.0
+    DiagLED: 6
+    Depends:
+    Diagnostic:
+
+  AutoGoals:
+    Type: Algorithm
+    Description: AutoGoals
+    HealthTopics:
+      - HealthTopic: /drive_plan
+        HealthName: DRV_PLAN
+        HealthTopicType: DriveGoalList
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: AutoGoals
+        Command: rosrun nrc_wm2_svcs auto_goals2
+        Type: Software
+        LaunchTime: 3.0
+    DiagLED: 7
+    Depends:
+    Diagnostic:
+
+  Trajectory:
+    Type: Algorithm
+    Description: Trajectory Planner/Follower
+    HealthTopics:
+      - HealthTopic: /lane_planner_state
+        HealthName: TrajP
+        HealthTopicType: LanePlannerState
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /lane_follower_state
+        HealthName: TrajC
+        HealthTopicType: TrajectoryControllerState
+        NomWarnErrRate: 100, 60, 10
+    Commands:
+      - Name: Trajectory Planner
+        Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=LeafFS
+        Type: Software
+        LaunchTime: 3.0
+    DiagLED: 8
+    Depends:
+    Diagnostic:
