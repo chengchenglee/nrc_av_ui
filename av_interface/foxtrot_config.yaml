@@ -2,22 +2,6 @@ Configuration:
   Name: foxtrot
 
 Subsystem:
-  Car:
-    Type: Sensor
-    Description: Car Connection
-    HealthTopics:
-      - HealthTopic: /CtrlStateFLG
-        HealthName: Car
-        HealthTopicType: CtrlStateFLG
-        NomWarnErrRate: 100, 60, 10
-    Commands:
-      - Name: Can_Com_Car
-        Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=4 CanZe1SvConsumer:=true CanZe1SvWriter:=true Eyeq3Prod:=true Eyeq3ProdCh:=1 Eyeq4Dev:=true Eyeq4DevCh:=2 Eyeq4DevWrite:=true Eyeq4DevWriteCh:=2 Eyeq4DevFS:=true Eyeq4DevFSCh:=3
-        Type: Software
-        LaunchTime: 1.0
-    DiagLED: 1
-    Depends:
-    Diagnostic: car_diag.py
 
   GPS_Raw:
     Type: Sensor
@@ -33,7 +17,7 @@ Subsystem:
         Type: Software
         LaunchTime: 1.0
     DiagLED: 2
-    Depends: Car
+    Depends:
     Diagnostic: gps_raw_diag.py
 
   Pose:
@@ -62,12 +46,8 @@ Subsystem:
         HealthTopicType: Mobileye5ObjectArray
         NomWarnErrRate: 30, 20, 10
     Commands:
-      - Name: Eyeq5H
-        Command: rosrun nrc_hw_svcs start_eyeq5.launch
-        Type: Hardware
-        LaunchTime: 30.0
       - Name: Can_Com_Eyeq5
-        Command: roslaunch nrc_leaf can_communication_modular.launch
+        Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=2 Eyeq5DevCh0:=true Eyeq5DevCh0Ch:=0 Eyeq5DevWrite:=true Eyeq5DevWriteCh:=0 Eyeq5DevCh1:=true Eyeq5DevCh1Ch:=1 nodeName:=eyeq5CanCom machine:=node03
         Type: Software
         LaunchTime: 2.0
     DiagLED: 4
@@ -158,8 +138,8 @@ Subsystem:
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
     Commands:
-      - Name: Me2Yolo
-        Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch
+      - Name: WM
+        Command: roslaunch nrc_wm2_svcs leaf_pred.launch
         Type: Software
         LaunchTime: 1.0
     DiagLED: 6
