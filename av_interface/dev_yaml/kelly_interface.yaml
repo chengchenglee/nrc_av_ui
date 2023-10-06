@@ -1,0 +1,41 @@
+Configuration:
+  Name: KellyInterface
+
+Subsystem:
+  Car:
+    Type: Sensor
+    Description: Car Connection
+    HealthTopics:
+      - HealthTopic: /dynamic_global_pose
+        HealthName: GPS
+        HealthTopicType: DynamicPoseWithCovar
+        NomWarnErrRate: 10, 8, 6
+    Commands:
+      - Name: 1 sim1
+        Command: roslaunch nrc_av_ui sim1.launch
+        Type: Software
+        LaunchTime: 1.0
+    DiagLED: 1
+    Depends:
+    Diagnostic: car_diag.py
+
+  DVR:
+    Type: Algorithm
+    Description: DVR
+    HealthTopics:
+      - HealthTopic: /drive_plan
+        HealthName: DRV_A
+        HealthTopicType: DriveGoalList
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /drive_plan
+        HealthName: VIS_SP
+        HealthTopicType: DriveGoalList
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: 2 sim2
+        Command: rosrun nrc_av_ui sim2
+        Type: Software
+        LaunchTime: 1.0
+    DiagLED: 7
+    Depends: Car
+    Diagnostic:
