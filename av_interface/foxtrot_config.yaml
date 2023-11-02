@@ -13,7 +13,7 @@ Subsystem:
         NomWarnErrRate: 100, 80, 60
     Commands:
       - Name: GPS_Raw
-        Command: roslaunch nrc_hw_svcs gps.launch q50:=false here2016:=false sanborn:=true oh_shift:=false startNtrip:=false
+        Command: roslaunch nrc_hw_svcs gps_leaf.launch
         Type: Software
         LaunchTime: 1.0
     DiagLED: 2
