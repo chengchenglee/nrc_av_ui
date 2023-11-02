@@ -2,7 +2,6 @@ Configuration:
   Name: foxtrot
 
 Subsystem:
-
   GPS_Raw:
     Type: Sensor
     Description: Raw GPS
@@ -17,6 +16,8 @@ Subsystem:
         Type: Software
         LaunchTime: 1.0
     DiagLED: 2
+    DiagRetry: 5
+    Timeout: 30
     Depends:
     Diagnostic: gps_raw_diag.py
 
@@ -34,6 +35,8 @@ Subsystem:
         Type: Software
         LaunchTime: 3.0
     DiagLED: 3
+    DiagRetry: 5
+    Timeout: 30
     Depends: GPS_Raw
     Diagnostic: pose_diag.py
 
@@ -51,6 +54,8 @@ Subsystem:
         Type: Software
         LaunchTime: 2.0
     DiagLED: 4
+    DiagRetry: 5
+    Timeout: 30
     Depends:
     Diagnostic: eyeq5_diag.py
 
@@ -68,6 +73,8 @@ Subsystem:
         Type: Software
         LaunchTime: 1.0
     DiagLED:
+    DiagRetry: 5
+    Timeout: 30
     Depends:
     Diagnostic: velo_diag.py
 
@@ -81,6 +88,8 @@ Subsystem:
         Type: Software
         LaunchTime: 1.0
     DiagLED:
+    DiagRetry: 5
+    Timeout: 30
     Depends: Pose
     Diagnostic:
 
@@ -102,6 +111,8 @@ Subsystem:
         Type: Software
         LaunchTime: 3.0
     DiagLED: 5
+    DiagRetry: 5
+    Timeout: 30
     Depends:
     Diagnostic: pcp_diag.py
 
@@ -143,6 +154,8 @@ Subsystem:
         Type: Software
         LaunchTime: 1.0
     DiagLED: 6
+    DiagRetry: 5
+    Timeout: 30
     Depends:
     Diagnostic:
 
@@ -160,6 +173,8 @@ Subsystem:
         Type: Software
         LaunchTime: 3.0
     DiagLED: 7
+    DiagRetry: 5
+    Timeout: 30
     Depends:
     Diagnostic:
 
@@ -181,5 +196,7 @@ Subsystem:
         Type: Software
         LaunchTime: 3.0
     DiagLED: 8
+    DiagRetry: 5
+    Timeout: 30
     Depends:
     Diagnostic:
