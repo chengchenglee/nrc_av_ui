@@ -9,6 +9,7 @@ import RosBridgeServerService from '../service/logic/rosBridgeServerService';
 import RosService from '../service/logic/rosService';
 import StatusCommandsService from '../service/logic/statusCommandsService';
 import StatusInterfaceRosBridgeService from '../service/logic/statusInterfaceRosBridgeService';
+import SubSystemService from '../service/logic/subSystemService';
 import AzureService from '../service/storage/azureService';
 import BrowserWindowService from '../service/system/browserWindowService';
 import ChildProcessService from '../service/system/childProcessService';
@@ -33,7 +34,8 @@ import {
   IStatusInterfaceRosBridgeService,
   IRosBridgeServerService,
   IRosBridgeConnectionService,
-  IStatusCommands
+  IStatusCommands,
+  ISubSystem
 } from './interfaces';
 import TYPES from './types';
 
@@ -64,5 +66,6 @@ diContainer
 diContainer.bind<IInterfaceFileService>(TYPES.InterfaceFileService).to(InterfaceFileService);
 diContainer.bind<IRosService>(TYPES.RosService).to(RosService);
 diContainer.bind<IStatusCommands>(TYPES.StatusCommandsService).to(StatusCommandsService);
+diContainer.bind<ISubSystem>(TYPES.SubSystemService).to(SubSystemService);
 
 export default diContainer;

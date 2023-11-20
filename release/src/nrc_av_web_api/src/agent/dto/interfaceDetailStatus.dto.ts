@@ -1,8 +1,6 @@
 import { IsArray, IsString } from 'class-validator';
-import { AlgorithmStatusDTO } from './algorithmStatus.dto';
-import { CommandsStatusDTO } from './commandsStatus.dto';
 import { MachineStatusDTO } from './machineStatus.dto';
-import { SensorStatusDTO } from './sensorStatus.dto';
+import { SubSystemStatusDTO } from './subSystemStatus.dto';
 
 export class InterfaceDetailStatusDTO {
   @IsString()
@@ -12,13 +10,7 @@ export class InterfaceDetailStatusDTO {
   machines: MachineStatusDTO[];
 
   @IsArray()
-  algorithms: AlgorithmStatusDTO[];
-
-  @IsArray()
-  sensors: SensorStatusDTO[];
-
-  @IsArray()
-  statusCommands: CommandsStatusDTO[];
+  subSystems: SubSystemStatusDTO[];
 
   @IsString()
   status: string;

@@ -34,33 +34,49 @@ export default class RosService implements IRosService {
     }
   }
 
-  runCommandsForAll(command: constants.Command): Promise<constants.IResponse & { pid: number }> {
-    return new Promise<constants.IResponse & { pid: number }>((resolve, reject) => {
+  runCommandsForAll(
+    command: constants.Command,
+    waitingTime?: number
+  ): Promise<constants.IResponse & constants.IRunAllResponse> {
+    return new Promise<constants.IResponse & constants.IRunAllResponse>((resolve, reject) => {
       try {
         log.info('[RosService][runCommandsForAll] start');
         const buildCmd = this.childProcessSvc.buildCommand(command.command, '');
-        this.childProcessSvc.executeAndValid(buildCmd, 10000, (response: constants.IResponse) => {
-          if (response.status === 'error') {
-            reject(response);
-          } else {
-            const responseWithPID: constants.IResponse & { pid: number } = {
-              ...response,
-              pid: response.pid
-            };
-            this.commandsStatusSvc.setState(
-              command.command,
-              response.pid,
-              command.name,
-              command.id
-            );
-            resolve(responseWithPID);
+        this.childProcessSvc.executeAndValid(
+          buildCmd,
+          waitingTime || 10000,
+          (response: constants.IResponse) => {
+            if (response.status === 'error') {
+              const errorResponse: constants.IResponse & constants.IRunAllResponse = {
+                status: 'error',
+                message: response.message,
+                commandId: command.id,
+                pid: -1
+              };
+              reject(errorResponse);
+            } else {
+              const responseWithPID: constants.IResponse & constants.IRunAllResponse = {
+                ...response,
+                pid: response.pid,
+                commandId: command.id
+              };
+              this.commandsStatusSvc.setState(
+                command.command,
+                response.pid,
+                command.name,
+                command.id
+              );
+              resolve(responseWithPID);
+            }
           }
-        });
+        );
         log.info('[RosService][runCommandsForAll] done');
       } catch (err) {
-        const errorResponse: constants.IResponse = {
+        const errorResponse: constants.IResponse & constants.IRunAllResponse = {
           status: 'error',
-          message: ROS_COMMAND.RUN_COMMAND_FAIL
+          message: ROS_COMMAND.RUN_COMMAND_FAIL,
+          commandId: command.id,
+          pid: -1
         };
         log.error(`[RosService][runCommandsForAll] ${err}`);
         reject(errorResponse);
@@ -95,15 +111,13 @@ export default class RosService implements IRosService {
 
     this.setStatusRunAllCommands(constants.EnumStatusRunAllCommands.ACTIVE);
 
-    const promises: Promise<constants.IResponse>[] = commandNotRunning.map((command) =>
-      this.runCommandsForAll(command)
-    );
+    const promises: Promise<constants.IResponse & constants.IRunAllResponse>[] =
+      commandNotRunning.map((command) => this.runCommandsForAll(command));
 
     Promise.allSettled(promises)
-      .then((results: PromiseSettledResult<constants.IResponse>[]) => {
+      .then((results: PromiseSettledResult<constants.IResponse & constants.IRunAllResponse>[]) => {
         const errorResponses: constants.IErrorCommand[] = [];
         const successResponses: constants.IResponse[] = [];
-
         results.forEach((result, index) => {
           if (result.status === 'fulfilled') {
             successResponses.push(result.value);
@@ -113,7 +127,7 @@ export default class RosService implements IRosService {
             if (!existingError) {
               if (error.message) {
                 errorResponses.push({
-                  idCommand: commands[index].id,
+                  idCommand: error.commandId || commands[index].id,
                   error: error.message
                 });
               }
@@ -168,6 +182,27 @@ export default class RosService implements IRosService {
         status: 'error',
         message: ROS_COMMAND.STOP_COMMAND_FAIL
       });
+    }
+  }
+
+  async getNodesFromCommand(command: constants.Command) {
+    try {
+      if (!command.command.includes('roslaunch')) {
+        return [];
+      }
+      const cmdsGetNodeInFile = `${command.command} --nodes`;
+      const buildCmd = this.childProcessSvc.buildCommand(cmdsGetNodeInFile, '');
+      const nodesInFile = await this.childProcessSvc.execAndWait(buildCmd, true);
+      const nodes = nodesInFile.split('\n').slice(0, -1);
+      const cleanedNodes = nodes.flatMap((node) => {
+        if (node.startsWith('/')) {
+          return node.slice(1);
+        }
+        return [];
+      });
+      return cleanedNodes;
+    } catch {
+      return [];
     }
   }
 

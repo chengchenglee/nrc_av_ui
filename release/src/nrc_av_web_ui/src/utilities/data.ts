@@ -17,3 +17,17 @@ export const removeObjectKey = (data: any, keys: string[]) => {
 
   return data;
 };
+
+export const replacePlaceholders = (
+  template: string,
+  replacements: Record<string, string>
+): string => {
+  for (const key in replacements) {
+    // eslint-disable-next-line no-prototype-builtins
+    if (replacements.hasOwnProperty(key)) {
+      const placeholder = `{${key}}`;
+      template = template.replace(placeholder, replacements[key]);
+    }
+  }
+  return template;
+};

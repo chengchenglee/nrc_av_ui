@@ -6,7 +6,12 @@ import {
   ROSNodeSyncingDTO,
   ROSNodeUpdatingDTO
 } from '../dtos/ros-node';
-import { CommandInfoDTO, InterfaceCommandAction, VehicleDTO } from '../dtos/vehicle';
+import {
+  CommandInfoDTO,
+  InterfaceCommandAction,
+  RunInterfaceParamDTO,
+  VehicleDTO
+} from '../dtos/vehicle';
 import { ApiResponse } from '../types/types';
 
 const url = BASE_URL + '/vehicle';
@@ -44,9 +49,13 @@ export const runInterface = (data: {
   vehicleId: number;
   interfaceId: number;
   mapName: string;
+  params?: RunInterfaceParamDTO;
 }): ApiResponse<string> =>
   publicClient.post(
-    `${url}/${data.vehicleId}/execution/interface-files/${data.interfaceId}/${data.mapName}`
+    // eslint-disable-next-line max-len
+    `${url}/${data.vehicleId}/execution/interface-files/${data.interfaceId}/${data.mapName}/options`,
+    null,
+    { params: { ...data.params } }
   );
 
 export const updateMap = (data: {

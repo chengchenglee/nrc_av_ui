@@ -6,9 +6,15 @@ export type CommonInterfaceStatusDTO<T> = {
   status: T;
 };
 
+export type ExtraInterfaceStatusDTO = {
+  healthCheckRate: number;
+  msgCount: number;
+};
+
 export type MachineStatusDTO = CommonInterfaceStatusDTO<MachineStatus>;
-export type SensorStatusDTO = CommonInterfaceStatusDTO<SensorStatus>;
-export type AlgorithmStatusDTO = CommonInterfaceStatusDTO<AlgorithmStatus>;
+export type SensorStatusDTO = CommonInterfaceStatusDTO<SensorStatus> & ExtraInterfaceStatusDTO;
+export type AlgorithmStatusDTO = CommonInterfaceStatusDTO<AlgorithmStatus> &
+  ExtraInterfaceStatusDTO;
 export type CommandsStatusDTO = CommonInterfaceStatusDTO<CommandsStatus> & {
   command: string;
   pid: number;
@@ -21,6 +27,7 @@ export interface GetInterfaceInfoDTO {
   status: ExecutionStatus;
   statusRunAll: StatusRunAll;
   machines: MachineStatusDTO[];
+  subSystems: any[];
   sensors: SensorStatusDTO[];
   algorithms: AlgorithmStatusDTO[];
   statusCommands: CommandsStatusDTO[];

@@ -9,7 +9,8 @@ import {
   UseGuards,
   Post,
   UseInterceptors,
-  Sse
+  Sse,
+  Query
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
@@ -69,16 +70,19 @@ export class VehicleController {
     );
   }
 
-  @Post('/:id/execution/interface-files/:interfaceId/:mapName')
+  @Post('/:id/execution/interface-files/:interfaceId/:mapName/options?')
   async startInterfaceFiles(
     @Param('id', ParseIntPipe) id: number,
     @Param('interfaceId', ParseIntPipe) interfaceId: number,
     @Param('mapName') mapName: string,
-    @Res() res: Response
+    @Res() res: Response,
+    @Query('startAllSubSystem') startAllSubSystem?: string
   ) {
     return res
       .status(HttpStatus.OK)
-      .send(await this.vehicleService.startInterfaceFiles(id, interfaceId, mapName));
+      .send(
+        await this.vehicleService.startInterfaceFiles(id, interfaceId, mapName, startAllSubSystem)
+      );
   }
 
   @Post(':id/change-map/interface-files/:mapName')
@@ -147,10 +151,8 @@ export class VehicleController {
       EventEmitterNameSpace.VEHICLE_INTERFACE_DETAIL_STATUS,
       (data: InterfaceInformationDTO) => {
         const {
-          algorithms,
           machines,
-          sensors,
-          statusCommands,
+          subSystems,
           vehicleId,
           interfaceName,
           status,
@@ -164,9 +166,7 @@ export class VehicleController {
         subjectTimeout = setTimeout(subjectTimeoutError, SSE_TIMEOUT);
         subject.next({
           machines,
-          algorithms,
-          sensors,
-          statusCommands,
+          subSystems,
           interfaceName,
           interfaceId,
           status,

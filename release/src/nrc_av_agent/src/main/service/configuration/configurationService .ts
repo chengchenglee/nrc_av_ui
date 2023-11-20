@@ -15,6 +15,8 @@ export default class ConfigurationService implements IConfiguration {
 
   private configFolderPath!: string;
 
+  private printenvFolderPath!: string;
+
   constructor(
     @inject(TYPES.ElectronWrapper) private electronService: IElectronWrapper,
     @inject(TYPES.FileSystem) private fsService: IFileSystem,
@@ -43,6 +45,29 @@ export default class ConfigurationService implements IConfiguration {
     this.checkAndCreateConfigPath();
   }
 
+  initConfigsFileLogProcess(): void {
+    if (
+      process.env.NODE_ENV === 'production' &&
+      this.electronService.getApp().isPackaged === true
+    ) {
+      this.printenvFolderPath = this.pathService.resolve(
+        this.electronService.getPath('userData'),
+        APP_CONFIG_FOLDER_NAME
+      );
+    } else {
+      this.printenvFolderPath = this.pathService.resolve(
+        __dirname,
+        `../../../${APP_CONFIG_FOLDER_NAME}`
+      );
+    }
+
+    this.checkAndCreateEnvLogPath();
+  }
+
+  pathPrintEnvFolder(): string {
+    return this.configFolderPath;
+  }
+
   loadConfigs(configName: string): boolean {
     const filePath = this.pathService.join(this.configFolderPath, `${configName}.json`);
     const isExist = this.fsService.existsSync(filePath);
@@ -52,6 +77,17 @@ export default class ConfigurationService implements IConfiguration {
     const configuration = this.fsService.readFileSync(filePath, undefined);
     this.configs.set(configName, JSON.parse(configuration.toString()));
     return true;
+  }
+
+  private isPrintEnvFolderExist(): boolean {
+    return this.fsService.existsSync(this.configFolderPath);
+  }
+
+  private checkAndCreateEnvLogPath(): void {
+    if (this.isPrintEnvFolderExist()) {
+      return;
+    }
+    this.fsService.mkdirSync(this.configFolderPath);
   }
 
   createConfig<T extends ConfigType>(configName: string, value: T): void {

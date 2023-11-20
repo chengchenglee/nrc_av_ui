@@ -23,6 +23,8 @@ export default class RosBridgeServerService implements IRosBridgeServerService {
 
   private isRosBridgeReIniting: boolean;
 
+  private lastMessageSent: { type: string | undefined; status: string } | undefined;
+
   constructor(
     @inject(TYPES.BrowserWindowService) private browserWindowService: IBrowserWindowService,
     @inject(TYPES.ChildProcess) private childProcessSvc: IChildProcess,
@@ -33,7 +35,7 @@ export default class RosBridgeServerService implements IRosBridgeServerService {
     this.isRosBridgeReIniting = false;
   }
 
-  @logMethod('[RosBridgeServerService][rosBridgeInit]', log.debug)
+  @logMethod('[RosBridgeServerService][rosBridgeInit]', log.info)
   async rosBridgeInit(
     maxInitAttempt = ROS_BRIDGE.ROS_BRIDGE_SERVER_INIT_RETRY,
     tries = 1
@@ -65,7 +67,7 @@ export default class RosBridgeServerService implements IRosBridgeServerService {
     }
   }
 
-  @logMethod('[RosBridgeServerService][rosBridgeInit]', log.debug)
+  @logMethod('[RosBridgeServerService][rosBridgeReInit]', log.info)
   async rosBridgeReInit(
     createNewHealthcheck = false,
     forceReInit = false,
@@ -88,7 +90,7 @@ export default class RosBridgeServerService implements IRosBridgeServerService {
       log.info(
         '[RosBridgeServerService][rosBridgeInit] Re-initing Ros-Bridge healthcheck worker...'
       );
-      await this.rosBridgeHealthcheck(true);
+      this.rosBridgeHealthcheck(true);
       log.info(
         // eslint-disable-next-line max-len
         '[RosBridgeServerService][rosBridgeReInit] Ros-Bridge healthcheck worker re-init completed!'
@@ -143,84 +145,114 @@ export default class RosBridgeServerService implements IRosBridgeServerService {
 
   @logMethod('[RosBridgeServerService][rosBridgeHealthcheck]', log.debug)
   rosBridgeHealthcheck(forced = false) {
-    try {
-      log.info(
-        // eslint-disable-next-line max-len
-        `[RosBridgeServerService][rosBridgeHealthcheck] Current worker's pid: ${this.healthCheckWorker.pid}`
-      );
-      if (forced) {
-        if (this.healthCheckWorker.pid) {
-          log.warn(
-            // eslint-disable-next-line max-len
-            `[RosBridgeServerService][rosBridgeHealthcheck] Killing worker with pid: ${this.healthCheckWorker.pid}`
-          );
-          this.healthCheckWorker.removeAllListeners();
-          this.childProcessSvc.execAndWait(`kill ${this.healthCheckWorker.pid}`);
-        }
-        this.forkWorker();
-      } else if (!this.healthCheckWorker.pid || !this.healthCheckWorker) this.forkWorker();
-    } catch (_err) {
-      // First time initing worker should produce error since the object itself is null!
-      if (!this.healthCheckWorker) this.forkWorker();
+    if (forced) {
+      this.checkAndKillWorker();
     }
+
+    if (!this.healthCheckWorker?.pid) {
+      this.forkWorker();
+    }
+
+    log.debug(
+      // eslint-disable-next-line max-len
+      `[RosBridgeServerService][rosBridgeHealthcheck] Current worker's pid: ${this.healthCheckWorker.pid}`
+    );
   }
 
   @logMethod('[RosBridgeServerService][forkWorker]', log.debug)
   private forkWorker() {
+    log.debug('[RosBridgeServerService][forkWorker] Creating new worker...');
+
     this.healthCheckWorker = utilityProcess.fork(
       getWorkerPath('workerRosBridgeServerHealthcheck.js'),
       undefined,
       { serviceName: 'nrc_av_agent--ros-bridge-server-status', stdio: 'pipe' }
     );
-    log.info('[RosBridgeServerService][forkWorker] Creating new worker...');
-    this.healthCheckWorker.once('spawn', () => {
-      log.info(
-        // eslint-disable-next-line max-len
-        `[RosBridgeServerService][forkWorker] Created new worker with pid: ${this.healthCheckWorker.pid}`
+
+    this.healthCheckWorker.once('spawn', this.onceWorkerSpawn.bind(this));
+
+    this.healthCheckWorker.stdout?.on('data', this.onWorkerReceivedStdout.bind(this));
+
+    this.healthCheckWorker.stderr?.once('data', this.onceWorkerReceivedError.bind(this));
+
+    this.healthCheckWorker.on('message', this.onWorkerReceivedMsg.bind(this));
+
+    this.healthCheckWorker.once('exit', this.onceWorkerExit.bind(this));
+  }
+
+  @logMethod('[RosBridgeServerService][checkAndKillWorker]', log.debug)
+  private checkAndKillWorker() {
+    if (!this.healthCheckWorker?.pid) {
+      return;
+    }
+    log.warn(
+      // eslint-disable-next-line max-len
+      `[RosBridgeServerService][checkAndKillWorker] Killing worker with pid: ${this.healthCheckWorker.pid}`
+    );
+    this.healthCheckWorker.removeAllListeners();
+    this.childProcessSvc.execAndWait(`kill ${this.healthCheckWorker.pid}`);
+  }
+
+  @logMethod('[RosBridgeServerService][onceWorkerSpawn]', log.debug)
+  private onceWorkerSpawn() {
+    if (!this.healthCheckWorker) {
+      return;
+    }
+
+    log.debug(
+      // eslint-disable-next-line max-len
+      `[RosBridgeServerService][onceWorkerSpawn] Created new worker with pid: ${this.healthCheckWorker.pid}`
+    );
+    const healthCheckData: constants.ROSBridgeHealthcheckData = {
+      socketUrl: constants.ROS_BRIDGE_SOCKET.SOCKET_URL,
+      socketPort: constants.ROS_BRIDGE_SOCKET.SOCKET_PORT
+    };
+    this.healthCheckWorker.postMessage(healthCheckData);
+  }
+
+  @logMethod('[RosBridgeServerService][onWorkerReceivedStdout]', log.debug)
+  private onWorkerReceivedStdout(data: any) {
+    log.debug(`[RosBridgeServerService][onWorkerReceivedStdout] ${data.toString()}`);
+  }
+
+  @logMethod('[RosBridgeServerService][onceWorkerReceivedError]', log.debug)
+  private onceWorkerReceivedError(data: any) {
+    log.error(`[RosBridgeServerService][onceWorkerReceivedError] ${data.toString()}`);
+    if (!this.isRosBridgeReIniting) {
+      log.warn(
+        '[RosBridgeServerService][onceWorkerReceivedError] Worker pid ' +
+          `${this.healthCheckWorker.pid} detected Ros-Bridge is unresponsive!`
       );
-      const healthCheckData: constants.ROSBridgeHealthcheckData = {
-        socketUrl: constants.ROS_BRIDGE_SOCKET.SOCKET_URL,
-        socketPort: constants.ROS_BRIDGE_SOCKET.SOCKET_PORT
-      };
-      this.healthCheckWorker.postMessage(healthCheckData);
-    });
-    this.healthCheckWorker.stdout?.on('data', (data) => {
-      log.debug(`${data.toString()}`);
-    });
-    this.healthCheckWorker.stderr?.once('data', async (data) => {
-      log.error(`${data.toString()}`);
+    }
+    this.rosBridgeReInit(true);
+  }
+
+  @logMethod('[RosBridgeServerService][onWorkerReceivedMsg]', log.debug)
+  private onWorkerReceivedMsg(message: { type: string | undefined; status: string }) {
+    // Not an error
+    if (!message.type) {
+      if (JSON.stringify(message) !== JSON.stringify(this.lastMessageSent)) {
+        this.lastMessageSent = message;
+      }
+    } else {
       if (!this.isRosBridgeReIniting) {
         log.warn(
-          // eslint-disable-next-line max-len
-          `[RosBridgeServerService][forkWorker] Worker pid ${this.healthCheckWorker.pid} detected Ros-Bridge is unresponsive!`
+          '[RosBridgeServerService][onWorkerReceivedMsg] Worker pid ' +
+            `${this.healthCheckWorker.pid} detected Ros-Bridge is unresponsive!`
         );
       }
-      await this.rosBridgeReInit(true);
-    });
-    let lastSentData: any = null;
-    this.healthCheckWorker.on('message', async (res) => {
-      // Not an error
-      if (!res.type) {
-        if (JSON.stringify(res) !== JSON.stringify(lastSentData)) {
-          lastSentData = res;
-        }
-      } else {
-        if (!this.isRosBridgeReIniting) {
-          log.warn(
-            // eslint-disable-next-line max-len
-            `[RosBridgeServerService][forkWorker] Worker pid ${this.healthCheckWorker.pid} detected Ros-Bridge is unresponsive!`
-          );
-        }
-        await this.rosBridgeReInit();
-      }
-    });
-    this.healthCheckWorker.once('exit', async (code: number) => {
-      log.warn(
-        // eslint-disable-next-line max-len
-        `[RosBridgeServerService][forkWorker] Worker pid ${this.healthCheckWorker.pid} exited with code ${code}`
-      );
-      await this.rosBridgeHealthcheck(true);
-    });
+      this.rosBridgeReInit();
+    }
+  }
+
+  @logMethod('[RosBridgeServerService][onceWorkerExit]', log.debug)
+  private onceWorkerExit(code: number) {
+    log.warn(
+      '[RosBridgeServerService][forkWorker] Worker pid ' +
+        `${this.healthCheckWorker.pid} exited with code ${code}`
+    );
+
+    this.rosBridgeHealthcheck(true);
   }
 
   @logMethod('[RosBridgeServerService][rosBridgeInitTries]', log.debug)
@@ -230,17 +262,20 @@ export default class RosBridgeServerService implements IRosBridgeServerService {
     );
     return new Promise((resolve, rejects) => {
       let timeout = false;
-      const timeoutId = setTimeout(async () => {
+      const timeoutId = setTimeout(() => {
         timeout = true;
-        await this.startRosBridgeServer().catch((err) => {
-          log.error(`[RosBridgeServerService][rosBridgeInitTries] ${err}`);
-          rejects(new Error(err));
-        });
-        log.info(
-          // eslint-disable-next-line max-len
-          `[RosBridgeServerService][rosBridgeInitTries] Ros-Bridge server started at ${constants.ROS_BRIDGE_SOCKET.SOCKET_URL}:${constants.ROS_BRIDGE_SOCKET.SOCKET_PORT}`
-        );
-        resolve();
+        this.startRosBridgeServer()
+          .then(() => {
+            log.info(
+              // eslint-disable-next-line max-len
+              `[RosBridgeServerService][rosBridgeInitTries] Ros-Bridge server started at ${constants.ROS_BRIDGE_SOCKET.SOCKET_URL}:${constants.ROS_BRIDGE_SOCKET.SOCKET_PORT}`
+            );
+            resolve();
+          })
+          .catch((err) => {
+            log.error(`[RosBridgeServerService][rosBridgeInitTries] ${err}`);
+            rejects(err);
+          });
       }, ROS_BRIDGE.ROS_BRIDGE_SERVER_TIMEOUT);
       rosBridgePing
         .then((result) => {
@@ -287,7 +322,7 @@ export default class RosBridgeServerService implements IRosBridgeServerService {
   }
 
   @logMethod('[RosBridgeServerService][isRosBridgeStartedOnPort]', log.debug)
-  async isRosBridgeStartedOnPort(): Promise<boolean> {
+  private async isRosBridgeStartedOnPort(): Promise<boolean> {
     const bridgePid = await this.childProcessSvc.execAndWait('pgrep -f rosbridge_websocket');
     const rosNodeList = await this.childProcessSvc.execAndWait(
       this.childProcessSvc.buildCommand('rosnode list', '')
@@ -356,7 +391,7 @@ export default class RosBridgeServerService implements IRosBridgeServerService {
   }
 
   @logMethod('[RosBridgeServerService][startRosBridgeServer]', log.debug)
-  startRosBridgeServer(): Promise<void> {
+  private startRosBridgeServer(): Promise<void> {
     return new Promise((resolve, rejects) => {
       this.isRosBridgeStartedOnPort()
         .then((started) => {
@@ -376,7 +411,7 @@ export default class RosBridgeServerService implements IRosBridgeServerService {
               }
             );
             child.once('spawn', () => {
-              log.info(
+              log.debug(
                 // eslint-disable-next-line max-len
                 `[RosBridgeServerService][startRosBridgeServer] Ros-Bridge server init at ${constants.ROS_BRIDGE_SOCKET.SOCKET_URL}:${constants.ROS_BRIDGE_SOCKET.SOCKET_PORT}`
               );

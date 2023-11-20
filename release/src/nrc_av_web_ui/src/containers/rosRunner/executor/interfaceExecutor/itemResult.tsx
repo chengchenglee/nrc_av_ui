@@ -1,46 +1,31 @@
 /* eslint-disable max-lines-per-function */
-import { Button, List } from 'antd';
 import Title from 'antd/es/typography/Title';
 import * as React from 'react';
-import InterfaceCommandBar from '../../../../components/InterfaceCommandBar';
+import { useDispatch } from 'react-redux';
 import InterfaceInformation from '../../../../components/interfaceInformation';
-import { CommandsStatus } from '../../../../constants/executionStatus';
-import { useGetInterfaceById } from '../../../../hooks/queries/interface';
 import { useRunAllCommands } from '../../../../hooks/queries/vehicle';
-import { InterfaceExecutorContext } from '.';
 
 interface IProps {
   vehicleId?: number;
   mapName: string;
+  dataExecute: any;
 }
 
 const ItemResult: React.FC<IProps> = (props) => {
-  const { vehicleId } = props;
+  const { vehicleId, dataExecute } = props;
+
+  const dispatch = useDispatch();
 
   const {
     dataRunAllCommands,
-    runAllCommands: runAllCommands,
+    runAllCommands,
     isExecutingCommand: isStartingAllCommands
   } = useRunAllCommands();
-  const context = React.useContext(InterfaceExecutorContext);
-  const { data: interfaceData } = useGetInterfaceById(context?.interfaceNameId);
   const [runAllCommandsData, setRunAllCommandsData] = React.useState<any>();
 
   React.useEffect(() => {
     setRunAllCommandsData(dataRunAllCommands);
-  }, [dataRunAllCommands, runAllCommands, runAllCommandsData]);
-
-  const onRunAllCommandsButtonClick = React.useCallback(() => {
-    if (!vehicleId) {
-      return;
-    }
-    if (context?.interfaceNameId) {
-      runAllCommands({
-        vehicleId,
-        interfaceId: context.interfaceNameId
-      });
-    }
-  }, [vehicleId, runAllCommands, context]);
+  }, [dataRunAllCommands, dispatch, isStartingAllCommands, runAllCommands, runAllCommandsData]);
 
   return (
     <div
@@ -63,22 +48,7 @@ const ItemResult: React.FC<IProps> = (props) => {
       >
         Details
       </Title>
-      {/* <List.Item.Meta
-        title={
-          <InterfaceStatusBar
-            body={context?.interfaceName}
-            status={context?.status}
-            runningButtonProps={{
-              loading: isStopping,
-              onClick: handleStopInterface
-            }}
-            stopButtonProps={{
-              loading: isStarting,
-              onClick: handleStartInterface
-            }}
-          />
-        }
-      /> */}
+
       <div
         style={{
           display: 'flex',
@@ -86,50 +56,12 @@ const ItemResult: React.FC<IProps> = (props) => {
           alignItems: 'center',
           marginBottom: '0.5em'
         }}
-      >
-        <Title
-          style={{
-            marginTop: '0'
-          }}
-          level={5}
-        >
-          Commands
-        </Title>
-        <Button
-          loading={isStartingAllCommands}
-          type="primary"
-          onClick={onRunAllCommandsButtonClick}
-        >
-          Run all
-        </Button>
-      </div>
-      <List
-        dataSource={interfaceData?.commands}
-        renderItem={(item) => (
-          <List.Item.Meta
-            title={
-              <InterfaceCommandBar
-                body={item.name}
-                commandId={item.id}
-                vehicleId={vehicleId}
-                interfaceId={context?.interfaceNameId}
-                message={runAllCommandsData?.message || ''}
-                isStartingAllCommands={isStartingAllCommands}
-                commandRunning={
-                  !!context?.interfaceCommands?.some(
-                    (cmd) => cmd.id === item.id && cmd.status === CommandsStatus.RUNNING
-                  )
-                }
-              />
-            }
-          />
-        )}
-      />
+      ></div>
 
       <Title level={5} style={{ marginTop: 0 }}>
         Interface information
       </Title>
-      <InterfaceInformation />
+      <InterfaceInformation vehicleId={vehicleId || 0} dataExecute={dataExecute} />
     </div>
   );
 };

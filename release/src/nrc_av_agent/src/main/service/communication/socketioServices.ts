@@ -1,14 +1,21 @@
+/* eslint-disable import/order */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import log from 'electron-log';
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
 import { io, Socket } from 'socket.io-client';
 import { COMMUNICATION } from '../../constants';
 import { logMethod } from '../log/logDecorator';
-import type { ICommunication } from '../../inversify/interfaces';
+import type { IBrowserWindowService, ICommunication } from '../../inversify/interfaces';
 import 'reflect-metadata';
+import ipcMsg from '../../../shared/ipcMsg';
+import TYPES from '../../inversify/types';
 
 @injectable()
 export default class SocketIOService implements ICommunication {
+  constructor(
+    @inject(TYPES.BrowserWindowService) private browserWindowService: IBrowserWindowService
+  ) {}
+
   private socket: Socket | null = null;
 
   @logMethod('[SocketIOService][connect]')
@@ -60,7 +67,21 @@ export default class SocketIOService implements ICommunication {
       return;
     }
 
-    this.socket?.on(eventName, eventHandler);
+    this.socket?.on(eventName, (...args: any[]) => {
+      // display event histories on UI
+      const dataString = JSON.stringify(args.slice(0, -1));
+      this.sendMessage(ipcMsg.M2R.DATA_BACKEND, dataString, eventName);
+
+      // do real work
+      eventHandler(...args);
+    });
+  }
+
+  private sendMessage(ipcMessage: string, data: string, eventName: string) {
+    this.browserWindowService.sendToRenderer(ipcMessage, {
+      data,
+      eventName
+    });
   }
 
   getConnectionStatus(): boolean | undefined {

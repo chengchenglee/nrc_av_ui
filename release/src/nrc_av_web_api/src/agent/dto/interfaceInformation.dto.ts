@@ -1,7 +1,5 @@
-import { AlgorithmStatusDTO } from './algorithmStatus.dto';
-import { CommandsStatusDTO } from './commandsStatus.dto';
 import { MachineStatusDTO } from './machineStatus.dto';
-import { SensorStatusDTO } from './sensorStatus.dto';
+import { SubSystemStatusDTO } from './subSystemStatus.dto';
 
 export class InterfaceInformationDTO {
   constructor(
@@ -9,9 +7,7 @@ export class InterfaceInformationDTO {
     readonly interfaceId: number | undefined,
     readonly interfaceName: string,
     readonly machines: MachineStatusDTO[],
-    readonly algorithms: AlgorithmStatusDTO[],
-    readonly sensors: SensorStatusDTO[],
-    readonly statusCommands: CommandsStatusDTO[],
+    readonly subSystems: SubSystemStatusDTO[],
     readonly status: string,
     readonly statusRunAll: string
   ) {}

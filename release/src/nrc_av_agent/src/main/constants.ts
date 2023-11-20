@@ -6,10 +6,12 @@ export const SOCKET = {
   NAME_SPACE: 'nissan'
 };
 export const APP_CONFIG_FOLDER_NAME = 'app-config';
+export const APP_CONFIG_LOG_PRINTENV = 'log-env';
 export const APP_CONFIG = {
   VEHICLE: 'vehicle-info',
   CONNECTION: 'connection',
-  LOG: 'log'
+  LOG: 'log',
+  ROSBRIDGE: 'rosbridge'
 };
 
 export const ROS = {
@@ -40,6 +42,19 @@ export const ROS_COMMAND = {
   CHANGE_MAP_FAILED: 'Change map failed'
 };
 
+export const SUB_SYSTEM = {
+  SUBSYSTEM_NO_EXIST: 'Sub system do not exist',
+  SET_SUBSYSTEM_SUCCESS: 'Set sub system successfully',
+  RUN_SUBSYSTEM_SUCCESS: 'Run sub system successfully',
+  RUN_SUBSYSTEM_FAIL: 'Run sub system fail',
+  RUN_SUBSYSTEM_ALREADY_START: 'Sub system already started',
+  STOP_SUBSYSTEM_SUCCESS: 'Stop sub system successfully',
+  STOP_SUBSYSTEM_ALREADY_STOP: 'Sub system already stopped',
+  DEFAULT_TIMEOUT: 30000,
+  DEFAULT_LAUNCH_TIME: 200,
+  DEFAULT_STOP_TIME: 5000
+};
+
 export const ROS_BRIDGE = {
   ROS_BRIDGE_SERVER_TIMEOUT: 10000,
   ROS_BRIDGE_SERVER_PING_RETRY: 15,
@@ -55,35 +70,8 @@ export const ROS_BRIDGE = {
   ROS_NODES_ARR: ['rosapi', 'rosbridge_websocket']
 };
 
-export interface IRosBridgeMessage {
-  header: {
-    stamp: {
-      secs: number;
-    };
-  };
-  pose: {
-    position: {
-      x: number;
-      y: number;
-      z: number;
-    };
-    orientation: {
-      x: number;
-      y: number;
-      z: number;
-      w: number;
-    };
-  };
-  twist: {
-    linear: {
-      x: number;
-      y: number;
-      z: number;
-    };
-    angular: {
-      x: number;
-      y: number;
-      z: number;
-    };
-  };
-}
+export const DIAGNOSTIC = {
+  DIAGNOSTIC_RETRY: 5,
+  DIAGNOSTIC_PASSIVE_INTERVAL: 2000,
+  DIAGNOSTIC_COOLDOWN_INTERVAL: 30000
+};

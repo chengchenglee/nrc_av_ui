@@ -7,7 +7,12 @@ import {
 } from '../../../shared/configurationTypes';
 import ipcMsg from '../../../shared/ipcMsg';
 import { APP_CONFIG } from '../../constants';
-import { ICommunication, IConfiguration, ILogic } from '../../inversify/interfaces';
+import {
+  ICommunication,
+  IConfiguration,
+  IElectronWrapper,
+  ILogic
+} from '../../inversify/interfaces';
 import diContainer from '../../inversify/inversify.config';
 import TYPES from '../../inversify/types';
 
@@ -59,10 +64,13 @@ ipcMain.on(ipcMsg.R2M.REGISTER_INFO, (event, vehicleInfo, connectionInfo) => {
 
 ipcMain.on(ipcMsg.R2M.UPDATE_VEHICLE, (event, vehicleInfo, connectionInfo) => {
   const configSvc = diContainer.get<IConfiguration>(TYPES.Configuration);
+  const electronService = diContainer.get<IElectronWrapper>(TYPES.ElectronWrapper);
+  const agentVersion = electronService.getAgentVersion();
   configSvc.createConfig<IVehicleInfoConfig>(APP_CONFIG.VEHICLE, {
     ...vehicleInfo,
     certKey: vehicleInfo.certKey,
-    macAddress: vehicleInfo.macAddress
+    macAddress: vehicleInfo.macAddress,
+    agentVersion
   });
 
   configSvc.createConfig<IHostConfig>(APP_CONFIG.CONNECTION, connectionInfo);

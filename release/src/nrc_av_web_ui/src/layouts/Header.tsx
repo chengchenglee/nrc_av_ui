@@ -17,10 +17,10 @@ const Header = () => {
   const items = useMemo<MenuProps['items']>(
     () => [
       {
-        label: 'Manage Interfaces',
+        label: 'Vehicle Registration',
         key: '1',
         onClick: () => {
-          navigate('/interface/management');
+          navigate('/menu/registration');
         }
       },
       {
@@ -48,12 +48,12 @@ const Header = () => {
             margin: 0,
             flex: 1
           }}
-          onClick={() => navigate('/vehicle/registration')}
+          onClick={() => navigate('/vehicle/interface/execution')}
         >
-          Nissan-Kelly
+          Nissan
         </Title>
 
-        {user.id && (
+        {user.id !== 0 && (
           <Dropdown menu={{ items }} trigger={['click']}>
             <div
               style={{

@@ -7,7 +7,7 @@ export const UnAuthGuard: React.FC = () => {
 
   const isAuthenticate = React.useMemo(() => !!(user.isLogin && user.id), [user.id, user.isLogin]);
   if (isAuthenticate) {
-    return <Navigate to="/vehicle/registration" />;
+    return <Navigate to="/vehicle/interface/execution" />;
   }
 
   return <Outlet />;

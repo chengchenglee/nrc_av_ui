@@ -1,6 +1,6 @@
 {
   "name": "nrc_av_agent",
-  "version": "0.0.14",
+  "version": "0.6.0",
   "type": "module",
   "main": "app/dist/main/main.js",
   "scripts": {
@@ -37,6 +37,7 @@
     "@reduxjs/toolkit": "^1.9.5",
     "@types/uuid": "^9.0.1",
     "antd": "^5.4.4",
+    "big-integer": "^1.6.51",
     "electron": "^24.1.2",
     "electron-devtools-installer": "^3.2.0",
     "electron-log": "^4.4.8",
@@ -46,6 +47,7 @@
     "eventemitter2": "^6.4.9",
     "getmac": "^5.20.0",
     "inversify": "^6.0.1",
+    "nano-time": "^1.0.0",
     "node-schedule": "^2.1.1",
     "ping": "^0.4.4",
     "react": "^18.2.0",

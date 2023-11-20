@@ -9,6 +9,11 @@ export enum AgentStatus {
   INACTIVE = 'INACTIVE'
 }
 
+export enum SubSystemType {
+  SENSOR = 'Sensor',
+  ALGORITHM = 'Algorithm'
+}
+
 export enum SocketEnum {
   ROOM_PREFIX = 'nissan/'
 }
@@ -28,6 +33,11 @@ export enum SocketEventEnum {
 
   RUN_INTERFACE = 'nissan/interface/run',
   STOP_INTERFACE = 'nissan/interface/stop',
+  SEND_SUBSYSTEM = 'nissan/interface/send/sub-system',
+  RUN_ALL_INTERFACE_SUBSYSTEM = 'nissan/interface/exec-all/sub-system',
+  RUN_SUBSYSTEM = 'nissan/interface/exec/sub-system',
+  STOP_SUBSYSTEM = 'nissan/interface/stop/sub-system',
+
   RUN_INTERFACE_COMMAND = 'nissan/interface/exec/command',
   STOP_INTERFACE_COMMAND = 'nissan/interface/stop/command',
   RUN_ALL_INTERFACE_COMMANDS = 'nissan/interface/exec-all/command',
@@ -42,13 +52,15 @@ export enum EventEmitterNameSpace {
 
 export enum Alias {
   INTERFACE = 'interface',
-  ALGORITHMS = 'algorithms',
+  SUBSYSTEM = 'subSystem',
+  DEPEND_SUBSYSTEM = 'dependSystems',
   MACHINES = 'machines',
-  SENSORS = 'sensors',
+  TOPIC = 'topics',
   COMMANDS = 'commands',
   MULTI_DESTINATIONS = 'multiDestinations',
   INTERFACE_DESTINATIONS = 'interfaceDestinations',
   DESTINATIONS = 'destinations',
   DESTINATION = 'destination',
-  USERS = 'users'
+  USERS = 'users',
+  NODES = 'nodes'
 }

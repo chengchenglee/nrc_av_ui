@@ -166,9 +166,11 @@ const EditableTableC = <T extends HasKeyField>({
       {(fields, { add, remove }) => (
         <div style={{ padding: '0px' }}>
           <Form.Item>
-            <Button onClick={() => add()} type="primary">
-              {addTitle}
-            </Button>
+            {addTitle && (
+              <Button onClick={() => add()} type="primary">
+                {addTitle}
+              </Button>
+            )}
           </Form.Item>
           <Table
             dataSource={

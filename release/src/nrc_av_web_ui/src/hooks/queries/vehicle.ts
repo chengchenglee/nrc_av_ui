@@ -123,17 +123,35 @@ export const useROSNodesStatus = (vehicleId: number | undefined) =>
     }
   );
 
-export const useExecuteInterface = () =>
-  useMutation(runInterface, {
+export const useExecuteInterface = () => {
+  const mutation = useMutation(runInterface, {
     onSuccess: () => {
       message.success('Run interface file successfully');
-      return '';
     },
     onError: (err: AxiosError<{ message: string }>) => {
-      message.error(`Failed to run interface file: ${err?.response?.data?.message}`);
-      return 'error';
+      if (Array.isArray(err?.response?.data?.message)) {
+        message.error('Failed to run subsystem');
+      } else {
+        message.error(`Failed to run interface file: ${err?.response?.data?.message}`);
+      }
     }
   });
+
+  const getDataExecuted = () => {
+    if (mutation.isSuccess) {
+      return '';
+    } else if (mutation.isError) {
+      return mutation.error?.response?.data ?? '';
+    } else {
+      return mutation.data ?? '';
+    }
+  };
+  return {
+    dataExecute: getDataExecuted(),
+    executeInterface: mutation.mutate,
+    isExecutingInterface: mutation.isLoading
+  };
+};
 
 export const useStopInterface = () =>
   useMutation(stopInterfaceFile, {

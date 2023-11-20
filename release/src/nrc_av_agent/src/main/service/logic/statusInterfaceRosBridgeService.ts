@@ -1,65 +1,78 @@
+import { MessageChannelMain, MessagePortMain, UtilityProcess, utilityProcess } from 'electron';
 import log from 'electron-log';
 import { createSharedStore } from 'electron-shared-state';
 import { inject, injectable } from 'inversify';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { promise } from 'ping';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import { Ros, Topic } from 'roslib';
+import { Message, Ros, Topic } from 'roslib';
+import { v4 as uuidv4 } from 'uuid';
 import * as constants from '../../../shared/constants';
 import * as mainConstants from '../../constants';
 import TYPES from '../../inversify/types';
+import { chunkArray, getWorkerPath } from '../../utils';
 import { logMethod } from '../log/logDecorator';
 import type {
   IChildProcess,
   ICommunication,
-  IRosBridgeConnectionService,
   IRosService,
   IStatusCommands,
   IStatusInterfaceRosBridgeService
 } from '../../inversify/interfaces';
 
-const GET_INTERFACE_DETAIL_STATUS = 'nissan/vehicle/interface/detail/status';
 @injectable()
 export default class StatusInterfaceRosBridgeService implements IStatusInterfaceRosBridgeService {
   private sharedStore;
 
-  private topicMap: Map<string, constants.AlgorithmsTopic | constants.SensorsTopic>;
+  private sensorsTopic: Map<string, constants.SensorsStatus[]>;
 
-  private topicList: Topic[];
+  private algorithmsTopic: Map<string, constants.AlgorithmsStatus[]>;
 
-  // eslint-disable-next-line no-undef
-  private topicPollingList: NodeJS.Timer[];
+  private topicWorker: UtilityProcess[];
+
+  private topicPublishList: Map<constants.EnumRosBridgeTopic, Topic>;
+
+  private rosBridgeTopicList: constants.IRosBridgePublishTopic[];
+
+  private communicationChannel: Map<constants.EnumRosBridgeCommunicationPort, MessagePortMain>;
+
+  private stateUpdatedChannel: MessageChannelMain;
 
   constructor(
     @inject(TYPES.ChildProcess) private childProcessSvc: IChildProcess,
     @inject(TYPES.Communication) private commSvc: ICommunication,
     @inject(TYPES.RosService) private rosSvc: IRosService,
-    @inject(TYPES.StatusCommandsService) private commandsStatusSvc: IStatusCommands,
-    @inject(TYPES.RosBridgeConnectionService)
-    private rosBridgeConnectionService: IRosBridgeConnectionService
+    @inject(TYPES.StatusCommandsService) private commandsStatusSvc: IStatusCommands
   ) {
-    this.topicMap = new Map();
-    this.topicList = [];
-    this.topicPollingList = [];
+    this.sensorsTopic = new Map();
+    this.algorithmsTopic = new Map();
+    this.topicWorker = [];
     const initialValue: constants.InterfaceStatus = {
       interfaceName: '',
       machines: [],
-      sensors: [],
-      algorithms: [],
       statusRunAll: constants.EnumStatusRunAllCommands.DEACTIVE,
-      statusCommands: [],
-      anyStatusUpdate: true
+      statusCommands: []
     };
     this.sharedStore = createSharedStore<constants.InterfaceStatus>(initialValue);
     this.sharedStore.subscribe((state) => {
-      if (state.anyStatusUpdate && this.commSvc.getConnectionStatus()) {
-        this.sharedStore.setState((newState) => {
-          // eslint-disable-next-line no-param-reassign
-          newState.anyStatusUpdate = false;
-          this.commSvc.sendNoAck(GET_INTERFACE_DETAIL_STATUS, newState);
-        });
+      if (this.commSvc.getConnectionStatus()) {
+        this.sendInterfaceStatusToChannel(state);
       }
     });
+    this.topicPublishList = new Map();
+    this.rosBridgeTopicList = [
+      {
+        topicName: constants.EnumRosBridgeTopic.LED_DIAGNOSTIC,
+        messageType: 'std_msgs/Int16MultiArray'
+      }
+    ];
+    this.communicationChannel = new Map();
+    this.stateUpdatedChannel = new MessageChannelMain();
+    this.stateUpdatedChannel.port2.start();
+    this.communicationChannel.set(
+      constants.EnumRosBridgeCommunicationPort.INTERFACE_STATE,
+      this.stateUpdatedChannel.port2
+    );
   }
 
   @logMethod('[StatusInterfaceRosBridgeService][initStatusInterface]', log.debug)
@@ -72,6 +85,12 @@ export default class StatusInterfaceRosBridgeService implements IStatusInterface
     } catch (error) {
       log.error(`[StatusInterfaceRosBridgeService][initStatusInterface] ${error}`);
     }
+  }
+
+  getMessagePort(
+    channelName: constants.EnumRosBridgeCommunicationPort
+  ): MessagePortMain | undefined {
+    return this.communicationChannel.get(channelName);
   }
 
   @logMethod('[StatusInterfaceRosBridgeService][statusCheckLoop]', log.debug)
@@ -88,144 +107,156 @@ export default class StatusInterfaceRosBridgeService implements IStatusInterface
       });
   }
 
+  @logMethod('[StatusInterfaceRosBridgeService][forkWorker]', log.debug)
+  private forkWorker(
+    topic: constants.TopicType[],
+    topicType: constants.EnumTopicType,
+    topicChunkUuid: string
+  ) {
+    const topicSubscriber = utilityProcess.fork(
+      getWorkerPath('workerRosBridgeTopicSubscriber.js'),
+      undefined,
+      { serviceName: 'nrc_av_agent--topic-subscriber', stdio: 'pipe', env: { ...process.env } }
+    );
+    this.topicWorker.push(topicSubscriber);
+    topicSubscriber.stdout?.on('data', (data) => {
+      log.debug(`${data.toString()}`);
+    });
+    topicSubscriber.stderr?.on('data', (data) => {
+      log.error(`${data.toString()}`);
+    });
+    topicSubscriber.on('message', (data: constants.TopicType[]) => {
+      this.setTopicWorkerContent(topicChunkUuid, data, topicType);
+      this.sendInterfaceStatusToChannel(this.sharedStore.getState());
+    });
+    topicSubscriber.once('exit', (code: number) => {
+      topicSubscriber.removeAllListeners();
+      this.childProcessSvc.execAndForget(`kill ${topicSubscriber.pid}`);
+      log.error(`[nrc_av_agent--topic-subscriber] Process exited with code ${code}`);
+      setTimeout(this.forkWorker.bind(this), 200);
+    });
+    topicSubscriber.once('spawn', () => {
+      topicSubscriber.postMessage({ topicList: topic });
+    });
+  }
+
+  @logMethod('[StatusInterfaceRosBridgeService][setTopicWorkerContent]', log.debug)
+  private setTopicWorkerContent(
+    chunkUuid: string,
+    topicWorkerContent: constants.TopicType[],
+    topicType: constants.EnumTopicType
+  ) {
+    switch (topicType) {
+      case constants.EnumTopicType.ALGORITHM: {
+        this.algorithmsTopic.set(chunkUuid, topicWorkerContent);
+        break;
+      }
+      case constants.EnumTopicType.SENSOR: {
+        this.sensorsTopic.set(chunkUuid, topicWorkerContent);
+        break;
+      }
+      default: {
+        break;
+      }
+    }
+  }
+
+  @logMethod('[StatusInterfaceRosBridgeService][combineTopicWorkerContent]', log.debug)
+  private combineTopicWorkerContent(topicWorkerMap: Map<string, constants.TopicType[]>) {
+    const combinedTopicList: constants.TopicType[] = [];
+    topicWorkerMap.forEach((topic) => {
+      combinedTopicList.push(...topic);
+    });
+    return combinedTopicList;
+  }
+
   @logMethod('[StatusInterfaceRosBridgeService][setStatusInterface]', log.debug)
   async setStatusInterface(dataInterface: constants.Interface): Promise<void> {
     const status = await this.updateInterfaceStatus(dataInterface);
     status.status = constants.InterfaceFileStatusType.RUNNING;
+    this.chunkTopicAndFork(status);
     const result = this.updateStatusState(status);
-    const rosConnection = await this.rosBridgeConnectionService.getRosBridgeConnection();
-    this.subscribeToAllTopics(rosConnection, result);
-    this.commSvc.sendNoAck(GET_INTERFACE_DETAIL_STATUS, result);
+    this.sendInterfaceStatusToChannel(result);
     return Promise.resolve();
   }
 
-  @logMethod('[StatusInterfaceRosBridgeService][getTopicTypeAndSubscribe]', log.debug)
-  private getTopicTypeAndSubscribe(rosConnection: Ros, topicName: string) {
-    rosConnection.getTopicType(topicName, (type) => {
-      if (type) {
-        this.subscribeToTopic(rosConnection, topicName, type);
-      } else {
-        // Most likely topic haven't finished initializing yet, we will poll for it!
-        log.warn(
-          // eslint-disable-next-line max-len
-          `[StatusInterfaceRosBridgeService][getTopicTypeAndSubscribe]: Topic ${topicName} haven't finished initializing yet ! Polling the topic on ${mainConstants.ROS_BRIDGE.ROS_BRIDGE_TOPIC_POLL_TIME} ms interval`
+  getTopic(topicName: string, topicType: constants.SubSystemType): constants.TopicType | undefined {
+    switch (topicType) {
+      case constants.SubSystemType.ALGORITHM: {
+        return this.combineTopicWorkerContent(this.algorithmsTopic).find(
+          (topic) => topic.name === topicName
         );
-        const topicPolling = setInterval(() => {
-          rosConnection.getTopicType(topicName, (typePolling) => {
-            if (typePolling) {
-              clearInterval(topicPolling);
-              log.info(
-                // eslint-disable-next-line max-len
-                `[StatusInterfaceRosBridgeService][getTopicTypeAndSubscribe]: Topic ${topicName} initialized !`
-              );
-              this.subscribeToTopic(rosConnection, topicName, typePolling);
-            }
-          });
-        }, mainConstants.ROS_BRIDGE.ROS_BRIDGE_TOPIC_POLL_TIME);
-        this.topicPollingList.push(topicPolling);
       }
-    });
-  }
-
-  @logMethod('[StatusInterfaceRosBridgeService][subscribeToAllTopics]', log.debug)
-  private subscribeToAllTopics(rosConnection: Ros, dataInterfaceStatus: constants.InterfaceStatus) {
-    this.unSubscribeToAllTopics();
-    dataInterfaceStatus.algorithms.forEach((item) => {
-      this.topicMap.set(item.topicName, {
-        ...item,
-        avgDowntimeInit: 0,
-        lastGlobalStamp: 0,
-        lastMsgStamp: 0
-      });
-      this.getTopicTypeAndSubscribe(rosConnection, item.topicName);
-    });
-    dataInterfaceStatus.sensors.forEach((item) => {
-      this.topicMap.set(item.topicName, {
-        ...item,
-        avgDowntimeInit: 0,
-        lastGlobalStamp: 0,
-        lastMsgStamp: 0
-      });
-      this.getTopicTypeAndSubscribe(rosConnection, item.topicName);
-    });
-  }
-
-  @logMethod('[StatusInterfaceRosBridgeService][subscribeToTopic]', log.debug)
-  private subscribeToTopic(rosConnection: Ros, topicName: string, topicTypeName: string) {
-    const topic = new Topic({
-      ros: rosConnection,
-      name: topicName,
-      messageType: topicTypeName
-    });
-    topic.subscribe((message) => {
-      const res = message as mainConstants.IRosBridgeMessage;
-      this.processTopicData(topicName, res);
-    });
-    log.info(
-      // eslint-disable-next-line max-len
-      `[StatusInterfaceRosBridgeService][subscribeToTopic]: Subscribed to topic: ${topicName}, topic type: ${topicTypeName}`
-    );
-    this.topicList.push(topic);
-  }
-
-  @logMethod('[StatusInterfaceRosBridgeService][processTopicData]', log.debug)
-  private processTopicData(topicName: string, message: mainConstants.IRosBridgeMessage) {
-    const topicObj = this.topicMap.get(topicName);
-    if (topicObj && topicObj !== undefined) {
-      const stampsString = message.header.stamp.secs;
-      let stamps = Date.now() / 1000;
-      if (stampsString !== null) {
-        stamps = stampsString;
+      case constants.SubSystemType.SENSOR: {
+        return this.combineTopicWorkerContent(this.sensorsTopic).find(
+          (topic) => topic.name === topicName
+        );
       }
-      if (stamps < 1) {
-        stamps = Date.now() / 1000;
+      default: {
+        return [
+          ...this.combineTopicWorkerContent(this.algorithmsTopic),
+          ...this.combineTopicWorkerContent(this.sensorsTopic)
+        ].find((topic) => topic.name === topicName);
       }
-      const downtime = Math.min(5.0, Math.max(0.0, stamps - topicObj.lastMsgStamp));
-      const avgDowntime = 0.99 * topicObj.avgDowntimeInit + 0.01 * downtime;
-      topicObj.avgDowntimeInit = avgDowntime;
-
-      topicObj.lastMsgStamp = stamps;
-      topicObj.lastGlobalStamp = Date.now() / 1000;
-      this.topicMap.set(topicName, topicObj);
     }
-    this.processTopicMapState(message);
+  }
+
+  getAllTopics(topicType?: constants.SubSystemType): constants.TopicType[] {
+    switch (topicType) {
+      case constants.SubSystemType.ALGORITHM: {
+        return this.combineTopicWorkerContent(this.algorithmsTopic);
+      }
+      case constants.SubSystemType.SENSOR: {
+        return this.combineTopicWorkerContent(this.sensorsTopic);
+      }
+      default: {
+        return [
+          ...this.combineTopicWorkerContent(this.algorithmsTopic),
+          ...this.combineTopicWorkerContent(this.sensorsTopic)
+        ];
+      }
+    }
+  }
+
+  @logMethod('[StatusInterfaceRosBridgeService][chunkTopicAndFork]', log.debug)
+  private chunkTopicAndFork(status: constants.TopicStatus) {
+    const sensorsArr = chunkArray(
+      status.sensors,
+      constants.ROS_BRIDGE_WORKER_TOPIC.ROS_TOPIC_CHUNK_SIZE
+    );
+    let sensorIter;
+    // eslint-disable-next-line no-cond-assign
+    while (!(sensorIter = sensorsArr.next()).done) {
+      const uuid = uuidv4();
+      this.sensorsTopic.set(uuid, sensorIter.value);
+      this.forkWorker(sensorIter.value, constants.EnumTopicType.SENSOR, uuid);
+    }
+    const algorithmsArr = chunkArray(
+      status.algorithms,
+      constants.ROS_BRIDGE_WORKER_TOPIC.ROS_TOPIC_CHUNK_SIZE
+    );
+    let algorithmsIter;
+    // eslint-disable-next-line no-cond-assign
+    while (!(algorithmsIter = algorithmsArr.next()).done) {
+      const uuid = uuidv4();
+      this.algorithmsTopic.set(uuid, algorithmsIter.value);
+      this.forkWorker(algorithmsIter.value, constants.EnumTopicType.ALGORITHM, uuid);
+    }
+  }
+
+  @logMethod('[StatusInterfaceRosBridgeService][sendInterfaceStatusToServer]', log.debug)
+  private sendInterfaceStatusToChannel(nonTopicState: constants.InterfaceStatus) {
+    const data: constants.InterfaceStatusDto = {
+      ...nonTopicState,
+      sensors: this.combineTopicWorkerContent(this.sensorsTopic),
+      algorithms: this.combineTopicWorkerContent(this.algorithmsTopic)
+    };
+    // this.commSvc.sendNoAck(GET_INTERFACE_DETAIL_STATUS, data);
+    this.stateUpdatedChannel.port1.postMessage(data);
   }
 
   @logMethod('[StatusInterfaceRosBridgeService][processNonTopicMapState]', log.debug)
   private async processNonTopicMapState() {
-    const emptyMessage: mainConstants.IRosBridgeMessage = {
-      header: {
-        stamp: {
-          secs: 0
-        }
-      },
-      pose: {
-        position: {
-          x: 0,
-          y: 0,
-          z: 0
-        },
-        orientation: {
-          x: 0,
-          y: 0,
-          z: 0,
-          w: 0
-        }
-      },
-      twist: {
-        linear: {
-          x: 0,
-          y: 0,
-          z: 0
-        },
-        angular: {
-          x: 0,
-          y: 0,
-          z: 0
-        }
-      }
-    };
-    this.processTopicMapState(emptyMessage);
     this.sharedStore.getState();
     const machinesStatus = await Promise.all(
       this.sharedStore.getState().machines.map((machine) => this.checkMachineStatus(machine))
@@ -235,9 +266,6 @@ export default class StatusInterfaceRosBridgeService implements IStatusInterface
     const commandsStatus = this.commandsStatusSvc.getState();
     this.sharedStore.setState((state) => {
       const currentMachines = state.machines;
-      // This is so passive ping would send regardless of status
-      // eslint-disable-next-line no-param-reassign
-      state.anyStatusUpdate = true;
       // eslint-disable-next-line no-param-reassign
       state.machines = currentMachines.map((machine) => {
         const matchedMachine = machinesStatus.find(
@@ -255,131 +283,40 @@ export default class StatusInterfaceRosBridgeService implements IStatusInterface
       // eslint-disable-next-line no-param-reassign
       state.statusCommands = commandsStatus;
     });
+    // log.info(this.sharedStore.getState());
+    // log.info(
+    // eslint-disable-next-line max-len
+    //   await this.childProcessSvc.execAndWait(this.childProcessSvc.buildCommand('rosnode list', ''))
+    // );
   }
 
-  @logMethod('[StatusInterfaceRosBridgeService][processTopicMapState]', log.debug)
-  private processTopicMapState(message: mainConstants.IRosBridgeMessage) {
-    this.sharedStore.setState((state) => {
-      state.sensors.forEach((sensor) => {
-        const sensorTopic = this.topicMap.get(sensor.topicName);
-        if (sensorTopic && sensorTopic !== undefined) {
-          const color = this.calRate(
-            sensorTopic.lastGlobalStamp,
-            sensorTopic.avgDowntimeInit,
-            message,
-            sensor.name
-          );
-          let updatedStatus = constants.RosTopicStatusType.BAD;
-          if (color > sensorTopic.warnRate) {
-            updatedStatus = constants.RosTopicStatusType.GOOD;
-          } else if (color > sensorTopic.errRate) {
-            updatedStatus = constants.RosTopicStatusType.TERRIBLE;
-          }
-          if (sensor.status !== updatedStatus) {
-            // eslint-disable-next-line no-param-reassign
-            state.anyStatusUpdate = true;
-            // eslint-disable-next-line no-param-reassign
-            sensor.status = updatedStatus;
-          }
-        }
-      });
-      state.algorithms.forEach((algorithm) => {
-        const algorithmTopic = this.topicMap.get(algorithm.topicName);
-        if (algorithmTopic && algorithmTopic !== undefined) {
-          const color = this.calRate(
-            algorithmTopic.lastGlobalStamp,
-            algorithmTopic.avgDowntimeInit,
-            message,
-            algorithm.name
-          );
-          let updatedStatus = constants.RosTopicStatusType.BAD;
-          if (color > algorithmTopic.warnRate) {
-            updatedStatus = constants.RosTopicStatusType.GOOD;
-          } else if (color > algorithmTopic.errRate) {
-            updatedStatus = constants.RosTopicStatusType.TERRIBLE;
-          }
-          if (algorithm.status !== updatedStatus) {
-            // eslint-disable-next-line no-param-reassign
-            state.anyStatusUpdate = true;
-            // eslint-disable-next-line no-param-reassign
-            algorithm.status = updatedStatus;
-          }
-        }
-      });
-    });
-  }
-
-  @logMethod('[StatusInterfaceRosBridgeService][calRate]', log.debug)
-  private calRate(
-    lastGlobalStamp: number,
-    avgDowntimeInit: number,
-    message: mainConstants.IRosBridgeMessage,
-    name: string
-  ) {
-    const data = Array.from({ length: 5 }, () => [0]);
-    if (name === 'GPS') {
-      const v = Math.sqrt(message.twist.linear.x ** 2 + message.twist.linear.y ** 2);
-      if (v > 2) {
-        const dx = data[0][0] - message.pose.position.x;
-        const dy = data[1][0] - message.pose.position.y;
-        const dPose = Math.sqrt(dx ** 2 + dy ** 2);
-        if (dPose > 1.0) {
-          data[0][0] = message.pose.position.x;
-          data[1][0] = message.pose.position.y;
-          // eslint-disable-next-line operator-assignment
-          data[2][0] = data[2][0] + dPose;
-          data[3][0] = v;
-        }
-      } else {
-        data[0][0] = message.pose.position.x;
-        data[1][0] = message.pose.position.y;
-        data[2][0] = 0;
-        data[3][0] = v;
+  @logMethod('[StatusInterfaceRosBridgeService][killAllTopicWorker]', log.debug)
+  private killAllTopicWorker() {
+    this.topicWorker.forEach((worker) => {
+      if (worker.pid) {
+        worker.removeAllListeners();
+        this.childProcessSvc.execAndForget(`kill ${worker.pid}`);
       }
-    }
-    const downtimeGlobal = Date.now() / 1000 - lastGlobalStamp;
-    const downtime = Math.max(avgDowntimeInit, downtimeGlobal);
-    let rate: number;
-    if (downtime > 0) {
-      rate = 1 / downtime;
-    } else {
-      rate = 0;
-    }
-    return rate;
-  }
-
-  @logMethod('[StatusInterfaceRosBridgeService][unSubscribeToAllTopics]', log.debug)
-  private unSubscribeToAllTopics() {
-    this.topicList.forEach((topic) => {
-      topic.unsubscribe();
     });
-    this.topicList = [];
-    this.topicMap = new Map();
   }
 
   @logMethod('[StatusInterfaceRosBridgeService][clearCache]', log.debug)
   clearCache(): Promise<void> {
     return new Promise((resolve) => {
-      this.topicPollingList.forEach((topicPoll) => {
-        clearInterval(topicPoll);
-      });
-      this.topicPollingList = [];
-      this.unSubscribeToAllTopics();
+      this.algorithmsTopic.clear();
+      this.sensorsTopic.clear();
+      this.topicPublishList.clear();
+      this.killAllTopicWorker();
+      this.topicWorker = [];
       this.sharedStore.setState((state) => {
         // eslint-disable-next-line no-param-reassign
         state.interfaceName = '';
         // eslint-disable-next-line no-param-reassign
         state.machines = [];
         // eslint-disable-next-line no-param-reassign
-        state.sensors = [];
-        // eslint-disable-next-line no-param-reassign
-        state.algorithms = [];
-        // eslint-disable-next-line no-param-reassign
         state.status = constants.InterfaceFileStatusType.STOPPED;
         // eslint-disable-next-line no-param-reassign
         state.statusRunAll = constants.EnumStatusRunAllCommands.DEACTIVE;
-        // eslint-disable-next-line no-param-reassign
-        state.anyStatusUpdate = true;
         resolve();
       });
     });
@@ -400,6 +337,49 @@ export default class StatusInterfaceRosBridgeService implements IStatusInterface
     });
   }
 
+  @logMethod('[StatusInterfaceRosBridgeService][getRosTopics]', log.debug)
+  getRosTopics(rosConnection: Ros): Promise<string[]> {
+    return new Promise((resolve, reject) => {
+      rosConnection.getTopics(
+        (result) => {
+          resolve(result.topics);
+        },
+        (err) => {
+          log.error(`[StatusInterfaceRosBridgeService][getRosTopics] ${err}`);
+          reject(new Error(err));
+        }
+      );
+    });
+  }
+
+  // @TODO For future implementation rosBridgeTopicList will be a parameter
+  @logMethod('[StatusInterfaceRosBridgeService][initTopicPublish]', log.debug)
+  initTopicPublish(rosConnection: Ros) {
+    this.rosBridgeTopicList.forEach((rosBridgeTopic) => {
+      const topic = new Topic({
+        ros: rosConnection,
+        name: rosBridgeTopic.topicName,
+        messageType: rosBridgeTopic.messageType || 'std_msgs/String'
+      });
+      topic.advertise();
+      this.topicPublishList.set(rosBridgeTopic.topicName, topic);
+    });
+  }
+
+  @logMethod('[StatusInterfaceRosBridgeService][getPublishTopic]', log.debug)
+  getPublishTopic(topicName: constants.EnumRosBridgeTopic) {
+    return this.topicPublishList.get(topicName);
+  }
+
+  @logMethod('[StatusInterfaceRosBridgeService][publishMessage]', log.debug)
+  publishMessage(topicName: constants.EnumRosBridgeTopic, message: any) {
+    const topic = this.getPublishTopic(topicName);
+    if (topic) {
+      const mes: Message = message;
+      topic.publish(mes);
+    }
+  }
+
   @logMethod('[StatusInterfaceRosBridgeService][interfaceRunning]', log.debug)
   interfaceRunning(): constants.InterfaceStatus {
     return this.sharedStore.getState();
@@ -408,7 +388,7 @@ export default class StatusInterfaceRosBridgeService implements IStatusInterface
   @logMethod('[StatusInterfaceRosBridgeService][updateInterfaceStatus]', log.debug)
   async updateInterfaceStatus(
     dataInterface: constants.Interface
-  ): Promise<constants.InterfaceStatus> {
+  ): Promise<constants.InterfaceStatus & constants.TopicStatus> {
     const machinesStatus = await Promise.all(
       dataInterface.machines.map((machine) => this.checkMachineStatus(machine))
     );
@@ -428,8 +408,7 @@ export default class StatusInterfaceRosBridgeService implements IStatusInterface
       algorithms: algorithmsStatus,
       status: interfaceStatus,
       statusRunAll: this.rosSvc.getStatusRunAllCommands(),
-      statusCommands: this.commandsStatusSvc.getState(),
-      anyStatusUpdate: true
+      statusCommands: this.commandsStatusSvc.getState()
     };
   }
 
@@ -490,7 +469,9 @@ export default class StatusInterfaceRosBridgeService implements IStatusInterface
   private checkSensorStatus(sensor: constants.Sensor): constants.SensorsStatus {
     return {
       ...sensor,
-      status: constants.RosTopicStatusType.BAD
+      status: constants.RosTopicStatusType.BAD,
+      uuid: uuidv4(),
+      msgCount: 0
     };
   }
 
@@ -498,18 +479,15 @@ export default class StatusInterfaceRosBridgeService implements IStatusInterface
   private checkAlgorithmStatus(algorithm: constants.Algorithm): constants.AlgorithmsStatus {
     return {
       ...algorithm,
-      status: constants.RosTopicStatusType.BAD
+      status: constants.RosTopicStatusType.BAD,
+      uuid: uuidv4(),
+      msgCount: 0
     };
   }
 
   @logMethod('[StatusInterfaceRosBridgeService][updateStatusState]', log.debug)
   private updateStatusState(interfaceStatus: constants.InterfaceStatus): constants.InterfaceStatus {
-    if (
-      !interfaceStatus ||
-      !interfaceStatus.machines.length ||
-      !interfaceStatus.sensors.length ||
-      !interfaceStatus.algorithms.length
-    ) {
+    if (!interfaceStatus) {
       return this.sharedStore.getState();
     }
 
@@ -533,20 +511,6 @@ export default class StatusInterfaceRosBridgeService implements IStatusInterface
     });
 
     this.sharedStore.setState((currentInterfaceStatus) => {
-      interfaceStatus.sensors.forEach((sensorStatus) => {
-        const foundsensorStatus = currentInterfaceStatus.sensors.find(
-          (sensor) => sensor.name === sensorStatus.name
-        );
-
-        if (foundsensorStatus) {
-          foundsensorStatus.status = sensorStatus.status;
-        } else {
-          currentInterfaceStatus.sensors.push(sensorStatus);
-        }
-      });
-    });
-
-    this.sharedStore.setState((currentInterfaceStatus) => {
       interfaceStatus.statusCommands.forEach((sensorStatus) => {
         const foundsensorStatus = currentInterfaceStatus.statusCommands.find(
           (sensor) => sensor.command === sensorStatus.command
@@ -556,20 +520,6 @@ export default class StatusInterfaceRosBridgeService implements IStatusInterface
           foundsensorStatus.status = sensorStatus.status;
         } else {
           currentInterfaceStatus.statusCommands.push(sensorStatus);
-        }
-      });
-    });
-
-    this.sharedStore.setState((currentInterfaceStatus) => {
-      interfaceStatus.algorithms.forEach((algorithmStatus) => {
-        const foundalgorithmStatus = currentInterfaceStatus.algorithms.find(
-          (algorithm) => algorithm.name === algorithmStatus.name
-        );
-
-        if (foundalgorithmStatus) {
-          foundalgorithmStatus.status = algorithmStatus.status;
-        } else {
-          currentInterfaceStatus.algorithms.push(algorithmStatus);
         }
       });
     });

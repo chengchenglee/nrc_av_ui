@@ -19,3 +19,21 @@ html {
 .collapse-no-padding .ant-collapse-header {
   padding: 0px 12px !important;
 }
+
+.ant-tabs-top .ant-tabs-nav {
+  margin: 0;
+}
+
+.ant-collapse-content-box .ant-list .ant-list-empty-text {
+  padding: 0px;
+}
+
+.ant-empty-normal {
+  padding: 0px;
+  margin: 0px;
+  margin-block: 0px;
+}
+
+.ant-empty .ant-empty-image {
+  margin-bottom: 0px;
+}

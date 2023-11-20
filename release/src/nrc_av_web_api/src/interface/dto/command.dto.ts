@@ -1,7 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Expose } from 'class-transformer';
 import joi from 'joi';
+import { NodeDTO, vNodeDTO } from './node.dto';
 
 export class CommandDTO {
+  @Expose()
   @ApiProperty({
     description: 'id',
     example: 1
@@ -21,12 +24,6 @@ export class CommandDTO {
   command: string;
 
   @ApiProperty({
-    description: 'agent name',
-    example: 'KellyTest'
-  })
-  nodes: string;
-
-  @ApiProperty({
     description: 'include by def',
     example: false
   })
@@ -43,14 +40,28 @@ export class CommandDTO {
     example: false
   })
   autoRecord: boolean;
+
+  @ApiProperty({
+    description: 'auto record',
+    example: 0.0
+  })
+  launchTime: number;
+
+  @ApiProperty({
+    description: 'node',
+    example: [{ name: 'sim1_node' }, { name: 'sim2_node' }],
+    isArray: true
+  })
+  nodes: NodeDTO[];
 }
 
 export const vCommandDTO = joi.object<CommandDTO>({
   id: joi.number(),
-  name: joi.string(),
+  name: joi.string().required(),
   command: joi.string().allow(''),
-  nodes: joi.string().allow('', null),
   inclByDef: joi.boolean(),
   autoStart: joi.boolean(),
-  autoRecord: joi.boolean()
+  autoRecord: joi.boolean(),
+  launchTime: joi.number(),
+  nodes: joi.array().items(vNodeDTO)
 });

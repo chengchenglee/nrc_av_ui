@@ -1,3 +1,4 @@
+/* eslint-disable max-depth */
 import { ExecutionStatus } from '../constants/executionStatus';
 import {
   AddDestinationDTO,
@@ -7,6 +8,8 @@ import {
   AddInterfaceMachinesDTO,
   AddInterfaceMultiDestinationDTO,
   AddInterfaceSensorsDTO,
+  AddInterfaceSubsystemsDTO,
+  ImportInterfaceDTO,
   InterfaceDetailDTO
 } from '../dtos/interface';
 import { Status } from '../types/types';
@@ -24,6 +27,76 @@ export const convertExecutionStatus = (executionStatus: ExecutionStatus | undefi
   }
 };
 
+export interface YAMLInterface {
+  [key: string]: any;
+}
+
+const convertNomWarnErrRateForArray = (originalArray: any) => {
+  const newArray = [...originalArray];
+  newArray.forEach((obj) => {
+    if (obj.NomWarnErrRate) {
+      const rates = obj.NomWarnErrRate.split(', ');
+      const [normalRate, warnRate, errRate] = rates;
+      obj.name = obj.HealthName;
+      obj.topicName = obj.HealthTopic;
+      obj.topicType = obj.HealthTopicType;
+      obj.normalRate = normalRate;
+      obj.warnRate = warnRate;
+      obj.errRate = errRate;
+      delete obj.NomWarnErrRate;
+      delete obj.HealthName;
+      delete obj.HealthTopic;
+      delete obj.HealthTopicType;
+    }
+  });
+  return newArray;
+};
+
+export const parseYAMLInterface = (
+  data: YAMLInterface | null | undefined | any,
+  content?: any
+): ImportInterfaceDTO => {
+  const subSystems: AddInterfaceSubsystemsDTO[] = [];
+  for (const key in data?.Subsystem) {
+    if (Object.hasOwn(data.Subsystem, key)) {
+      const item = data.Subsystem[key];
+      const commands = item?.Commands?.map((commandItem: any) => ({
+        command: commandItem.Command,
+        name: commandItem.Name,
+        nodes: commandItem.Nodes?.map((node: { Name: string }) => ({ name: node.Name })) || [],
+        launchTime: commandItem.LaunchTime
+      }));
+      if (item.Type === 'Sensor' || item.Type === 'Algorithm') {
+        const commonProps = {
+          name: key,
+          description: item?.Description,
+          topics:
+            item?.HealthTopics !== null
+              ? convertNomWarnErrRateForArray(item?.HealthTopics)
+              : item?.HealthTopics,
+          diagLed: item?.DiagLED,
+          timeout: item?.Timeout,
+          diagRetry: item?.DiagRetry,
+          depends: item?.Depends !== null ? item.Depends.split(',') : item?.Depends,
+          diagnostic: item?.Diagnostic,
+          type: item?.Type,
+          commands
+        };
+        subSystems.push(commonProps);
+      }
+    }
+  }
+
+  return {
+    name: data?.Configuration.Name,
+    machines: [],
+    content,
+    subSystems,
+    interfaceDestinations: [],
+    multiDestinations: []
+  };
+};
+
 export const addEditInterfaceDataAdaptor = (
   data?: InterfaceDetailDTO
 ): AddEditInterfaceDTO | undefined => {
@@ -33,6 +106,15 @@ export const addEditInterfaceDataAdaptor = (
   return {
     name: data.name,
     algorithms: data.algorithms.map<AddInterfaceAlgorithmDTO>((item) => ({
+      id: item.id,
+      name: item.name,
+      errRate: item.errRate,
+      warnRate: item.warnRate,
+      topicName: item.topicName,
+      topicType: item.topicType
+    })),
+    sensors: data.sensors.map<AddInterfaceSensorsDTO>((item) => ({
+      id: item.id,
       name: item.name,
       errRate: item.errRate,
       warnRate: item.warnRate,
@@ -40,6 +122,7 @@ export const addEditInterfaceDataAdaptor = (
       topicType: item.topicType
     })),
     commands: data.commands.map<AddInterfaceCommandsDTO>((item) => ({
+      id: item.id,
       name: item.name,
       command: item.command,
       nodes: item.nodes,
@@ -50,13 +133,6 @@ export const addEditInterfaceDataAdaptor = (
     machines: data.machines.map<AddInterfaceMachinesDTO>((item) => ({
       name: item.name,
       addr: item.addr
-    })),
-    sensors: data.sensors.map<AddInterfaceSensorsDTO>((item) => ({
-      name: item.name,
-      errRate: item.errRate,
-      warnRate: item.warnRate,
-      topicName: item.topicName,
-      topicType: item.topicType
     })),
     interfaceDestinations: data.interfaceDestinations.map<AddDestinationDTO>((item) => ({
       name: item.name,

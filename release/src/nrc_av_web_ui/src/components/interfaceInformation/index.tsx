@@ -4,9 +4,24 @@ import { ExecutionStatus } from '../../constants/executionStatus';
 import { InterfaceExecutorContext } from '../../containers/rosRunner/executor/interfaceExecutor';
 import './styles.scss';
 import { CommonInterfaceStatusDTO } from '../../dtos/machine-status';
+import SubSystemsPanel from './panelSubSystem';
 
-const InterfaceInformation: React.FC = () => {
+interface IProps {
+  vehicleId: number;
+  dataExecute: any;
+}
+
+// eslint-disable-next-line max-lines-per-function
+const InterfaceInformation: React.FC<IProps> = (props) => {
+  const { vehicleId, dataExecute } = props;
   const context = React.useContext(InterfaceExecutorContext);
+  const [healthCheckInfoState, setHealthCheckInfoStateState] = React.useState(new Map());
+
+  const toggleHealthCheck = (itemName: string) => {
+    const newHealthCheckInfoState = new Map(healthCheckInfoState);
+    newHealthCheckInfoState.set(itemName, !newHealthCheckInfoState.get(itemName));
+    setHealthCheckInfoStateState(newHealthCheckInfoState);
+  };
 
   const renderMachineItem = (data?: CommonInterfaceStatusDTO<string>[]) => {
     if (!data) {
@@ -40,22 +55,26 @@ const InterfaceInformation: React.FC = () => {
       </div>
     );
   };
-  const panelKeys = ['machines', 'sensors', 'alg'];
 
+  const panelKeys = ['machines', 'subsystems'];
   return context && context.status === ExecutionStatus.RUNNING ? (
-    <>
-      <Collapse className="interface-information" defaultActiveKey={panelKeys}>
-        <Collapse.Panel key="machines" header="Machines">
-          {renderMachineItem(context?.interfaceMachines)}
-        </Collapse.Panel>
-        <Collapse.Panel key="sensors" header="Sensors">
-          {renderMachineItem(context?.interfaceSensors)}
-        </Collapse.Panel>
-        <Collapse.Panel key="alg" header="Algorithms">
-          {renderMachineItem(context?.interfaceAlgorithms)}
-        </Collapse.Panel>
-      </Collapse>
-    </>
+    <Collapse className="interface-information" defaultActiveKey={panelKeys}>
+      <Collapse.Panel key="machines" header="Machines">
+        {renderMachineItem(context?.interfaceMachines)}
+      </Collapse.Panel>
+      <Collapse.Panel key="subsystems" header="SubSystems">
+        {context?.interfaceSubSystems.map((item) => (
+          <SubSystemsPanel
+            key={item.id}
+            item={item}
+            toggleHealthCheck={toggleHealthCheck}
+            healthCheckInfoState={healthCheckInfoState}
+            vehicleId={vehicleId}
+            dataExecute={dataExecute}
+          />
+        ))}
+      </Collapse.Panel>
+    </Collapse>
   ) : (
     <></>
   );

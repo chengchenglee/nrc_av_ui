@@ -1,8 +1,7 @@
 import { Modal, Button, Input, message } from 'antd';
 import * as React from 'react';
-import { AddEditInterfaceDTO, InterfaceDetailDTO } from '../../dtos/interface';
 import {
-  useAddInterface,
+  useCloneInterface,
   useGetInterfaceById,
   useGetInterfaceList
 } from '../../hooks/queries/interface';
@@ -17,7 +16,7 @@ interface CloneModalProps {
 const CloneModal: React.FC<CloneModalProps> = ({ showModal, onCancel, id, currentPage }) => {
   const [cloneName, setCloneName] = React.useState('');
   const getInterfaceQuery = useGetInterfaceById(id);
-  const { mutate: addInterface } = useAddInterface();
+  const { mutate: cloneInterface } = useCloneInterface();
   const { refetch } = useGetInterfaceList({ currentPage });
   const handleCloneNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setCloneName(event.target.value);
@@ -29,53 +28,24 @@ const CloneModal: React.FC<CloneModalProps> = ({ showModal, onCancel, id, curren
     }
   }, [showModal]);
 
-  const removeId = (detailInterface: any): any => {
-    if (detailInterface instanceof Array) {
-      return detailInterface.map((item: any) => removeId(item));
-    } else if (detailInterface !== null && typeof detailInterface === 'object') {
-      const addInterface: any = {};
-      for (const key in detailInterface) {
-        if (key !== 'id') {
-          addInterface[key] = removeId(detailInterface[key]);
-        }
-      }
-      return addInterface;
-    } else {
-      return detailInterface;
-    }
-  };
-
-  const convert = (originalObject: InterfaceDetailDTO): AddEditInterfaceDTO => {
-    removeId(originalObject);
-    if (originalObject.interfaceDestinations) {
-      originalObject.interfaceDestinations = originalObject.interfaceDestinations.map(
-        (dest: any) => ({
-          ...dest.destination,
-          name: dest.name
-        })
-      );
-    }
-    return removeId(originalObject);
-  };
-
   const handleClone = () => {
     if (getInterfaceQuery?.data) {
-      const addInterfaceDTO = convert(getInterfaceQuery.data);
-      addInterfaceDTO.name = cloneName;
-
-      addInterface(addInterfaceDTO, {
-        onSuccess: () => {
-          message.success('Clone interface success');
-          refetch();
-        },
-        onError: (error: any) => {
-          if (error.response.data.message !== undefined) {
-            message.error(error.response.data.message);
-          } else {
-            message.error('An error occurred while attempting to clone the Interface');
+      cloneInterface(
+        { id, data: { name: cloneName } },
+        {
+          onSuccess: () => {
+            message.success('Clone interface success');
+            refetch();
+          },
+          onError: (error: any) => {
+            if (error.response.data.message !== undefined) {
+              message.error(error.response.data.message);
+            } else {
+              message.error('An error occurred while attempting to clone the Interface');
+            }
           }
         }
-      });
+      );
     }
     onCancel();
   };

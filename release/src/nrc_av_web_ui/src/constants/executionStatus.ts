@@ -9,6 +9,11 @@ export enum CommandsStatus {
   STOPPED = 'STOPPED'
 }
 
+export enum SubSystemStatus {
+  RUNNING = 'RUNNING',
+  STOPPED = 'STOPPED'
+}
+
 export enum StatusRunAll {
   ACTIVE = 'ACTIVE',
   DEACTIVE = 'DEACTIVE'

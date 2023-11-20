@@ -1,7 +1,8 @@
 import { Expose } from 'class-transformer';
-import { Column, Entity, ManyToOne } from 'typeorm';
+import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
 import { BaseModel } from './base';
-import { Interface } from './interface';
+import { Node } from './node';
+import { SubSystem } from './subsystem';
 
 @Entity()
 export class Command extends BaseModel {
@@ -12,10 +13,6 @@ export class Command extends BaseModel {
   @Expose()
   @Column()
   command: string;
-
-  @Expose()
-  @Column({ nullable: true })
-  nodes: string;
 
   @Expose()
   @Column({ default: false })
@@ -29,23 +26,33 @@ export class Command extends BaseModel {
   @Column({ default: false })
   autoRecord: boolean;
 
-  @ManyToOne(() => Interface, (agentInterface) => agentInterface.commands)
-  interface: Interface;
+  @Expose()
+  @Column({ type: 'float', default: 0.0 })
+  launchTime: number;
+
+  @ManyToOne(() => SubSystem, (agentSubSystem) => agentSubSystem.commands)
+  subSystem: SubSystem;
+
+  @Expose()
+  @OneToMany(() => Node, (node) => node.command, { cascade: true })
+  nodes: Node[];
 
   constructor(
     name: string,
     command: string,
-    nodes: string,
     inclByDef: boolean,
     autoStart: boolean,
-    autoRecord: boolean
+    autoRecord: boolean,
+    launchTime: number,
+    nodes: Node[]
   ) {
     super();
     this.name = name;
     this.command = command;
-    this.nodes = nodes;
     this.inclByDef = inclByDef;
     this.autoStart = autoStart;
     this.autoRecord = autoRecord;
+    this.launchTime = launchTime;
+    this.nodes = nodes;
   }
 }

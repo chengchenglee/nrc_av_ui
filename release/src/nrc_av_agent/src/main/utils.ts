@@ -17,16 +17,6 @@ function getAssetsPath(fileName: string) {
   return path.resolve(__dirname, '../../../assets', fileName);
 }
 
-function getAVPath() {
-  if (process.env.NODE_ENV === 'production' && app.isPackaged === true) {
-    return path.resolve(process.resourcesPath, 'av');
-  }
-  if (process.env.NODE_ENV === 'production' && app.isPackaged === false) {
-    return path.resolve(__dirname, '../../../av');
-  }
-  return path.resolve(__dirname, '../../../av');
-}
-
 function getHtmlPath(htmlFileName: string) {
   if (process.env.NODE_ENV === 'development') {
     const url = `http://localhost:${import.meta.env.VITE_PORT}`;
@@ -65,13 +55,17 @@ function delayInMs(time: number): Promise<void> {
   });
 }
 
+function* chunkArray<T>(array: Array<T>, n: number) {
+  for (let i = 0; i < array.length; i += n) yield array.slice(i, i + n);
+}
+
 export {
   isDebug,
   getAssetsPath,
-  getAVPath,
   getHtmlPath,
   getPreloadPath,
   installExtensions,
   getWorkerPath,
-  delayInMs
+  delayInMs,
+  chunkArray
 };

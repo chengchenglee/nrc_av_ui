@@ -5,6 +5,7 @@ export interface IVehicleInfoConfig {
   name?: string;
   macAddress?: string;
   model?: string;
+  agentVersion?: string;
 }
 
 export interface IVehicleConnection {

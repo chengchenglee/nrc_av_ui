@@ -1,18 +1,29 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   addInterfaceApi,
+  cloneInterfaceApi,
   deleteInterfaceApi,
   editInterfaceApi,
+  getContentYamlByIdInterface,
   getInterfaceApi,
   getInterfaceByIdApi,
+  getInterfaceByName,
   getInterfaceList
 } from '../../api/interface';
-import { INTERFACE, INTERFACES, INTERFACE_BY_ID } from '../../constants/query';
+import {
+  CONTENT_BY_INTERFACE_ID,
+  INTERFACE,
+  INTERFACES,
+  INTERFACE_BY_ID,
+  INTERFACE_BY_NAME
+} from '../../constants/query';
 import {
   AddEditInterfaceDTO,
+  CloneInterfaceDTO,
   EditInterfaceDTO,
   FilterInterfaceDTO,
-  FilterInterfaceParams
+  FilterInterfaceParams,
+  ImportInterfaceDTO
 } from '../../dtos/interface';
 
 export const useGetInterfaceList = (filter?: FilterInterfaceParams) =>
@@ -22,8 +33,43 @@ export const useGetInterfaceList = (filter?: FilterInterfaceParams) =>
     keepPreviousData: true
   });
 
+export const useGetInterfaceByName = (name?: string) =>
+  useQuery(
+    [INTERFACE_BY_NAME, name],
+    () => {
+      if (!name) {
+        return Promise.reject('Required name');
+      }
+
+      return getInterfaceByName(name);
+    },
+    {
+      select: (res) => res.data,
+      enabled: !!name
+    }
+  );
+
+export const useGetContentByIdInterface = (id?: number) =>
+  useQuery(
+    [CONTENT_BY_INTERFACE_ID, id],
+    () => {
+      if (!id) {
+        return Promise.reject('Required id');
+      }
+
+      return getContentYamlByIdInterface(id);
+    },
+    {
+      select: (res) => res.data,
+      enabled: !!id
+    }
+  );
+
 export const useAddInterface = () =>
-  useMutation((data: AddEditInterfaceDTO) => addInterfaceApi(data));
+  useMutation((data: AddEditInterfaceDTO | ImportInterfaceDTO) => addInterfaceApi(data));
+
+export const useCloneInterface = () =>
+  useMutation(({ id, data }: CloneInterfaceDTO) => cloneInterfaceApi(id, data));
 
 export const useGetFilterInterface = (payload: FilterInterfaceDTO, enabled = true) =>
   useQuery([INTERFACE, payload], () => getInterfaceApi(payload), {

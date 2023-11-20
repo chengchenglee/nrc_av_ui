@@ -3,14 +3,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Divider, Form, Modal, Spin, StepProps, Steps, message } from 'antd';
 import * as React from 'react';
 import { INTERFACES, INTERFACE_BY_ID } from '../../constants/query';
-import { AddEditInterfaceDTO } from '../../dtos/interface';
+import { AddEditInterfaceDTO, EditDestinationDTO } from '../../dtos/interface';
 
 import {
   useAddInterface,
   useEditInterface,
   useGetInterfaceById
 } from '../../hooks/queries/interface';
-import { addEditInterfaceDataAdaptor } from '../../utilities/converter';
+import { YAMLInterface, addEditInterfaceDataAdaptor } from '../../utilities/converter';
 import EditableTableC from '../EditableTable';
 import { FieldData, fieldDataList } from './fieldData';
 import AddEditInterfaceControl from './footer';
@@ -24,11 +24,12 @@ interface StepsData extends StepProps {
   renderComponent: (isShow: boolean) => React.ReactNode;
 }
 
-export type ModelType = 'ADD' | 'EDIT';
+export type ModelType = 'ADD' | 'IMPORT' | 'EDIT';
 
 interface AddInterfaceModelProps {
   id?: number;
   mode?: ModelType;
+  data?: YAMLInterface | null | undefined;
 }
 
 const AddEditInterfaceModel = React.forwardRef<
@@ -119,8 +120,22 @@ const AddEditInterfaceModel = React.forwardRef<
         console.error('required id');
         return;
       }
+      const interfaceDestinations: EditDestinationDTO[] = values.interfaceDestinations.map(
+        ({ name, posX, posY, posTh }) => ({
+          name,
+          destination: {
+            posX,
+            posY,
+            posTh
+          }
+        })
+      );
+      const dataSend = {
+        ...values,
+        interfaceDestinations
+      };
 
-      updateInterface({ id, data: values }, { onSuccess: onAddEditSuccess });
+      updateInterface({ id, data: dataSend }, { onSuccess: onAddEditSuccess });
     }
   };
 
@@ -136,7 +151,7 @@ const AddEditInterfaceModel = React.forwardRef<
   // So need to reset the form (to initial value) when have new initial value
   React.useEffect(() => {
     if (mode === 'EDIT') {
-      form.setFieldsValue(initialValue || {});
+      form.setFieldsValue(initialValue ?? {});
     }
   }, [form, initialValue, mode]);
 

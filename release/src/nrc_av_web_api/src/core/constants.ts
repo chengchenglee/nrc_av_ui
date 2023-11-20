@@ -46,5 +46,6 @@ export const message = Object.freeze({
   commandNotFound: 'Command not found',
   interfaceNoCommand: 'The interface does not have any commands',
   notHavePermission: 'You do not have permission',
-  agentTimeout: 'Agent timeout'
+  agentTimeout: 'Agent timeout',
+  invalidSubSystem: 'Invalid sub system configuration'
 });

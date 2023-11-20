@@ -5,14 +5,17 @@ import {
   Model,
   User,
   Machine,
-  Sensor,
-  Algorithm,
+  SubSystem,
+  Topic,
   Interface,
   Destination,
   InterfaceDestination,
   MultiDestination,
-  Command
+  Command,
+  Node,
+  InterfaceContent
 } from '../core';
+import { CacheSubSystem } from '../core/models/cache_subsystem';
 
 export const DbModule = TypeOrmModule.forRootAsync({
   imports: [ConfigModule],
@@ -28,13 +31,16 @@ export const DbModule = TypeOrmModule.forRootAsync({
       Model,
       User,
       Machine,
-      Sensor,
-      Algorithm,
+      SubSystem,
+      Topic,
       Interface,
       Destination,
       InterfaceDestination,
       MultiDestination,
-      Command
+      Command,
+      CacheSubSystem,
+      Node,
+      InterfaceContent
     ]
   }),
   inject: [ConfigService]

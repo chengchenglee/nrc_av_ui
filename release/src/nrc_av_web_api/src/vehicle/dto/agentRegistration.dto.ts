@@ -12,4 +12,7 @@ export class AgentRegistrationDTO {
 
   @IsString()
   certKey: string;
+
+  @IsString()
+  agentVersion: string;
 }

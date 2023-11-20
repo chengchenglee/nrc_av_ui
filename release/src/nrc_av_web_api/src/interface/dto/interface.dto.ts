@@ -1,11 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import joi from 'joi';
-import { AlgorithmDTO, vAlgorithmDTO } from './algorithm.dto';
-import { CommandDTO, vCommandDTO } from './command.dto';
 import { InterfaceDestDTO, vInterfaceDestDTO } from './interfaceDestination.dto';
 import { MachineDTO, vMachineDTO } from './machine.dto';
 import { MultiDestinationDTO, vMultiDestDTO } from './multiDestination.dto';
-import { SensorDTO, vSensorDTO } from './sensor.dto';
+import { SubSystemDTO, vSubSystemDTO } from './subsystem.dto';
 
 export class InterfaceDTO {
   @ApiProperty({
@@ -22,69 +20,14 @@ export class InterfaceDTO {
   machines: MachineDTO[];
 
   @ApiProperty({
-    description: 'sensors',
-    example: [
-      {
-        name: 'CAR',
-        errRate: 3,
-        warnRate: 6,
-        topicName: '/CtrlStateFLG',
-        topicType: 'CtrlStateFLG'
-      },
-      {
-        name: 'GPS',
-        errRate: 3,
-        warnRate: 8,
-        topicName: '/dynamic_global_pose',
-        topicType: 'DynamicPoseWithCovar'
-      }
-    ],
-    isArray: true
-  })
-  sensors: SensorDTO[];
-
-  @ApiProperty({
-    description: 'algorithms',
-    example: [
-      {
-        name: 'DRV_A',
-        errRate: 3,
-        warnRate: 7,
-        topicName: '/drivable_area_boundary_points',
-        topicType: 'PointCloud2'
-      },
-      {
-        name: 'VIS_SP',
-        errRate: 3,
-        warnRate: 5,
-        topicName: '/visible_space_data',
-        topicType: 'VisibleSpace'
-      }
-    ],
-    isArray: true
-  })
-  algorithms: AlgorithmDTO[];
-
-  @ApiProperty({
-    description: 'command',
-    example: [
-      { name: 'ALL', command: ' ', nodes: ' ' },
-      { name: '1 sim1', command: 'roslaunch nrc_av_ui sim1.launch', inclByDef: false },
-      { name: '1 sim2', command: 'rosrun nrc_av_ui sim2', inclByDef: false }
-    ],
-    isArray: true
-  })
-  commands: CommandDTO[];
-
-  @ApiProperty({
-    description: 'command',
-    example: [{ name: 'Dest 0', posX: 4695.0, posY: -1138.0, posTh: -3.066 }],
+    description: 'interface destination',
+    example: [{ name: 'Dest 0', destination: { posX: 4695.0, posY: -1138.0, posTh: -3.066 } }],
     isArray: true
   })
   interfaceDestinations: InterfaceDestDTO[];
 
   @ApiProperty({
-    description: 'command',
+    description: 'interface multi-destination',
     example: [
       {
         name: 'Autonomy 5k v1',
@@ -102,14 +45,165 @@ export class InterfaceDTO {
     isArray: true
   })
   multiDestinations: MultiDestinationDTO[];
+
+  @ApiProperty({
+    description: 'sub system',
+    example: [
+      {
+        name: 'Pose',
+        type: 'Sensor',
+        commands: [
+          {
+            name: '1 sim1_pose',
+            nodes: [{ name: 'sim1_node' }],
+            command: 'roslaunch nrc_av_ui sim1.launch',
+            inclByDef: false
+          },
+          {
+            name: '1 sim2_pose',
+            command: 'rosrun nrc_av_ui sim2',
+            nodes: [{ name: 'sim2' }],
+            inclByDef: false,
+            launchTime: 0.0
+          }
+        ],
+        topics: [
+          {
+            name: 'CAR_POSE',
+            normalRate: 10.0,
+            errRate: 3.0,
+            warnRate: 6.0,
+            topicName: '/CtrlStateFLG',
+            topicType: 'CtrlStateFLG'
+          },
+          {
+            name: 'GPS_POSE',
+            normalRate: 10.0,
+            errRate: 3.0,
+            warnRate: 8.0,
+            topicName: '/dynamic_global_pose',
+            topicType: 'DynamicPoseWithCovar'
+          }
+        ],
+        depends: []
+      },
+      {
+        name: 'GPS_RAW',
+        type: 'Sensor',
+        commands: [
+          {
+            name: '1 sim1',
+            command: 'roslaunch nrc_av_ui sim1.launch',
+            nodes: [{ name: 'sim1_node' }],
+            inclByDef: false
+          },
+          {
+            name: '1 sim2',
+            command: 'rosrun nrc_av_ui sim2',
+            nodes: [{ name: 'sim2' }],
+            inclByDef: false,
+            launchTime: 0.0
+          }
+        ],
+        topics: [
+          {
+            name: 'CAR',
+            normalRate: 10.0,
+            errRate: 3.0,
+            warnRate: 6.0,
+            topicName: '/CtrlStateFLG',
+            topicType: 'CtrlStateFLG'
+          },
+          {
+            name: 'GPS',
+            normalRate: 10.0,
+            errRate: 3.0,
+            warnRate: 8.0,
+            topicName: '/dynamic_global_pose',
+            topicType: 'DynamicPoseWithCovar'
+          }
+        ],
+        depends: ['Pose']
+      }
+    ],
+    isArray: true
+  })
+  subSystems: SubSystemDTO[];
+
+  @ApiProperty({
+    description: 'yaml',
+    example: `Configuration:
+  Name: KellyTest
+
+Subsystem:
+  Pose:
+    Type: Sensor
+    Description: Pose Connection
+    HealthTopics:
+      - HealthTopic: /CtrlStateFLG
+        HealthName: CAR_POSE
+        HealthTopicType: CtrlStateFLG
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /dynamic_global_pose
+        HealthName: GPS_POSE
+        HealthTopicType: DynamicPoseWithCovar
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: 1 sim1_pose
+        Command: roslaunch nrc_av_ui sim1.launch
+        Type: Software
+        LaunchTime: 0.0
+        Nodes:
+          - Name: sim1_node
+      - Name: 1 sim12
+        Command: rosrun nrc_av_ui_ui sim2
+        Type: Software
+        Nodes:
+          - Name: sim2
+        LaunchTime: 0.0
+    DiagLED: 1
+    Depends:
+    Diagnostic:
+
+  GPS_RAW:
+    Type: Sensor
+    Description: GPS_RAW Connection
+    HealthTopics:
+      - HealthTopic: /CtrlStateFLG
+        HealthName: CAR_POSE
+        HealthTopicType: CtrlStateFLG
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /dynamic_global_pose
+        HealthName: GPS_POSE
+        HealthTopicType: DynamicPoseWithCovar
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: 1 sim1_pose
+        Command: roslaunch nrc_av_ui sim1.launch
+        Type: Software
+        LaunchTime: 0.0
+        Nodes:
+          - Name: sim1_node
+      - Name: 1 sim12
+        Command: rosrun nrc_av_ui_ui sim2
+        Type: Software
+        Nodes:
+          - Name: sim2
+        LaunchTime: 0.0
+    DiagLED: 7
+    Timeout:
+    DiagRetry:
+    Depends: Pose
+    Diagnostic:`
+  })
+  content: string;
 }
 
 export const vInterfaceDTO = joi.object<InterfaceDTO>({
   name: joi.string().required(),
   machines: joi.array().items(vMachineDTO),
-  sensors: joi.array().items(vSensorDTO),
-  algorithms: joi.array().items(vAlgorithmDTO),
-  commands: joi.array().items(vCommandDTO),
   interfaceDestinations: joi.array().items(vInterfaceDestDTO),
-  multiDestinations: joi.array().items(vMultiDestDTO)
+  multiDestinations: joi.array().items(vMultiDestDTO),
+  subSystems: joi.array().items(vSubSystemDTO),
+  content: joi.string().required()
 });

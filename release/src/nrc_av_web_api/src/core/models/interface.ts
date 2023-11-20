@@ -1,13 +1,12 @@
 import { Expose } from 'class-transformer';
 import { Column, Entity, ManyToMany, ManyToOne, OneToMany } from 'typeorm';
-import { Algorithm } from './algorithms';
 import { BaseModel } from './base';
-import { Command } from './command';
+import { InterfaceContent } from './interfaceContent';
 import { InterfaceDestination } from './interfaceDestination';
 import { Machine } from './machine';
 import { Model } from './model';
 import { MultiDestination } from './multiDestination';
-import { Sensor } from './sensor';
+import { SubSystem } from './subsystem';
 import { User } from './user';
 
 @Entity()
@@ -25,16 +24,8 @@ export class Interface extends BaseModel {
   machines: Machine[];
 
   @Expose()
-  @OneToMany(() => Sensor, (sensor) => sensor.interface, { cascade: true })
-  sensors: Sensor[];
-
-  @Expose()
-  @OneToMany(() => Algorithm, (algorithm) => algorithm.interface, { cascade: true })
-  algorithms: Algorithm[];
-
-  @Expose()
-  @OneToMany(() => Command, (command) => command.interface, { cascade: true })
-  commands: Command[];
+  @OneToMany(() => SubSystem, (subSystem) => subSystem.interface, { cascade: true })
+  subSystems: SubSystem[];
 
   @Expose()
   @OneToMany(() => MultiDestination, (multiDestination) => multiDestination.interface)
@@ -46,6 +37,12 @@ export class Interface extends BaseModel {
 
   @ManyToMany(() => User, (user) => user.interfaces)
   users: User[];
+
+  @Expose()
+  @OneToMany(() => InterfaceContent, (interfaceContent) => interfaceContent.interface, {
+    cascade: true
+  })
+  interfaceContents: InterfaceContent[];
 
   constructor(name: string) {
     super();

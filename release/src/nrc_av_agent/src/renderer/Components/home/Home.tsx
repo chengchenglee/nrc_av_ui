@@ -1,7 +1,7 @@
 /* eslint-disable max-lines-per-function */
 import { ExclamationCircleOutlined } from '@ant-design/icons';
-import { Badge, Card, Col, Descriptions, Divider, Row, Space, Tooltip } from 'antd';
-import React, { FC, useCallback, useEffect } from 'react';
+import { Badge, Card, Col, Descriptions, Divider, Progress, Row, Space, Tooltip } from 'antd';
+import React, { FC, useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   IVehicleInfoConfig,
@@ -9,8 +9,13 @@ import {
   IHostConfig,
   IUpdatedVehicleConfig
 } from '../../../shared/configurationTypes';
-import { EnumVehicleConnectionState, EnumVehicleStatusState } from '../../../shared/constants';
+import {
+  EnumVehicleConnectionState,
+  EnumVehicleStatusState,
+  ROS_BRIDGE_INIT
+} from '../../../shared/constants';
 import ipcMsg from '../../../shared/ipcMsg';
+import CollapsibleMessageList from '../message/Message';
 
 const { Meta } = Card;
 
@@ -23,6 +28,38 @@ const Home: FC<HomeProps> = ({ vehicleInfo, connectionInfo }) => {
   const [vehicleStatus, setVehicleStatus] = React.useState<EnumVehicleStatusState>(
     EnumVehicleStatusState.FETCHING
   );
+
+  const [progress, setProgress] = useState<number>(0);
+
+  const setProgressToValue = (value: number) => {
+    setProgress(value);
+  };
+
+  useEffect(() => {
+    const progressInterval = setInterval(() => {
+      if (progress < 99) {
+        setProgress(
+          (prevProgress) =>
+            prevProgress + Math.floor(Math.random() * ROS_BRIDGE_INIT.PERCENT_MOVEMENT_PROGRESS)
+        );
+      }
+    }, ROS_BRIDGE_INIT.PROGRESS_INTERVAL);
+
+    const checkProgressCompletion = () => {
+      const checkStatusInterval = setInterval(() => {
+        if (vehicleStatus === EnumVehicleStatusState.ACTIVE) {
+          setProgressToValue(100);
+          clearInterval(checkStatusInterval);
+        }
+      }, ROS_BRIDGE_INIT.CHECK_INTERVAL);
+    };
+
+    checkProgressCompletion();
+
+    return () => {
+      clearInterval(progressInterval);
+    };
+  }, [progress, vehicleStatus]);
   const location = useLocation();
   if (location.state) {
     const updateConfig = location.state as IUpdatedVehicleConfig;
@@ -55,21 +92,23 @@ const Home: FC<HomeProps> = ({ vehicleInfo, connectionInfo }) => {
   }, [vehicleConnectionInfo]);
 
   const displayVehicleStatus = useCallback(() => {
-    switch (vehicleStatus) {
-      case EnumVehicleStatusState.ACTIVE:
-        return <Badge status="success" text="Approved" />;
-      case EnumVehicleStatusState.ROS_BRIDGE_INIT:
-        return <Badge status="processing" text="Initializing Ros Bridge" />;
-      case EnumVehicleStatusState.ROS_CONNECTION_INIT:
-        return <Badge status="processing" text="Connecting to Ros Bridge..." />;
-      case EnumVehicleStatusState.WAITING:
-        return <Badge status="processing" text="Waiting for approval" />;
-      default:
-        return <Badge status="processing" text="Fetching status from server..." />;
+    if (progress >= 100 && vehicleStatus === EnumVehicleStatusState.ACTIVE) {
+      return 'Approved';
     }
-  }, [vehicleStatus]);
+    switch (vehicleStatus) {
+      case EnumVehicleStatusState.ROS_BRIDGE_INIT:
+        return 'Initializing Ros Bridge';
+      case EnumVehicleStatusState.ROS_CONNECTION_INIT:
+        return 'Connecting to Ros Bridge...';
+      case EnumVehicleStatusState.WAITING:
+        return 'Waiting for approval';
+      default:
+        return 'Fetching status from server...';
+    }
+  }, [vehicleStatus, progress]);
 
   const getContent = useCallback(() => {
+    const progressColor = { '0%': '#87d068', '50%': '#ffe58f', '100%': '#ffccc7' };
     if (!vehicleInfo || !vehicleConnectionInfo || !connectionInfo) {
       return null;
     }
@@ -91,7 +130,20 @@ const Home: FC<HomeProps> = ({ vehicleInfo, connectionInfo }) => {
           {vehicleInfo.certKey}
         </Descriptions.Item>
         <Descriptions.Item span={12} label="Vehicle status">
-          {displayVehicleStatus()}
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <Progress
+              type="circle"
+              style={{ paddingRight: 10 }}
+              strokeColor={progressColor}
+              width={40}
+              percent={
+                vehicleStatus === EnumVehicleStatusState.ACTIVE
+                  ? Math.min(progress, 100)
+                  : Math.min(progress, 99)
+              }
+            />
+            {displayVehicleStatus()}
+          </div>
         </Descriptions.Item>
         <Descriptions.Item span={12} label="Connection status">
           {displayConnectionStatus()}
@@ -102,8 +154,10 @@ const Home: FC<HomeProps> = ({ vehicleInfo, connectionInfo }) => {
     vehicleInfo,
     vehicleConnectionInfo,
     connectionInfo,
-    displayConnectionStatus,
-    displayVehicleStatus
+    vehicleStatus,
+    progress,
+    displayVehicleStatus,
+    displayConnectionStatus
   ]);
 
   React.useEffect(() => {
@@ -134,7 +188,7 @@ const Home: FC<HomeProps> = ({ vehicleInfo, connectionInfo }) => {
     if (!vehicleInfo) {
       navigate('/add');
     }
-  }, [vehicleInfo]);
+  }, [navigate, vehicleInfo]);
 
   return (
     <Card>
@@ -149,8 +203,10 @@ const Home: FC<HomeProps> = ({ vehicleInfo, connectionInfo }) => {
       />
       <Divider />
       <Row justify="center">
-        <Col span={20}>{getContent()}</Col>
+        <Col span={19}>{getContent()}</Col>
       </Row>
+      <Divider />
+      <CollapsibleMessageList />
     </Card>
   );
 };

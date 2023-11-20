@@ -12,7 +12,6 @@ files:
 
 extraResources:
   - './assets/**'
-  - './av/**'
 
 electronLanguages: 'en-US'
 directories:

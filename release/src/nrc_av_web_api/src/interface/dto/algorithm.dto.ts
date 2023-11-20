@@ -1,7 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Expose } from 'class-transformer';
 import joi from 'joi';
 
 export class AlgorithmDTO {
+  @Expose()
   @ApiProperty({
     description: 'id',
     example: 1

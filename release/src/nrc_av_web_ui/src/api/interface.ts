@@ -5,7 +5,10 @@ import {
   AddEditInterfaceDTO,
   FilterInterfaceParams,
   FilterInterfaceDTO,
-  InterfaceDetailDTO
+  InterfaceDetailDTO,
+  EditDataInterfaceDTO,
+  CloneDataInterfaceDTO,
+  ImportInterfaceDTO
 } from '../dtos/interface';
 import { ApiResponse } from '../types/types';
 
@@ -16,7 +19,20 @@ export const getInterfaceList = (payload?: FilterInterfaceParams): ApiResponse<I
     params: payload
   });
 
-export const addInterfaceApi = (data: AddEditInterfaceDTO) => publicClient.post('/interface', data);
+export const getInterfaceByName = (name: string) =>
+  publicClient.get<InterfaceDetailDTO>(`${url}/name/${name}`);
+
+export const getContentYamlByIdInterface = (id: number) =>
+  publicClient.get<string>(`${url}/${id}/content`);
+
+export const addInterfaceApi = (data: AddEditInterfaceDTO | ImportInterfaceDTO) =>
+  publicClient.post('/interface', data);
+
+export const cloneInterfaceApi = (id: number, data: CloneDataInterfaceDTO) =>
+  publicClient.get(`/interface/clone/${id}`, {
+    params: data
+  });
+
 export const getInterfaceApi = (data: FilterInterfaceDTO) =>
   publicClient.get('/interface', {
     params: data
@@ -25,7 +41,7 @@ export const getInterfaceApi = (data: FilterInterfaceDTO) =>
 export const getInterfaceByIdApi = (id: number) =>
   publicClient.get<InterfaceDetailDTO>(`/interface/${id}`);
 
-export const editInterfaceApi = (id: number, data: AddEditInterfaceDTO) =>
+export const editInterfaceApi = (id: number, data: EditDataInterfaceDTO) =>
   publicClient.put(`/interface/${id}`, data);
 
 export const deleteInterfaceApi = (id: number) => publicClient.delete(`/interface/${id}`);

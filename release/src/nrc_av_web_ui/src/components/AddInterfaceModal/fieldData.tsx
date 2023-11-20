@@ -61,7 +61,7 @@ export const fieldDataList: FieldData[] = [
   {
     name: 'commands',
     label: 'Commands',
-    addButton: 'Add Command',
+    addButton: false,
     columns: [
       {
         title: 'Name',
@@ -77,7 +77,7 @@ export const fieldDataList: FieldData[] = [
   {
     name: 'algorithms',
     label: 'Algorithms',
-    addButton: 'Add Algorithm',
+    addButton: false,
     columns: [
       {
         title: 'Name',
@@ -112,7 +112,7 @@ export const fieldDataList: FieldData[] = [
   {
     name: 'sensors',
     label: 'Sensors',
-    addButton: 'Add Sensor',
+    addButton: false,
     columns: [
       {
         title: 'Name',

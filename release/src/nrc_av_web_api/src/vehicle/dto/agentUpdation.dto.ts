@@ -6,4 +6,7 @@ export class AgentUpdationDTO {
 
   @IsString()
   model: string;
+
+  @IsString()
+  agentVersion: string;
 }

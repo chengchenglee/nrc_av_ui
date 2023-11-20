@@ -25,13 +25,13 @@ export const vInterfaceFilteringDTO = joi.object<InterfaceFilteringDTO>({
   pageSize: joi.number().min(1).required().failover(10),
   orderBy: joi
     .string()
-    .failover('name')
+    .failover('updatedAt')
     .valid(...interfaceOrderBy)
     .required(),
   order: joi
     .string()
     .allow('')
-    .failover(SortOrder.ASC)
+    .failover(SortOrder.DESC)
     .valid(SortOrder.ASC, SortOrder.DESC)
     .required()
 });

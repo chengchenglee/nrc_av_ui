@@ -8,13 +8,21 @@ import { APP_CONFIG, COMMUNICATION, ROS, ROS_COMMAND } from '../../constants';
 import TYPES from '../../inversify/types';
 import { delayInMs } from '../../utils';
 import { logMethod } from '../log/logDecorator';
-import type { IChildProcess, IConfiguration, IPath } from '../../inversify/interfaces';
+import type {
+  IChildProcess,
+  IConfiguration,
+  IElectronWrapper,
+  IFileSystem,
+  IPath
+} from '../../inversify/interfaces';
 
 @injectable()
 export default class ChildProcessService implements IChildProcess {
   constructor(
     @inject(TYPES.Configuration) private configSvc: IConfiguration,
-    @inject(TYPES.Path) private pathSvc: IPath
+    @inject(TYPES.Path) private pathSvc: IPath,
+    @inject(TYPES.FileSystem) private fsService: IFileSystem,
+    @inject(TYPES.ElectronWrapper) private electronService: IElectronWrapper
   ) {}
 
   @logMethod('[ChildProcessService][execAndForget]')
@@ -35,64 +43,74 @@ export default class ChildProcessService implements IChildProcess {
     });
   }
 
+  // eslint-disable-next-line max-lines-per-function
   @logMethod('[ChildProcessService][executeAndValid]')
   executeAndValid(
     command: string,
     waitingTime: number,
-    replyOnChannel: (response: IResponse) => void
+    replyOnChannel: (response: IResponse) => void,
+    returnOutput?: boolean
   ): number {
     log.debug(`[ChildProcessService][executeAndValid] Executing command: ${command}`);
     const args: readonly string[] | undefined = [];
     const options = { shell: true, detached: true, env: { ...process.env } };
 
     const child = spawn(command, args, options);
-
     let stdoutData = '';
     let stdoutError = '';
 
     child.stdout.on('data', (data) => {
       stdoutData += data.toString();
-      log.debug(`[ChildProcessService][executeAndValid] stdout: ${stdoutData}`);
+      log.debug(`[ChildProcessService][executeAndValid] stdout: ${data.toString()}`);
     });
 
     child.stderr.on('data', (data) => {
       stdoutError += data.toString();
-      log.debug(`[ChildProcessService][executeAndValid] stderr: ${stdoutError}`);
+      log.debug(`[ChildProcessService][executeAndValid] stderr: ${data.toString()}`);
     });
 
     child.on('error', (err) => {
       console.error('Error occurred while executing the command:', err);
     });
 
-    child.on('close', () => {
+    const replyDataToChannel = () => {
       // eslint-disable-next-line no-control-regex
       const ansiEscapeRegex = /\x1b\[\d+m/g;
       const cleanedError = stdoutError.replace(ansiEscapeRegex, '');
-
-      if (stdoutData === '' && cleanedError === '') {
-        replyOnChannel({
-          status: 'success',
-          data: 'success',
-          pid: child.pid
-        });
-      } else {
+      if (cleanedError) {
         replyOnChannel({
           status: 'error',
           message: cleanedError
         });
-      }
-    });
-
-    setTimeout(() => {
-      if (stdoutData === '' && stdoutError === '') {
+      } else if (returnOutput) {
+        replyOnChannel({
+          status: 'success',
+          data: stdoutData,
+          pid: child.pid
+        });
+      } else {
         replyOnChannel({
           status: 'success',
           data: 'success',
           pid: child.pid
         });
       }
-      child.kill('SIGINT');
+    };
+
+    const waitTimeId = setTimeout(() => {
+      log.error(
+        `[ChildProcessService][executeAndValid] ${command} timeout after: ${waitingTime} ms`
+      );
+      child.removeAllListeners();
+      replyDataToChannel();
     }, waitingTime);
+
+    child.once('close', () => {
+      clearTimeout(waitTimeId);
+      child.removeAllListeners();
+      replyDataToChannel();
+    });
+
     if (child.pid !== undefined) {
       return child.pid;
     }
@@ -100,12 +118,12 @@ export default class ChildProcessService implements IChildProcess {
   }
 
   @logMethod('[ChildProcessService][execAndWait]', log.debug)
-  async execAndWait(command: string): Promise<string> {
+  async execAndWait(command: string, ignoreError?: boolean): Promise<string> {
     try {
       const execPromise = util.promisify(exec);
       log.debug(`[ChildProcessService][execAndWait] ${command}`);
       const { stdout, stderr } = await execPromise(command);
-      if (stderr) {
+      if (stderr && !ignoreError) {
         log.warn(`[ChildProcessService][execAndWait] stderr: ${stderr}`);
         return stderr;
       }
@@ -126,6 +144,13 @@ export default class ChildProcessService implements IChildProcess {
     const execPath = this.pathSvc.join(path, command);
     const res = `. ${setupPath} && ${execPath}`;
     return res;
+  }
+
+  @logMethod('[ChildProcessService][writeLogToFile]')
+  writeLogToFile(name: string, data: string): void {
+    const getConfigPath = this.electronService.getPath('logs');
+    const filePath = `${getConfigPath}/${name}.txt`;
+    this.fsService.writeFile(filePath, data, null, () => undefined);
   }
 
   @logMethod('[LogicService][waitForResultAndReturn]')

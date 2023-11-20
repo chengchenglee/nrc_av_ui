@@ -3,7 +3,9 @@ import { Navigate } from 'react-router-dom';
 import MainLayout from '../components/layouts/mainLayout';
 import InterfaceManagement from '../containers/InterfaceManagement';
 import Login from '../containers/Login';
-import VehicleRegistration from '../containers/vehicleRegistration';
+import Register from '../containers/Register';
+import ROSRunner from '../containers/rosRunner';
+import VehicleInterface from '../containers/vehicleInterface';
 import { AuthGuard } from '../guards/auth';
 import { UnAuthGuard } from '../guards/unAuth';
 
@@ -22,17 +24,27 @@ export const ROUTES: SingleRoute[] = [
       {
         guard: <AuthGuard />,
         path: '/',
-        component: <Navigate to="/vehicle/registration" />
+        component: <Navigate to="/vehicle/interface/execution" />
       },
       {
         guard: <AuthGuard />,
-        path: '/vehicle/registration',
-        component: <VehicleRegistration />
+        path: '/vehicle/interface',
+        component: <VehicleInterface />,
+        children: [
+          {
+            path: 'execution',
+            component: <ROSRunner />
+          },
+          {
+            path: 'manage',
+            component: <InterfaceManagement />
+          }
+        ]
       },
       {
         guard: <AuthGuard />,
-        path: '/interface/management',
-        component: <InterfaceManagement />
+        path: '/menu/registration',
+        component: <Register />
       },
       {
         path: '/auth/login',

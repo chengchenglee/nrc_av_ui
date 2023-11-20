@@ -1,0 +1,17 @@
+.editor-container {
+  height: 50vh;
+}
+
+.editor {
+  flex: 1;
+  padding: 10px;
+}
+
+.error-panel {
+  padding: 10px;
+  margin-top: 3px;
+  height: 20vh;
+  background-color: #f5f5f5;
+  border-left: 3px solid #ddd;
+  overflow: auto;
+}

@@ -1,3 +1,5 @@
+/* eslint-disable indent */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable consistent-return */
 /* eslint-disable prefer-const */
 /* eslint-disable prettier/prettier */
@@ -5,12 +7,10 @@
 import { faCircleNotch, faPlay, faStop } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button } from 'antd';
-import { FC, ReactNode, useCallback, useEffect, useState, useContext } from 'react';
-import {
-  InterfaceExecutorContext,
-  InterfaceExecutorContextProps
-} from '../../containers/rosRunner/executor/interfaceExecutor/index';
+import { FC, ReactNode, useCallback, useEffect, useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { useExecuteCommand, useStopCommand } from '../../hooks/queries/vehicle';
+import { setIsStartingCommands, setIsStartingAllCommands } from '../../store/command';
 interface InterfaceCommonBarProps {
   body: ReactNode;
   vehicleId?: number;
@@ -19,6 +19,8 @@ interface InterfaceCommonBarProps {
   message: any[];
   isStartingAllCommands: boolean;
   commandRunning?: boolean;
+  interfaceProcessing?: boolean;
+  dataExecuteInterface?: any;
 }
 
 // eslint-disable-next-line complexity
@@ -29,7 +31,9 @@ const InterfaceCommandBar: FC<InterfaceCommonBarProps> = ({
   commandId,
   message,
   isStartingAllCommands,
-  commandRunning
+  commandRunning,
+  interfaceProcessing,
+  dataExecuteInterface
 }) => {
   let { dataExecute, executeCommand, isExecutingCommand } = useExecuteCommand();
   const { mutate: stopCommand, isLoading: isStoppingCommand } = useStopCommand();
@@ -38,11 +42,9 @@ const InterfaceCommandBar: FC<InterfaceCommonBarProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [eventClicked, setEventClicked] = useState(Boolean);
 
-  const context = useContext<InterfaceExecutorContextProps | undefined>(InterfaceExecutorContext);
-  const { interfaceCommands } = context || {};
+  const dispatch = useDispatch();
 
   const handleExecuteCommand = useCallback(() => {
-    setErrorText('');
     if (!commandId || !vehicleId || !interfaceId) {
       console.error('Missing commandId, vehicleId or interfaceId ');
       return;
@@ -51,7 +53,9 @@ const InterfaceCommandBar: FC<InterfaceCommonBarProps> = ({
   }, [commandId, executeCommand, interfaceId, vehicleId]);
 
   useEffect(() => {
-    if (isStartingAllCommands && !commandRunning) {
+    dispatch(setIsStartingCommands(isProcessing));
+    dispatch(setIsStartingAllCommands(isProcessing));
+    if ((isStartingAllCommands && !commandRunning) || interfaceProcessing) {
       setIsProcessing(true);
       setEventClicked(true);
     }
@@ -70,7 +74,16 @@ const InterfaceCommandBar: FC<InterfaceCommonBarProps> = ({
 
       return () => clearTimeout(timer);
     }
-  }, [commandRunning, errorText, eventClicked, isProcessing, isStartingAllCommands]);
+  }, [
+    commandRunning,
+    dispatch,
+    errorText,
+    eventClicked,
+    isExecutingCommand,
+    isProcessing,
+    isStartingAllCommands,
+    interfaceProcessing
+  ]);
 
   useEffect(() => {
     setErrorText('');
@@ -78,15 +91,10 @@ const InterfaceCommandBar: FC<InterfaceCommonBarProps> = ({
     if (Array.isArray(message)) {
       filteredData = message.filter((item) => item.idCommand === commandId);
     }
-    if (dataExecute !== '' && filteredData.length === 0) {
-      setErrorText(dataExecute);
-    } else {
-      setErrorText('');
-    }
     if (filteredData.length > 0) {
       setErrorText(filteredData[0].error);
     }
-  }, [commandId, commandRunning, dataExecute, interfaceCommands, isProcessing, message]);
+  }, [commandId, commandRunning, dataExecute, isProcessing, message]);
 
   const handleStopCommand = useCallback(() => {
     if (!commandId || !vehicleId || !interfaceId) {
@@ -200,7 +208,15 @@ const InterfaceCommandBar: FC<InterfaceCommonBarProps> = ({
         <div style={{ color: '#cc0000', marginTop: '10px' }}>{getTruncatedText(errorText)}</div>
       ) : (
         <div style={{ color: '#cc0000', marginTop: '10px' }}>
-          {getTruncatedText(errorText || dataExecute)}
+          {!isProcessing
+            ? getTruncatedText(
+                errorText ||
+                  dataExecute ||
+                  (dataExecuteInterface?.commandId === commandId
+                    ? dataExecuteInterface?.message
+                    : '')
+              )
+            : ''}
         </div>
       )}
     </>

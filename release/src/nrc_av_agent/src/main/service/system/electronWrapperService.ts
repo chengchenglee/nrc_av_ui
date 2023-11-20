@@ -4,6 +4,10 @@ import { IElectronWrapper } from '../../inversify/interfaces';
 
 @injectable()
 export default class ElectronWrapperService implements IElectronWrapper {
+  getAgentVersion(): string {
+    return app.getVersion().trim();
+  }
+
   getPath(
     name:
       | 'home'

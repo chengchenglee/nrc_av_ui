@@ -2,10 +2,12 @@ import { Module } from '@nestjs/common';
 import { forwardRef } from '@nestjs/common/utils';
 import { AgentModule } from '../agent/agent.module';
 import { AuthModule } from '../auth/auth.module';
+import { CacheSubSystemModule } from '../cachesubsystem/cachesubsystem.module';
 import { CommandModule } from '../command/command.module';
 import { InterfaceModule } from '../interface/interface.module';
 import { LoggerModule } from '../logger/logger.module';
 import { ModelModule } from '../model/model.module';
+import { SubSystemModule } from '../subsystem/subsystem.module';
 import { VehicleController } from './vehicle.controller';
 import { VehicleService } from './vehicle.service';
 
@@ -13,10 +15,12 @@ import { VehicleService } from './vehicle.service';
   imports: [
     forwardRef(() => AgentModule),
     AuthModule,
-    InterfaceModule,
+    forwardRef(() => InterfaceModule),
     CommandModule,
     LoggerModule,
-    ModelModule
+    ModelModule,
+    forwardRef(() => SubSystemModule),
+    CacheSubSystemModule
   ],
   controllers: [VehicleController],
   providers: [VehicleService],

@@ -8,8 +8,8 @@ import {
   WriteFileOptions
 } from 'fs';
 /* eslint-disable max-len */
-import { App, BrowserWindow } from 'electron';
-import { Ros } from 'roslib';
+import { App, BrowserWindow, MessagePortMain } from 'electron';
+import { Ros, Topic } from 'roslib';
 import { ConfigType } from '../../shared/configurationTypes';
 import {
   IResponse,
@@ -18,7 +18,15 @@ import {
   AgentMap,
   EnumStatusRunAllCommands,
   CommandsStatus,
-  Command
+  Command,
+  SubSystemType,
+  TopicType,
+  IRunAllResponse,
+  SubSystem,
+  EnumRosBridgeTopic,
+  EnumRosBridgeCommunicationPort,
+  InterfaceStatusDto,
+  SubSystemDto
 } from '../../shared/constants';
 
 // ------------- NodeJS built-in ------------- //
@@ -125,9 +133,10 @@ export interface IChildProcess {
   executeAndValid(
     command: string,
     waitingTime: number,
-    replyOnChannel: (response: IResponse) => void
+    replyOnChannel: (response: IResponse) => void,
+    returnOutput?: boolean
   ): number | undefined;
-  execAndWait(command: string): Promise<string>;
+  execAndWait(command: string, ignoreError?: boolean): Promise<string>;
   buildCommand(command: string, path: string): string;
   waitForResultAndReturn(
     replyOnChannel: (response: IResponse) => void,
@@ -166,6 +175,7 @@ export interface IElectronWrapper {
       | 'crashDumps'
   ): string;
   getResourcesPath(): string;
+  getAgentVersion(): string;
   getApp(): App;
   quit(): void;
 }
@@ -186,6 +196,7 @@ export interface ICommunication {
 
 export interface IConfiguration {
   initConfigs(): void;
+  pathPrintEnvFolder(): string;
   loadConfigs(configName: string): boolean;
   createConfig<T extends ConfigType>(configName: string, value: T): void;
   getConfigs<T extends ConfigType>(configName: string): T | undefined;
@@ -210,6 +221,13 @@ export interface IStatusInterfaceRosBridgeService {
   clearCache(): Promise<void>;
   interfaceRunning(): InterfaceStatus;
   getRosNodes(rosConnection: Ros): Promise<string[]>;
+  getRosTopics(rosConnection: Ros): Promise<string[]>;
+  getTopic(topicName: string, topicType?: SubSystemType): TopicType | undefined;
+  getAllTopics(topicType?: SubSystemType): TopicType[];
+  initTopicPublish(rosConnection: Ros): void;
+  getPublishTopic(topicName: EnumRosBridgeTopic): Topic | undefined;
+  publishMessage(topicName: EnumRosBridgeTopic, message: any): void;
+  getMessagePort(channelName: EnumRosBridgeCommunicationPort): MessagePortMain | undefined;
 }
 
 export interface IRosBridgeServerService {
@@ -219,8 +237,6 @@ export interface IRosBridgeServerService {
     forceReInit?: boolean,
     maxInitAttempt?: number
   ): Promise<void>;
-  isRosBridgeStartedOnPort(): Promise<boolean>;
-  startRosBridgeServer(): Promise<void>;
   rosBridgeHealthcheck(forced?: boolean): void;
 }
 
@@ -259,4 +275,25 @@ export interface IRosService {
   changeMap(mapName: AgentMap, replyOnChannel: (response: IResponse) => void): void;
   setStatusRunAllCommands(newStatus: EnumStatusRunAllCommands): void;
   getStatusRunAllCommands(): EnumStatusRunAllCommands;
+  runCommandsForAll(command: Command, waitingTime?: number): Promise<IResponse & IRunAllResponse>;
+  getNodesFromCommand(command: Command): Promise<string[]>;
+}
+
+export interface ISubSystem {
+  runAllSubSystem(subSystems: SubSystem[], replyOnChannel: (response: IResponse) => void): void;
+  runSubSystem(
+    subSystemName: string,
+    replyOnChannel: (response: IResponse) => void,
+    ignoreNodes?: boolean
+  ): void;
+  stopSubSystem(
+    subSystemName: string,
+    replyOnChannel: (response: IResponse) => void,
+    ignoreNodes?: boolean
+  ): void;
+  setSubSystem(subSystems: SubSystem[], replyOnChannel: (response: IResponse) => void): void;
+  getSubSystem(): SubSystem[];
+  mapSubSystem(interfaceData: InterfaceStatusDto): SubSystemDto[];
+  initStatusChecking(): void;
+  clearCache(): void;
 }

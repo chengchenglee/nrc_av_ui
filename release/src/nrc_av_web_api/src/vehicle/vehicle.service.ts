@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { plainToInstance } from 'class-transformer';
 import { DataSource } from 'typeorm';
 import { AgentGateway } from '../agent/agent.gateway';
+import { CacheSubSystemService } from '../cachesubsystem/cachesubsystem.service';
 import { CommandService } from '../command/command.service';
 import {
   Vehicle,
@@ -13,12 +14,14 @@ import {
   ISuccessResponse,
   IVehicleStatus,
   SocketEventEnum,
-  EventEmitterNameSpace,
-  Interface
+  EventEmitterNameSpace
 } from '../core';
+import { InterfaceNoSubDTO } from '../interface/dto/interfaceNoSub.dto';
+import { SubSystemDTO } from '../interface/dto/subsystem.dto';
 import { InterfaceService } from '../interface/interface.service';
 import { LoggerService } from '../logger/logger.service';
 import { ModelService } from '../model/model.service';
+import { SubSystemService } from '../subsystem/subsystem.service';
 import { AgentRegistrationDTO } from './dto/agentRegistration.dto';
 import { AgentUpdationDTO } from './dto/agentUpdation.dto';
 
@@ -31,7 +34,9 @@ export class VehicleService {
     private readonly interfaceService: InterfaceService,
     private readonly commandService: CommandService,
     private readonly loggerService: LoggerService,
-    private readonly modelService: ModelService
+    private readonly modelService: ModelService,
+    private readonly subSystemService: SubSystemService,
+    private readonly cacheSubSystemService: CacheSubSystemService
   ) {}
 
   async activateVehicle(id: number): Promise<Vehicle> {
@@ -52,7 +57,7 @@ export class VehicleService {
   }
 
   async registerVehicle(registerAgentDTO: AgentRegistrationDTO): Promise<Vehicle> {
-    const { macAddress, model: modelName, certKey, name } = registerAgentDTO;
+    const { macAddress, model: modelName, certKey, name, agentVersion } = registerAgentDTO;
     let vehicle = await this.dataSource.getRepository(Vehicle).findOne({
       where: { certKey }
     });
@@ -70,6 +75,7 @@ export class VehicleService {
     vehicle.model = model;
     vehicle.name = name;
     vehicle.isOnline = true;
+    vehicle.agentVersion = agentVersion;
     vehicle.lastConnected = new Date();
 
     vehicle = await this.dataSource.getRepository(Vehicle).save(vehicle);
@@ -77,7 +83,7 @@ export class VehicleService {
   }
 
   async updateVehicle(agentUpdationDTO: AgentUpdationDTO, certKey: string): Promise<Vehicle> {
-    const { name, model: modelName } = agentUpdationDTO;
+    const { name, model: modelName, agentVersion } = agentUpdationDTO;
     const vehicle = await this.getVehicleOnCertKey(certKey);
 
     const model = await this.modelService.getAndCreateModelIfNotExisted(modelName);
@@ -87,6 +93,9 @@ export class VehicleService {
     }
     if (vehicle.name !== name) {
       vehicle.name = name;
+    }
+    if (vehicle.agentVersion !== agentVersion) {
+      vehicle.agentVersion = agentVersion;
     }
 
     vehicle.isOnline = true;
@@ -148,6 +157,7 @@ export class VehicleService {
     });
     if (vehicle) {
       vehicle.isOnline = false;
+      vehicle.lastConnected = new Date();
       await this.dataSource.getRepository(Vehicle).save(vehicle);
       this.eventEmitter.emit(
         `${EventEmitterNameSpace.VEHICLE_DISCONNECT}.${vehicle.id}`,
@@ -205,19 +215,112 @@ export class VehicleService {
       status: vehicle.status
     };
     this.eventEmitter.emit(EventEmitterNameSpace.VEHICLE_STATUS, vehicleStatusEvent);
+    if (vehicle.status !== VehicleStatus.WAITING) {
+      await this.handleVehicleConnection(vehicle.certKey);
+    }
     return resultFromAgent;
   }
 
-  async startInterfaceFiles(vehicleId: number, interfaceId: number, mapName: string) {
+  // eslint-disable-next-line max-lines-per-function
+  async startInterfaceFiles(
+    vehicleId: number,
+    interfaceId: number,
+    mapName: string,
+    startAllSubSystem?: string
+  ) {
     const vehicle = await this.getVehicle(vehicleId);
-    let agentInterface = await this.interfaceService.getInterfaceWithAllRelations(interfaceId);
+    let agentInterface = await this.interfaceService.getInterfaceWithAllRelationsView(interfaceId);
     if (!agentInterface) {
       throw new HttpException(message.interfaceNotFound, HttpStatus.NOT_FOUND);
     }
-    agentInterface = plainToInstance(Interface, agentInterface, { excludeExtraneousValues: true });
+    agentInterface = plainToInstance(InterfaceNoSubDTO, agentInterface, {
+      excludeExtraneousValues: true
+    });
     const data = { mapName, ...agentInterface };
+    // Query for the cache
+    const cacheSubSystem = await this.cacheSubSystemService.getSubSystemCacheWithInterfaceId(
+      interfaceId
+    );
     try {
-      return await this.getResultFromAgent(vehicle, SocketEventEnum.RUN_INTERFACE, data);
+      // Start the interface first
+      const resultRunInterface = await this.getResultFromAgent(
+        vehicle,
+        SocketEventEnum.RUN_INTERFACE,
+        data
+      );
+      // Return the result of interface if the execution failed
+      if (resultRunInterface.status !== 'success') {
+        return resultRunInterface;
+      }
+      if (cacheSubSystem) {
+        // Check cache of subsystem for the interface
+        // There is already a cache of subsystem so we query the sequence and turn to DTO
+        const subSystem = await this.subSystemService.getSubSystemWithIds(
+          cacheSubSystem.subSystemSeq.split(',').map(Number)
+        );
+        const subSystemDto: SubSystemDTO[] = subSystem.map((sub) => ({
+          ...sub,
+          depends: sub.dependSystems.map((dep) => dep.name)
+        }));
+        const subSystemDtoSorted = this.subSystemService.sortSubSystem(
+          subSystemDto,
+          cacheSubSystem.subSystemSeq.split(',').map(Number)
+        );
+        await this.getResultFromAgent(
+          vehicle,
+          SocketEventEnum.SEND_SUBSYSTEM,
+          plainToInstance(SubSystemDTO, subSystemDtoSorted, {
+            excludeExtraneousValues: true
+          })
+        );
+        if (!startAllSubSystem || startAllSubSystem === 'false') {
+          return resultRunInterface;
+        }
+        const resultSubSystem = await this.getResultFromAgent(
+          vehicle,
+          SocketEventEnum.RUN_ALL_INTERFACE_SUBSYSTEM,
+          plainToInstance(SubSystemDTO, subSystemDtoSorted, {
+            excludeExtraneousValues: true
+          })
+        );
+        return resultSubSystem;
+      } else {
+        // There is no cache of subsystem so we sequence and order the subsystem
+        const subSystemCache = await this.subSystemService.fetchSubSystemSequence(interfaceId);
+        const agentInterface = await this.interfaceService.getInterfaceWithAllRelations(
+          subSystemCache.interfaceId
+        );
+        const subSystemDto: SubSystemDTO[] = agentInterface.subSystems.map((sub) => ({
+          ...sub,
+          depends: sub.dependSystems.map((dep) => dep.name)
+        }));
+        const subSystemDtoSorted = this.subSystemService.sortSubSystem(
+          subSystemDto,
+          subSystemCache.subSystemSeq
+        );
+        await this.getResultFromAgent(
+          vehicle,
+          SocketEventEnum.SEND_SUBSYSTEM,
+          plainToInstance(SubSystemDTO, subSystemDtoSorted, {
+            excludeExtraneousValues: true
+          })
+        );
+        if (!startAllSubSystem || startAllSubSystem === 'false') {
+          return resultRunInterface;
+        }
+        const resultSubSystem = await this.getResultFromAgent(
+          vehicle,
+          SocketEventEnum.RUN_ALL_INTERFACE_SUBSYSTEM,
+          plainToInstance(SubSystemDTO, subSystemDtoSorted, {
+            excludeExtraneousValues: true
+          })
+        );
+        // Save the sequence when the result of runing sub system is success
+        if (resultSubSystem.status === 'success') {
+          this.cacheSubSystemService.saveSubSystemCache(subSystemCache);
+        }
+        return resultSubSystem;
+      }
     } catch (err) {
       throw new HttpException(err, HttpStatus.SERVICE_UNAVAILABLE);
     }
@@ -280,6 +383,34 @@ export class VehicleService {
         SocketEventEnum.RUN_ALL_INTERFACE_COMMANDS,
         commands.map((command) => ({ id: command.id, command: command.command }))
       );
+    } catch (err) {
+      throw new HttpException(err, HttpStatus.SERVICE_UNAVAILABLE);
+    }
+  }
+
+  async runSubSystem(vehicleId: number, subSystemName: string) {
+    const vehicle = await this.getVehicle(vehicleId);
+    try {
+      const resultRunSubSystem = await this.getResultFromAgent(
+        vehicle,
+        SocketEventEnum.RUN_SUBSYSTEM,
+        subSystemName
+      );
+      return resultRunSubSystem;
+    } catch (err) {
+      throw new HttpException(err, HttpStatus.SERVICE_UNAVAILABLE);
+    }
+  }
+
+  async stopSubSystem(vehicleId: number, subSystemName: string) {
+    const vehicle = await this.getVehicle(vehicleId);
+    try {
+      const resultStopSubSystem = await this.getResultFromAgent(
+        vehicle,
+        SocketEventEnum.STOP_SUBSYSTEM,
+        subSystemName
+      );
+      return resultStopSubSystem;
     } catch (err) {
       throw new HttpException(err, HttpStatus.SERVICE_UNAVAILABLE);
     }

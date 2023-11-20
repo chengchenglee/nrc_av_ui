@@ -16,9 +16,9 @@ export class InterfaceDestinationService {
       interfaceDestDTOs.map((interfaceDestDTO) => ({
         name: interfaceDestDTO.name,
         destination: new Destination(
-          interfaceDestDTO.posX,
-          interfaceDestDTO.posY,
-          interfaceDestDTO.posTh
+          interfaceDestDTO.destination.posX,
+          interfaceDestDTO.destination.posY,
+          interfaceDestDTO.destination.posTh
         ),
         interface: agentInterface
       }))
@@ -36,21 +36,25 @@ export class InterfaceDestinationService {
     newInterfaceDests.forEach((newInterfaceDest) => {
       const currentInterfaceDest = currentInterfaceDests.find(
         (currentInterfaceDest) =>
-          currentInterfaceDest.interfaceId === newInterfaceDest.interface_id &&
-          currentInterfaceDest.destinationId === newInterfaceDest.destination_id
+          currentInterfaceDest.interfaceId === newInterfaceDest.interfaceId &&
+          currentInterfaceDest.destinationId === newInterfaceDest.destinationId
       );
       if (currentInterfaceDest) {
         currentInterfaceDest.name = newInterfaceDest.name;
-        currentInterfaceDest.destination.posX = newInterfaceDest.posX;
-        currentInterfaceDest.destination.posY = newInterfaceDest.posY;
-        currentInterfaceDest.destination.posTh = newInterfaceDest.posTh;
+        currentInterfaceDest.destination.posX = newInterfaceDest.destination.posX;
+        currentInterfaceDest.destination.posY = newInterfaceDest.destination.posY;
+        currentInterfaceDest.destination.posTh = newInterfaceDest.destination.posTh;
         updatedInterfaceDests.push(currentInterfaceDest);
         currentInterfaceDests.splice(currentInterfaceDests.indexOf(currentInterfaceDest), 1);
       } else {
         insertedInterfaceDests.push(
           new InterfaceDestination(
             newInterfaceDest.name,
-            new Destination(newInterfaceDest.posX, newInterfaceDest.posY, newInterfaceDest.posTh),
+            new Destination(
+              newInterfaceDest.destination.posX,
+              newInterfaceDest.destination.posY,
+              newInterfaceDest.destination.posTh
+            ),
             agentInterface
           )
         );

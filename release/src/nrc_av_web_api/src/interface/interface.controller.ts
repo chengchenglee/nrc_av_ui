@@ -16,6 +16,7 @@ import {
   Delete
 } from '@nestjs/common';
 import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
+import { plainToInstance } from 'class-transformer';
 import { Response, Request } from 'express';
 import {
   HttpBodyValidatorPipe,
@@ -26,9 +27,14 @@ import {
   Interface,
   ControllerResponse
 } from '../core';
+import { InterfaceContentDTO } from '../interfaceContent/dto/interfaceContent.dto';
+import { InterfaceContentService } from './../interfaceContent/interfaceContent.service';
 import { InterfaceDTO, vInterfaceDTO } from './dto/interface.dto';
+import { InterfaceCloneDTO } from './dto/interfaceClone.dto';
 import { InterfaceFilteringDTO, vInterfaceFilteringDTO } from './dto/interfaceFiltering.dto';
+import { InterfaceNoSubDTO } from './dto/interfaceNoSub.dto';
 import { InterfaceService } from './interface.service';
+import { InterfaceSerialize } from './serialize/interface.serialize';
 
 @ApiTags('interface')
 @Controller('interface')
@@ -36,11 +42,14 @@ import { InterfaceService } from './interface.service';
 @UseGuards(UserGuard)
 @UseInterceptors(TimeoutInterceptor)
 export class InterfaceController {
-  constructor(private readonly interfaceService: InterfaceService) {}
+  constructor(
+    private readonly interfaceService: InterfaceService,
+    private readonly interfaceContentService: InterfaceContentService
+  ) {}
 
   @Get('/list')
   @UsePipes(new HttpQueryValidatorPipe(vInterfaceFilteringDTO))
-  @Serialize(Interface)
+  @Serialize(InterfaceSerialize)
   async listInterfaces(@Res() res: Response, @Query() query: InterfaceFilteringDTO) {
     return new ControllerResponse(
       res,
@@ -49,14 +58,60 @@ export class InterfaceController {
     );
   }
 
-  @Get('/:id')
+  @Get('/clone/:id')
   @Serialize(Interface)
+  async cloneInterface(
+    @Res() res: Response,
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: Request,
+    @Query() query: InterfaceCloneDTO
+  ) {
+    return new ControllerResponse(
+      res,
+      await this.interfaceService.cloneInterface(id, query, req.user),
+      HttpStatus.CREATED
+    );
+  }
+
+  @Get('/:id')
+  @Serialize(InterfaceNoSubDTO)
   async getInterface(@Res() res: Response, @Param('id', ParseIntPipe) id: number) {
     return new ControllerResponse(
       res,
-      await this.interfaceService.getInterfaceWithAllRelations(id),
+      await this.interfaceService.getInterfaceWithAllRelationsView(id),
       HttpStatus.OK
     );
+  }
+
+  @Get('/:id/content')
+  @Serialize(InterfaceContentDTO)
+  async getInterfaceContent(@Res() res: Response, @Param('id', ParseIntPipe) id: number) {
+    return new ControllerResponse(
+      res,
+      plainToInstance(
+        InterfaceContentDTO,
+        await this.interfaceContentService.getLatestInterfaceContent(id),
+        {
+          excludeExtraneousValues: true
+        }
+      ),
+      HttpStatus.OK
+    );
+  }
+
+  @Get('/name/:name')
+  @Serialize(Interface)
+  async getInterfaceByName(@Res() res: Response, @Param('name') name: string) {
+    try {
+      const result = await this.interfaceService.getInterfaceByName(name);
+      return new ControllerResponse(res, result, HttpStatus.OK);
+    } catch (error) {
+      return new ControllerResponse(
+        res,
+        { message: 'Internal Server Error' },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   @Post('/')
@@ -91,7 +146,7 @@ export class InterfaceController {
   ) {
     return new ControllerResponse(
       res,
-      await this.interfaceService.updateInterface(id, body),
+      await this.interfaceService.updateInterfaceWithSub(id, body),
       HttpStatus.OK
     );
   }

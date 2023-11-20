@@ -13,7 +13,8 @@ import type {
   IRosBridgeServerService,
   IRosService,
   IStatusInterfaceRosBridgeService,
-  IStatusCommands
+  IStatusCommands,
+  ISubSystem
 } from '../../inversify/interfaces';
 
 @injectable()
@@ -27,7 +28,9 @@ export default class InterfaceFileService implements IInterfaceFileService {
     @inject(TYPES.RosBridgeServerService) private rosBridgeServerService: IRosBridgeServerService,
     @inject(TYPES.RosBridgeConnectionService)
     private rosBridgeConnectionService: IRosBridgeConnectionService,
-    @inject(TYPES.StatusCommandsService) private commandsStatusSvc: IStatusCommands
+    @inject(TYPES.StatusCommandsService) private commandsStatusSvc: IStatusCommands,
+    @inject(TYPES.SubSystemService)
+    private subSystemSvc: ISubSystem
   ) {}
 
   @logMethod('[InterfaceFileService][runInterface]')
@@ -58,6 +61,7 @@ export default class InterfaceFileService implements IInterfaceFileService {
         const rosConnection = await this.rosBridgeConnectionService.getRosBridgeConnection(5);
         const nodes = await this.statusInterfaceRosBridgeSvc.getRosNodes(rosConnection);
         await this.statusInterfaceRosBridgeSvc.clearCache();
+        this.subSystemSvc.clearCache();
         const nodesName = nodes.map((a) => a.replace('/', ''));
         const filteredNodes = nodesName.filter(
           (item) => !ROS_BRIDGE.ROS_NODES_ARR.includes(item) && !item.includes('listener')
@@ -77,11 +81,13 @@ export default class InterfaceFileService implements IInterfaceFileService {
         // Kill all process echo topic before run new interface
         this.killProcessEchoTopic();
         await this.statusInterfaceRosBridgeSvc.setStatusInterface(dataInterface);
+        await this.statusInterfaceRosBridgeSvc.initTopicPublish(rosConnection);
       } catch (err) {
         this.stopAllNodes();
         await this.rosBridgeServerService.rosBridgeReInit(true, true);
         await this.rosBridgeConnectionService.getRosBridgeConnection();
         await this.statusInterfaceRosBridgeSvc.clearCache();
+        this.subSystemSvc.clearCache();
         log.error(`[InterfaceFileService][runInterface] ${err}`);
         const results = await this.childProcessSvc.waitForResultAndReturn(
           replyOnChannel,
@@ -130,6 +136,7 @@ export default class InterfaceFileService implements IInterfaceFileService {
           log.error(`[InterfaceFileService][stopInterface] ${err}`);
         } finally {
           await this.statusInterfaceRosBridgeSvc.clearCache();
+          this.subSystemSvc.clearCache();
           this.deleteParams();
           this.commandsStatusSvc.resetState();
           this.rosSvc.setStatusRunAllCommands(constants.EnumStatusRunAllCommands.DEACTIVE);

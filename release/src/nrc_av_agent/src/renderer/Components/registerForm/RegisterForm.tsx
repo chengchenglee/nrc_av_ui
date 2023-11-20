@@ -49,20 +49,26 @@ const RegisterForm = ({ mode, connectionInfo, vehicleInfo }: RegisterFormProps) 
   const initialValue = useMemo(() => {
     // Common info is init value for both add and edit form
     const commonInfo = {
-      host: connectionInfo?.host || 'ws://54.151.30.41:3000',
-      rosWorkspace: connectionInfo?.rosWorkspace || '~/projects/nrc_ws'
+      host: connectionInfo?.host ?? 'wss://avui.natcsv.com',
+      rosWorkspace: connectionInfo?.rosWorkspace ?? '~/projects/nrc_ws'
     };
 
     if (mode === 'EDIT') {
       return {
-        name: vehicleInfo?.name || '',
-        model: vehicleInfo?.model || '',
+        name: vehicleInfo?.name ?? '',
+        model: vehicleInfo?.model ?? '',
         ...commonInfo
       };
     }
 
     return commonInfo;
-  }, [vehicleInfo]);
+  }, [
+    connectionInfo?.host,
+    connectionInfo?.rosWorkspace,
+    mode,
+    vehicleInfo?.model,
+    vehicleInfo?.name
+  ]);
 
   const onCancel = () => {
     navigate('/');
@@ -72,7 +78,7 @@ const RegisterForm = ({ mode, connectionInfo, vehicleInfo }: RegisterFormProps) 
     if (mode === 'EDIT') {
       form.setFieldsValue(initialValue || {});
     }
-  }, [initialValue]);
+  }, [form, initialValue, mode]);
 
   useEffect(() => {
     window.ipcChannel.receive(ipcMsg.M2R.UPDATE_VEHICLE_REPLY, () => {

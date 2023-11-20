@@ -3,7 +3,10 @@ import { inject, injectable } from 'inversify';
 import {
   IResponse,
   EnumVehicleStatusState,
-  EnumVehicleConnectionState
+  EnumVehicleConnectionState,
+  EnumRosBridgeCommunicationPort,
+  InterfaceStatusDto,
+  InterfaceStatusSubSystemDto
 } from '../../../shared/constants';
 import ipcMsg from '../../../shared/ipcMsg';
 import { APP_CONFIG, COMMUNICATION, SOCKET } from '../../constants';
@@ -19,7 +22,9 @@ import type {
   IRosService,
   IChildProcess,
   IStatusInterfaceRosBridgeService,
-  IStatusCommands
+  IStatusCommands,
+  ISubSystem,
+  IElectronWrapper
 } from '../../inversify/interfaces';
 
 enum SocketEventEnum {
@@ -31,13 +36,20 @@ enum SocketEventEnum {
   VEHICLE_MACHINES_STATUS = 'nissan/vehicle/machines/status',
   VEHICLE_UPDATION = 'nissan/vehicle/updation',
 
+  SEND_SUBSYSTEM = 'nissan/interface/send/sub-system',
+  RUN_ALL_INTERFACE_SUBSYSTEM = 'nissan/interface/exec-all/sub-system',
+  RUN_SUBSYSTEM = 'nissan/interface/exec/sub-system',
+  STOP_SUBSYSTEM = 'nissan/interface/stop/sub-system',
+
   RUN_COMMANDS = 'nissan/interface/exec/command',
   RUN_ALL_INTERFACE_COMMANDS = 'nissan/interface/exec-all/command',
   STOP_COMMANDS = 'nissan/interface/stop/command',
   CHANGE_MAP = 'nissan/interface/changemap',
 
   RUN_INTERFACE = 'nissan/interface/run',
-  STOP_INTERFACE = 'nissan/interface/stop'
+  STOP_INTERFACE = 'nissan/interface/stop',
+
+  GET_INTERFACE_DETAIL_STATUS = 'nissan/vehicle/interface/detail/status'
 }
 
 @injectable()
@@ -51,30 +63,38 @@ export default class LogicService implements ILogic {
     @inject(TYPES.ChildProcess) private childProcessSvc: IChildProcess,
     @inject(TYPES.StatusInterfaceRosBridgeService)
     private statusInterfaceRosBridgeSvc: IStatusInterfaceRosBridgeService,
-    @inject(TYPES.StatusCommandsService) private commandsStatusSvc: IStatusCommands
+    @inject(TYPES.StatusCommandsService) private commandsStatusSvc: IStatusCommands,
+    @inject(TYPES.ElectronWrapper) private electronService: IElectronWrapper,
+    @inject(TYPES.SubSystemService)
+    private subSystemSvc: ISubSystem
   ) {
     this.statusInterfaceRosBridgeSvc.initStatusInterface();
     this.commandsStatusSvc.initStatusChecking();
+    this.subSystemSvc.initStatusChecking();
   }
 
+  // eslint-disable-next-line max-lines-per-function
   @logMethod('[LogicService][init]')
   init(): void {
     try {
       const certKey = this.configSvc.getConfig<IVehicleInfoConfig>(APP_CONFIG.VEHICLE, 'certKey');
       const name = this.configSvc.getConfig<IVehicleInfoConfig>(APP_CONFIG.VEHICLE, 'name');
       const model = this.configSvc.getConfig<IVehicleInfoConfig>(APP_CONFIG.VEHICLE, 'model');
+      const agentVersion = this.electronService.getAgentVersion();
       log.info('[LogicService][init] certKey: ', certKey);
 
       const serverUrl = `${this.configSvc.getConfig<IHostConfig>(APP_CONFIG.CONNECTION, 'host')}/${
         SOCKET.NAME_SPACE
       }`;
       log.info('[LogicService][init] connect to: ', serverUrl);
+
       this.commSvc
         .connect(serverUrl, {
           extraHeaders: {
             certkey: certKey,
             name,
-            model
+            model,
+            agentVersion
           }
         })
         .catch((err) => {
@@ -120,6 +140,22 @@ export default class LogicService implements ILogic {
         this.interfaceFileSvc.runInterface.bind(this.interfaceFileSvc)
       );
       this.commSvc.addEventHandler(
+        SocketEventEnum.RUN_ALL_INTERFACE_SUBSYSTEM,
+        this.subSystemSvc.runAllSubSystem.bind(this.subSystemSvc)
+      );
+      this.commSvc.addEventHandler(
+        SocketEventEnum.SEND_SUBSYSTEM,
+        this.subSystemSvc.setSubSystem.bind(this.subSystemSvc)
+      );
+      this.commSvc.addEventHandler(
+        SocketEventEnum.RUN_SUBSYSTEM,
+        this.subSystemSvc.runSubSystem.bind(this.subSystemSvc)
+      );
+      this.commSvc.addEventHandler(
+        SocketEventEnum.STOP_SUBSYSTEM,
+        this.subSystemSvc.stopSubSystem.bind(this.subSystemSvc)
+      );
+      this.commSvc.addEventHandler(
         SocketEventEnum.CHANGE_MAP,
         this.rosSvc.changeMap.bind(this.rosSvc)
       );
@@ -129,6 +165,20 @@ export default class LogicService implements ILogic {
       );
       this.commSvc.addEventHandler('disconnect', this.onDisconnect.bind(this));
       this.commSvc.addEventHandler('connect', this.onConnect.bind(this));
+      const interfaceStateChannel = this.statusInterfaceRosBridgeSvc.getMessagePort(
+        EnumRosBridgeCommunicationPort.INTERFACE_STATE
+      );
+      interfaceStateChannel?.on('message', (e) => {
+        const interfaceDto: InterfaceStatusDto = e.data;
+        const subSystemDto = this.subSystemSvc.mapSubSystem(interfaceDto);
+        const message: InterfaceStatusSubSystemDto = {
+          ...interfaceDto,
+          subSystems: subSystemDto
+        };
+        if (this.commSvc.getConnectionStatus()) {
+          this.commSvc.sendNoAck(SocketEventEnum.GET_INTERFACE_DETAIL_STATUS, message);
+        }
+      });
     } catch (err) {
       log.error(`[LogicService][init] ${err}`);
     }
@@ -144,6 +194,7 @@ export default class LogicService implements ILogic {
   @logMethod('[LogicService][cleanup]')
   cleanup(): void {
     try {
+      this.statusInterfaceRosBridgeSvc.clearCache();
       this.childProcessSvc.execAndForget('pkill -f ros');
       this.commSvc.disconnect();
     } catch (err) {
@@ -172,6 +223,9 @@ export default class LogicService implements ILogic {
   private registerVehicle(_: unknown, replyOnChannel: (response: IResponse) => void) {
     try {
       const vehicleInfo = this.configSvc.getConfigs<IVehicleInfoConfig>(APP_CONFIG.VEHICLE);
+      if (vehicleInfo) {
+        vehicleInfo.agentVersion = this.electronService.getAgentVersion();
+      }
       log.debug(`[LogicService][registerVehicle] vehicleInfo: ${JSON.stringify(vehicleInfo)}`);
       this.commSvc.send(SocketEventEnum.VEHICLE_REGISTRATION, vehicleInfo);
       replyOnChannel({
@@ -189,6 +243,9 @@ export default class LogicService implements ILogic {
     try {
       const vehicleInfo = this.configSvc.getConfigs<IVehicleInfoConfig>(APP_CONFIG.VEHICLE);
       log.debug(`[LogicService][updateVehicle] vehicleInfo: ${JSON.stringify(vehicleInfo)}`);
+      if (vehicleInfo) {
+        vehicleInfo.agentVersion = this.electronService.getAgentVersion();
+      }
       const response = await this.commSvc.send(SocketEventEnum.VEHICLE_UPDATION, vehicleInfo);
       log.info('[LogicService][updateVehicle] success');
       return response;

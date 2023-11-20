@@ -1,57 +1,80 @@
-import { faChevronLeft, faPlus } from '@fortawesome/free-solid-svg-icons';
+import { faFileImport } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button } from 'antd';
 import * as React from 'react';
-import { useNavigate } from 'react-router-dom';
-import AddEditInterfaceModel, {
-  AddEditInterfaceModelMethods
-} from '../components/AddInterfaceModal';
+import UploadModal, { UploadModalMethods } from '../components/AddInterfaceModal/uploadModal';
+import YamlEditorModal, {
+  YamlEditorModalMethods
+} from '../components/AddInterfaceModal/yamlEditorModal';
 import InterfaceList from '../components/interfaceList';
+import '../components/AddInterfaceModal/userWorker';
+import { ModeEditor } from '../constants/editorYAML';
 
 const InterfaceManagement = () => {
-  const addInterfacePopup = React.useRef<AddEditInterfaceModelMethods>(null);
-  const editInterfacePopup = React.useRef<AddEditInterfaceModelMethods>(null);
-  const navigate = useNavigate();
-  const [editingId, setEditingId] = React.useState<number>();
+  const [editingId, setEditingId] = React.useState<number | undefined>(undefined);
+  const [currentPage, setCurrentPage] = React.useState<number>(0);
+  const [yamlContent, setYamlContent] = React.useState<string>('');
+  const [modeYamlEditor, setModeYamlEditor] = React.useState<string>('');
 
-  const onHandleOpenAddInterfacePopup = React.useCallback(() => {
-    addInterfacePopup.current?.showModal();
+  const uploadModal = React.useRef<UploadModalMethods>(null);
+  const yamlEditorModal = React.useRef<YamlEditorModalMethods>(null);
+
+  const onInterfaceFileUploaded = React.useCallback(() => {
+    uploadModal.current?.showModal();
+    setEditingId(undefined);
   }, []);
 
+  const onPaginationChange = (page: number) => {
+    setCurrentPage(page - 1);
+  };
+
   const onHandleOpenEditInterfacePopup = React.useCallback((id: number) => {
-    editInterfacePopup.current?.showModal();
+    setModeYamlEditor(ModeEditor.EDIT);
+    yamlEditorModal.current?.showModal();
     setEditingId(id);
   }, []);
 
+  const onUploadComplete = React.useCallback(() => {
+    setModeYamlEditor(ModeEditor.CREATE);
+    yamlEditorModal.current?.showModal();
+  }, []);
+
   return (
-    <>
-      <div
-        style={{
-          margin: 'auto',
-          marginTop: '50px'
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-          <FontAwesomeIcon
-            onClick={() => navigate('/vehicle/registration')}
-            fontSize={25}
-            cursor="pointer"
-            color="gray"
-            icon={faChevronLeft}
-          />
-          <Button
-            icon={<FontAwesomeIcon icon={faPlus} style={{ marginRight: '10px' }} />}
-            type="primary"
-            onClick={() => onHandleOpenAddInterfacePopup()}
-          >
-            Add new Interface
-          </Button>
-        </div>
-        <InterfaceList onUpdateIdChange={onHandleOpenEditInterfacePopup} />
-        <AddEditInterfaceModel mode="EDIT" id={editingId} ref={editInterfacePopup} />
-        <AddEditInterfaceModel mode="ADD" ref={addInterfacePopup} />
+    <div
+      style={{
+        margin: 'auto',
+        marginTop: '50px'
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+        <Button
+          type="primary"
+          onClick={() => onInterfaceFileUploaded()}
+          style={{ marginLeft: '10px' }}
+        >
+          Import <FontAwesomeIcon icon={faFileImport} style={{ marginLeft: '5px' }} />
+        </Button>
       </div>
-    </>
+      <InterfaceList
+        onUpdateIdChange={onHandleOpenEditInterfacePopup}
+        currentPage={currentPage}
+        onPaginationChange={onPaginationChange}
+        setYamlContent={setYamlContent}
+      />
+
+      <UploadModal
+        ref={uploadModal}
+        setYamlContent={setYamlContent}
+        onComplete={onUploadComplete}
+      />
+      <YamlEditorModal
+        ref={yamlEditorModal}
+        modeEditor={modeYamlEditor}
+        content={yamlContent}
+        interfaceId={editingId}
+        currentPage={currentPage}
+      />
+    </div>
   );
 };
 

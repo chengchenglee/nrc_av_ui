@@ -81,6 +81,7 @@ export class AgentGateway {
     const clientKey = client.handshake.headers.certkey as string;
     const vehicleName = client.handshake.headers.name as string;
     const modelName = client.handshake.headers.model as string;
+    const agentVersion = client.handshake.headers.agentversion as string;
     const vehicle = await this.vehicleService.handleVehicleConnection(clientKey);
     if (vehicle) {
       await client.join(`${SocketEnum.ROOM_PREFIX}${clientKey}`);
@@ -90,6 +91,11 @@ export class AgentGateway {
 
       if (model.id !== vehicle.model.id) {
         vehicle.model = model;
+        isUpdated = true;
+      }
+
+      if (agentVersion !== vehicle.agentVersion) {
+        vehicle.agentVersion = agentVersion;
         isUpdated = true;
       }
 
@@ -209,8 +215,7 @@ export class AgentGateway {
   ) {
     const clientKey = client.handshake.headers.certkey as string;
     const vehicle = await this.vehicleService.getVehicleOnCertKey(clientKey);
-    const { interfaceName, algorithms, machines, sensors, status, statusRunAll, statusCommands } =
-      data;
+    const { interfaceName, machines, status, statusRunAll, subSystems } = data;
     const agentInterface = await this.interfaceService.getInterfaceByName(interfaceName);
     if (!agentInterface) {
       this.eventEmitter.emit(
@@ -220,9 +225,7 @@ export class AgentGateway {
           null,
           '',
           machines,
-          algorithms,
-          sensors,
-          statusCommands,
+          subSystems,
           status,
           statusRunAll
         )
@@ -236,9 +239,7 @@ export class AgentGateway {
         agentInterface.id,
         interfaceName,
         machines,
-        algorithms,
-        sensors,
-        statusCommands,
+        subSystems,
         status,
         statusRunAll
       )

@@ -65,6 +65,8 @@ export default defineConfig({
                 'uuid',
                 'getmac',
                 'roslib',
+                'big-integer',
+                'nano-time',
                 ...builtinModules
               ]
             }
@@ -108,6 +110,52 @@ export default defineConfig({
             assetsDir: '',
             sourcemap: isDebug,
             outDir: resolve('./app/dist/worker')
+          },
+          plugins: [
+            EnvironmentPlugin('all', { prefix: '' }),
+            TsConfigPaths({ projects: [resolve(__dirname, '../tsconfig.json')] })
+          ]
+        }
+      },
+      {
+        entry: './src/worker/workerRosBridgeTopicSubscriber.ts',
+        onstart(options) {
+          // Notify the Renderer-Process to reload the page
+          // when the Preload-Scripts build is complete,
+          // instead of restarting the entire Electron App.
+          options.reload();
+        },
+        vite: {
+          build: {
+            assetsDir: '',
+            sourcemap: isDebug,
+            outDir: resolve('./app/dist/worker'),
+            rollupOptions: {
+              external: ['roslib', 'big-integer', 'nano-time', ...builtinModules]
+            }
+          },
+          plugins: [
+            EnvironmentPlugin('all', { prefix: '' }),
+            TsConfigPaths({ projects: [resolve(__dirname, '../tsconfig.json')] })
+          ]
+        }
+      },
+      {
+        entry: './src/worker/workerSubSystemHealthCheck.ts',
+        onstart(options) {
+          // Notify the Renderer-Process to reload the page
+          // when the Preload-Scripts build is complete,
+          // instead of restarting the entire Electron App.
+          options.reload();
+        },
+        vite: {
+          build: {
+            assetsDir: '',
+            sourcemap: isDebug,
+            outDir: resolve('./app/dist/worker'),
+            rollupOptions: {
+              external: [...builtinModules]
+            }
           },
           plugins: [
             EnvironmentPlugin('all', { prefix: '' }),

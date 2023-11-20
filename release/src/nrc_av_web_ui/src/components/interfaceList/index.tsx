@@ -1,26 +1,55 @@
+/* eslint-disable max-len */
+import { CopyOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { Button, Pagination } from 'antd';
 import Table, { ColumnsType } from 'antd/es/table';
+import moment from 'moment';
 import { FC, useEffect, useState } from 'react';
 import { InterfaceListItem } from '../../dtos/interface';
-import { useGetInterfaceList } from '../../hooks/queries/interface';
+import { useGetContentByIdInterface, useGetInterfaceList } from '../../hooks/queries/interface';
 import CloneModal from '../CloneInterfaceModal';
 import DeleteModal from '../DeleteInterfaceModal';
 
 interface InterfaceListProps {
   onUpdateIdChange?: (id: number) => void;
+  onPaginationChange: (page: number) => void;
+  currentPage: number;
+  setYamlContent: any;
+}
+
+interface DataYaml {
+  data: {
+    content: string;
+  };
 }
 
 // eslint-disable-next-line max-lines-per-function
-const InterfaceList: FC<InterfaceListProps> = ({ onUpdateIdChange }) => {
-  const [currentPage, setCurrentPage] = useState<number>(0);
+const InterfaceList: FC<InterfaceListProps> = ({
+  onUpdateIdChange,
+  onPaginationChange,
+  currentPage,
+  setYamlContent
+}) => {
   const { data, isFetching, refetch } = useGetInterfaceList({ currentPage });
   const [showModalUpdate, setShowModalUpdate] = useState(false);
   const [showModalDelete, setShowModalDelete] = useState(false);
   const [idInterface, setIdInterface] = useState(Number);
 
+  const dataYaml = useGetContentByIdInterface(idInterface) as unknown as DataYaml;
+
+  useEffect(() => {
+    if (dataYaml?.data) {
+      setYamlContent(dataYaml?.data?.content);
+    }
+  }, [dataYaml?.data, setYamlContent]);
+
   useEffect(() => {
     refetch();
-  }, [currentPage, refetch]);
+  }, [currentPage, refetch, setYamlContent]);
+
+  const handleEditButtonClick = (id: number) => {
+    onUpdateIdChange?.(id);
+    setIdInterface(id);
+  };
 
   const handleCloneButtonClick = (id: number) => {
     setIdInterface(id);
@@ -34,11 +63,6 @@ const InterfaceList: FC<InterfaceListProps> = ({ onUpdateIdChange }) => {
 
   const columns: ColumnsType<InterfaceListItem> = [
     {
-      title: 'No.',
-      dataIndex: 'id',
-      rowScope: 'row'
-    },
-    {
       title: 'Name',
       dataIndex: 'name',
       key: 'name'
@@ -49,38 +73,43 @@ const InterfaceList: FC<InterfaceListProps> = ({ onUpdateIdChange }) => {
       key: 'modelName'
     },
     {
+      title: 'Updated Time',
+      dataIndex: 'updatedAt',
+      render: (updatedAt) => moment(updatedAt).format('MMM D, YYYY, h:mm A')
+    },
+    {
       title: 'Actions',
       dataIndex: '',
       width: '15%',
       render(_, record) {
         return (
           <div style={{ display: 'flex' }}>
-            <Button onClick={() => onUpdateIdChange?.(record.id)} type="primary">
-              Update
-            </Button>
             <Button
-              style={{ marginLeft: '10px' }}
+              key="edit"
+              type="primary"
+              style={{ marginLeft: '10px', backgroundColor: 'green' }}
+              onClick={() => handleEditButtonClick(record.id)}
+              icon={<EditOutlined />}
+            />
+            <Button
+              key="clone"
+              type="primary"
+              style={{ marginLeft: '10px', backgroundColor: '#ffcc00' }}
               onClick={() => handleCloneButtonClick(record.id)}
-              type="primary"
-            >
-              Clone
-            </Button>
+              icon={<CopyOutlined />}
+            />
             <Button
-              style={{ marginLeft: '10px' }}
-              onClick={() => handleDeleteButtonClick(record.id)}
+              key="delete"
               type="primary"
-            >
-              Delete
-            </Button>
+              style={{ marginLeft: '10px', backgroundColor: 'red' }}
+              onClick={() => handleDeleteButtonClick(record.id)}
+              icon={<DeleteOutlined />}
+            />
           </div>
         );
       }
     }
   ];
-
-  const onPaginationChange = (page: number) => {
-    setCurrentPage(page - 1);
-  };
 
   const handleModalCancel = () => {
     setShowModalUpdate(false);
@@ -106,7 +135,7 @@ const InterfaceList: FC<InterfaceListProps> = ({ onUpdateIdChange }) => {
         <Pagination
           style={{ marginTop: '20px', right: 0, position: 'absolute' }}
           defaultCurrent={1}
-          total={data?.total || 0}
+          total={data?.total ?? 0}
           onChange={onPaginationChange}
           showSizeChanger={false}
         />

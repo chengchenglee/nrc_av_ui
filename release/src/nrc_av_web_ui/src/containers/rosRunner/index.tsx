@@ -1,7 +1,9 @@
 import { Collapse, Descriptions, Empty, Form, Select, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/es/select';
+import moment from 'moment';
 import * as React from 'react';
 import { useDispatch } from 'react-redux';
+import { VehicleStatus } from '../../constants/vehicleStatus';
 import { VehicleDTO } from '../../dtos/vehicle';
 import { useActiveVehicles } from '../../hooks/queries/vehicle';
 import { useStoreVehicle } from '../../store';
@@ -10,12 +12,20 @@ import InterfaceExecutor from './executor/interfaceExecutor';
 
 const { Title } = Typography;
 
+// eslint-disable-next-line max-lines-per-function
 const ROSRunner = () => {
   const selectedVehicle = useStoreVehicle();
-
   const dispatch = useDispatch();
 
-  const { data: activeVehicles, isFetching: isActiveVehiclesFetching } = useActiveVehicles();
+  const {
+    data: activeVehicles,
+    isFetching: isActiveVehiclesFetching,
+    refetch
+  } = useActiveVehicles();
+
+  const [lastSseTime, setLastSseTime] = React.useState(Date.now());
+  const [lastPingTime, setLastPingTime] = React.useState('');
+  const [loadVehicleDetails, setLoadVehicleDetails] = React.useState(Date.now());
 
   const vehicleOptions = React.useMemo<DefaultOptionType[]>(() => {
     if (!activeVehicles) {
@@ -39,16 +49,34 @@ const ROSRunner = () => {
     [activeVehicles, dispatch]
   );
 
+  React.useEffect(() => {
+    const seconds = Math.round(
+      moment
+        .duration(
+          Math.max(0, new Date(loadVehicleDetails).getTime() - new Date(lastSseTime).getTime()),
+          'milliseconds'
+        )
+        .asSeconds()
+    );
+    if (seconds > 60) {
+      setLastPingTime(`${Math.round(seconds / 60)} minute(s) ago`);
+    } else if (seconds > 2) {
+      setLastPingTime(`${seconds} second(s) ago`);
+    } else {
+      setLastPingTime('');
+    }
+  }, [lastSseTime, loadVehicleDetails]);
+
   return (
     <div
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: '14px'
+        gap: '1px'
       }}
     >
       <div id="vehicle-select">
-        <Title level={3} style={{ marginBottom: '14px' }}>
+        <Title level={3} style={{ margin: '0px 0px 2px' }}>
           Select Vehicle
         </Title>
         <Form.Item
@@ -61,8 +89,10 @@ const ROSRunner = () => {
             options={vehicleOptions}
             style={{ width: '100%' }}
             onChange={selectVehicle}
+            onDropdownVisibleChange={() => {
+              refetch();
+            }}
             loading={isActiveVehiclesFetching}
-            disabled={isActiveVehiclesFetching}
             value={selectedVehicle?.id}
           />
         </Form.Item>
@@ -74,16 +104,66 @@ const ROSRunner = () => {
           background: 'transparent'
         }}
       >
-        <Collapse.Panel className="collapse-no-padding" header="Vehicle detail" key="1">
-          <Descriptions style={{ paddingLeft: '40px', marginTop: '5px' }}>
+        <Collapse.Panel
+          className="collapse-no-padding"
+          header="Vehicle detail"
+          key="1"
+          style={{ padding: '0px' }}
+        >
+          <Descriptions style={{ paddingLeft: '40px', marginTop: '-8px', paddingTop: '0px' }}>
             {selectedVehicle &&
               Object.entries(selectedVehicle).map(([k, v]) => {
-                if (typeof v !== 'object' && k !== 'id') {
-                  return (
-                    <Descriptions.Item key={k} style={{ display: 'block' }} label={k}>
-                      {v}
-                    </Descriptions.Item>
-                  );
+                if (typeof v !== 'object') {
+                  switch (k) {
+                    case 'id':
+                      return null;
+                    case 'isOnline':
+                      return null;
+                    case 'status':
+                      switch (v) {
+                        case VehicleStatus.ACTIVE:
+                          return (
+                            <Descriptions.Item
+                              key={k}
+                              style={{ display: 'block', padding: 1 }}
+                              label={k}
+                            >
+                              {v} {lastPingTime}
+                            </Descriptions.Item>
+                          );
+                        case VehicleStatus.OFFLINE:
+                          return (
+                            <Descriptions.Item
+                              key={k}
+                              style={{ display: 'block', padding: 1 }}
+                              label={k}
+                            >
+                              {v} {lastPingTime}
+                            </Descriptions.Item>
+                          );
+                        default:
+                          return (
+                            <Descriptions.Item
+                              key={k}
+                              style={{ display: 'block', padding: 1 }}
+                              label={k}
+                            >
+                              {v}
+                            </Descriptions.Item>
+                          );
+                      }
+
+                    default:
+                      return (
+                        <Descriptions.Item
+                          key={k}
+                          style={{ display: 'block', padding: 1 }}
+                          label={k}
+                        >
+                          {v}
+                        </Descriptions.Item>
+                      );
+                  }
                 }
                 return null;
               })}
@@ -91,7 +171,11 @@ const ROSRunner = () => {
           {!selectedVehicle && <Empty />}
         </Collapse.Panel>
       </Collapse>
-      <InterfaceExecutor vehicleId={selectedVehicle?.id} />
+      <InterfaceExecutor
+        vehicleId={selectedVehicle?.id}
+        setLastSseTime={setLastSseTime}
+        setLoadVehicleDetails={setLoadVehicleDetails}
+      />
     </div>
   );
 };

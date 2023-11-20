@@ -22,7 +22,7 @@ const createWindow = () => {
   const mainWindow = new BrowserWindow({
     icon: getAssetsPath('icon.ico'),
     width: 900,
-    height: 700,
+    height: 750,
     webPreferences: {
       devTools: isDebug,
       preload: getPreloadPath('preload.js')
@@ -71,6 +71,7 @@ const loadConfigs = () => {
       mode: 'file'
     });
   }
+
   diContainer.get<ILog>(TYPES.Log).init();
   log.info('Application starting...');
   // eslint-disable-next-line no-console
