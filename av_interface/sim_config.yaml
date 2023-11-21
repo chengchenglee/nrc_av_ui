@@ -1,0 +1,109 @@
+Configuration:
+  Name: Sim
+
+Subsystem:
+
+  SIM:
+    Type: Sensor
+    Description: Simulator
+    HealthTopics:
+      - HealthTopic: /dynamic_global_pose
+        HealthName: DGP
+        HealthTopicType: DynamicPoseWithCovar
+        NomWarnErrRate: 100, 80, 60
+    Commands:
+      - Name: Sim Launch
+        Command: rosrun nrc_sim SimpleatorSimNode __name:=SimpleSimNode
+        Nodes:
+          - Name: SimpleSimNode
+        Type: Software
+        LaunchTime: 1.0
+    DiagLED:
+    Depends:
+    Diagnostic:
+    
+  TFS:
+    Type: Algorithm
+    Description: TF Subsystem
+    HealthTopics:
+    Commands:
+      - Name: TF Launch
+        Command: roslaunch nrc_svcs leaf_tf_subsystem.launch sanborn:=true
+        Type: Software
+        LaunchTime: 1.0
+    DiagLED:
+    Depends:
+    Diagnostic:
+    
+  WM:
+    Type: Algorithm
+    Description: World Model
+    HealthTopics:
+      - HealthTopic: /object_tracker/health
+        HealthName: FUS
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /traffic_light/detection/health
+        HealthName: TLR
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 1, 0.5, 0.3
+      - HealthTopic: /ailsv_virtual_objects
+        HealthName: VRT
+        HealthTopicType: TrackedObjectSet
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /master_filter/health
+        HealthName: WOS
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: World Model Launch
+        Command: roslaunch nrc_wm2_svcs leaf_pred.launch
+        Type: Software
+        LaunchTime: 1.0
+    DiagLED: 6
+    Depends:
+    Diagnostic:
+    
+  GLS:
+    Type: Algorithm
+    Description: AutoGoals
+    HealthTopics:
+      - HealthTopic: /autoGoals/health
+        HealthName: ALG
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /drive_plan
+        HealthName: PLN
+        HealthTopicType: DriveGoalList
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: AutoGoals
+        Command: rosrun nrc_wm2_svcs auto_goals2 __name:=AutoGoals
+        Nodes:
+          - Name: AutoGoals
+        Type: Software
+        LaunchTime: 3.0
+    DiagLED: 7
+    Depends:
+    Diagnostic:
+    
+  TRJ:
+    Type: Algorithm
+    Description: Trajectory Planner/Follower
+    HealthTopics:
+      - HealthTopic: /lane_planner_state
+        HealthName: TRP
+        HealthTopicType: LanePlannerState
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /lane_follower_state
+        HealthName: TRC
+        HealthTopicType: TrajectoryControllerState
+        NomWarnErrRate: 100, 60, 10
+    Commands:
+      - Name: Trajectory Planner
+        Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=LeafFS
+        Type: Software
+        LaunchTime: 3.0
+    DiagLED: 8
+    Depends:
+    Diagnostic:
