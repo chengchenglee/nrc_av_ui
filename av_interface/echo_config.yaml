@@ -131,10 +131,53 @@ Subsystem:
     Depends:
     Diagnostic: eyeq5_diag.py
 
+  LUC:
+    Type: Sensor
+    Description: Lucid Cams
+    HealthTopics:
+      - HealthTopic: /lucid_cam_front/health_status
+        HealthName: LCF
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /lucid_cam_front_left/health_status
+        HealthName: LCL
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /lucid_cam_front_right/health_status
+        HealthName: LCR
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: LucidCamDriver
+        Command: roslaunch nrc_hw_svcs lucid_gige_cameras.launch
+        Type: Software
+        LaunchTime: 3.0
+    DiagLED:
+    DiagRetry: 5
+    Timeout: 30
+    Depends:
+    Diagnostic: lucid_diag.py
+    
   LUM:
     Type: Sensor
     Description: Luminars
     HealthTopics:
+      - HealthTopic: /luminar_front/status
+        HealthName: LUF
+        HealthTopicType: DiagnosticStatus
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /luminar_back/status
+        HealthName: LUB
+        HealthTopicType: DiagnosticStatus
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /luminar_left/status
+        HealthName: LUL
+        HealthTopicType: DiagnosticStatus
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /luminar_right/status
+        HealthName: LUR
+        HealthTopicType: DiagnosticStatus
+        NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: LuminarDriver
         Command: roslaunch luminar_ros luminar_lidars.launch
@@ -192,7 +235,7 @@ Subsystem:
       - HealthTopic: /traffic_light/detection/health
         HealthName: TLR
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
+        NomWarnErrRate: 1, 0.5, 0.2
       - HealthTopic: /ailsv_virtual_objects
         HealthName: VRT
         HealthTopicType: TrackedObjectSet
