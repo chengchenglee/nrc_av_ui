@@ -14,8 +14,6 @@ Subsystem:
       - Name: 1 sim1
         Command: roslaunch nrc_av_ui sim1.launch
         Type: Software
-        Nodes:
-          - Name: sim1_node
         LaunchTime: 1.0
     DiagLED: 1
     DiagRetry: 5
@@ -39,8 +37,7 @@ Subsystem:
       - Name: 2 sim2
         Command: rosrun nrc_av_ui sim2
         Type: Software
-        Nodes:
-          - Name: sim2
+        Node: sim2
         LaunchTime: 1.0
     DiagLED: 7
     DiagRetry: 5

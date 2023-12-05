@@ -2,7 +2,6 @@ Configuration:
   Name: Sim
 
 Subsystem:
-
   SIM:
     Type: Sensor
     Description: Simulator
@@ -14,14 +13,13 @@ Subsystem:
     Commands:
       - Name: Sim Launch
         Command: rosrun nrc_sim SimpleatorSimNode __name:=SimpleSimNode
-        Nodes:
-          - Name: SimpleSimNode
+        Node: SimpleSimNode
         Type: Software
         LaunchTime: 1.0
     DiagLED:
     Depends:
     Diagnostic:
-    
+
   TFS:
     Type: Algorithm
     Description: TF Subsystem
@@ -34,7 +32,7 @@ Subsystem:
     DiagLED:
     Depends:
     Diagnostic:
-    
+
   WM:
     Type: Algorithm
     Description: World Model
@@ -63,7 +61,7 @@ Subsystem:
     DiagLED: 6
     Depends:
     Diagnostic:
-    
+
   GLS:
     Type: Algorithm
     Description: AutoGoals
@@ -79,14 +77,13 @@ Subsystem:
     Commands:
       - Name: AutoGoals
         Command: rosrun nrc_wm2_svcs auto_goals2 __name:=AutoGoals
-        Nodes:
-          - Name: AutoGoals
+        Node: AutoGoals
         Type: Software
         LaunchTime: 3.0
     DiagLED: 7
     Depends:
     Diagnostic:
-    
+
   TRJ:
     Type: Algorithm
     Description: Trajectory Planner/Follower
