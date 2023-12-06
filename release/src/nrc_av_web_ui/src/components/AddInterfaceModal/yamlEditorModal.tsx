@@ -104,6 +104,13 @@ const YamlEditorModal = React.forwardRef<YamlEditorModalMethods, IProps>((props,
     try {
       setMode(modeEditor);
       const parsedYaml = jsYaml.load(props.content) as YAML;
+      const dataImport = parseYAMLInterface(parsedYaml);
+      const isValid = validateFileYML(dataImport.subSystems);
+      if (isValid !== '') {
+        setErrorMessage(isValid);
+      } else {
+        setErrorMessage('');
+      }
       const name = parsedYaml?.Configuration?.Name;
       setNameInterface(name);
       setNameEditInterface(name);
@@ -116,10 +123,10 @@ const YamlEditorModal = React.forwardRef<YamlEditorModalMethods, IProps>((props,
     () => () => {
       if (!isFetching) {
         if (mode === ModeEditor.CREATE || !props.interfaceId) {
-          const filteredData = data?.interfaces.filter((item) => item.name === dataInterface?.name);
-          if (dataInterface?.name && filteredData?.length !== 0) {
+          const filteredData = data?.interfaces.filter((item) => item.name === nameEditInterface);
+          if (filteredData?.length !== 0) {
             const msgErr = replacePlaceholders(ErrMsgEditor.INTERFACE_NAME_ALREADY_EXIST, {
-              nameInterface: dataInterface?.name
+              nameInterface: nameEditInterface
             });
             setErrorMessage(msgErr);
           }
@@ -153,71 +160,85 @@ const YamlEditorModal = React.forwardRef<YamlEditorModalMethods, IProps>((props,
     fetchData();
   }, [content, fetchData, newContent]);
 
+  const importInterface = React.useCallback(() => {
+    const parsedYaml = jsYaml.load(content);
+    const dataImport = parseYAMLInterface(parsedYaml, content);
+
+    addInterface(dataImport, {
+      onSuccess: () => {
+        message.success('Add interface success');
+        refetch();
+      },
+      onError: (error: any) => {
+        if (error.response.data.message !== undefined) {
+          message.error(error.response.data.message);
+        } else {
+          message.error('An error occurred while attempting to import the Interface');
+        }
+      }
+    });
+  }, [addInterface, content, refetch]);
+
+  const importHaveEditInterface = React.useCallback(() => {
+    const parsedYaml = jsYaml.load(newContent);
+    const dataImport = parseYAMLInterface(parsedYaml, newContent);
+
+    addInterface(dataImport, {
+      onSuccess: () => {
+        message.success('Add interface success');
+        refetch();
+      },
+      onError: (error: any) => {
+        if (error.response.data.message !== undefined) {
+          message.error(error.response.data.message);
+        } else {
+          message.error('An error occurred while attempting to import the Interface');
+        }
+      }
+    });
+  }, [addInterface, newContent, refetch]);
+
+  const editInterface = React.useCallback(() => {
+    const parsedYaml = jsYaml.load(newContent);
+    const dataImport = parseYAMLInterface(parsedYaml, newContent);
+    if (newContent.length === 0) {
+      message.success('Edit interface success');
+      return;
+    }
+    if (!props.interfaceId) {
+      return;
+    }
+    updateInterface(
+      { id: props.interfaceId, data: dataImport },
+      {
+        onSuccess: () => {
+          message.success('Edit interface success');
+          refetch();
+        },
+        onError: (error: any) => {
+          if (error.response.data.message !== undefined) {
+            message.error(error.response.data.message);
+          } else {
+            message.error('An error occurred while attempting to edit the Interface');
+          }
+        }
+      }
+    );
+  }, [props.interfaceId, newContent, updateInterface, refetch]);
+
   const handleOk = React.useCallback(() => {
+    setIsModalOpen(false);
     if (mode === ModeEditor.CREATE) {
-      setIsModalOpen(false);
-      setErrorMessage('');
-      const parsedYaml = jsYaml.load(content);
-      const dataImport = parseYAMLInterface(parsedYaml, content);
-
-      addInterface(dataImport, {
-        onSuccess: () => {
-          message.success('Add interface success');
-          refetch();
-        },
-        onError: (error: any) => {
-          if (error.response.data.message !== undefined) {
-            message.error(error.response.data.message);
-          } else {
-            message.error('An error occurred while attempting to import the Interface');
-          }
-        }
-      });
+      importInterface();
     } else if (mode === ModeEditor.EDIT && !props.interfaceId) {
-      setIsModalOpen(false);
-      setErrorMessage('');
-      const parsedYaml = jsYaml.load(newContent);
-      const dataImport = parseYAMLInterface(parsedYaml, newContent);
-
-      addInterface(dataImport, {
-        onSuccess: () => {
-          message.success('Add interface success');
-          refetch();
-        },
-        onError: (error: any) => {
-          if (error.response.data.message !== undefined) {
-            message.error(error.response.data.message);
-          } else {
-            message.error('An error occurred while attempting to import the Interface');
-          }
-        }
-      });
+      importHaveEditInterface();
     } else if (mode === ModeEditor.EDIT && props.interfaceId) {
-      setIsModalOpen(false);
-      setErrorMessage('');
-      const parsedYaml = jsYaml.load(newContent);
-      const dataImport = parseYAMLInterface(parsedYaml, newContent);
-      updateInterface(
-        { id: props.interfaceId, data: dataImport },
-        {
-          onSuccess: () => {
-            message.success('Edit interface success');
-            refetch();
-          },
-          onError: (error: any) => {
-            if (error.response.data.message !== undefined) {
-              message.error(error.response.data.message);
-            } else {
-              message.error('An error occurred while attempting to edit the Interface');
-            }
-          }
-        }
-      );
+      editInterface();
     }
     setErrorMessage('');
     setNameEditInterface('');
     setNameInterface('');
-  }, [mode, props.interfaceId, content, newContent, addInterface, refetch, updateInterface]);
+  }, [mode, props.interfaceId, importInterface, importHaveEditInterface, editInterface]);
 
   const handleYamlEditorCancel = () => {
     setIsModalConfirm(true);

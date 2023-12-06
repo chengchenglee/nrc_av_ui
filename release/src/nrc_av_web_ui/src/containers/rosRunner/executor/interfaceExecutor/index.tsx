@@ -1,7 +1,8 @@
 /* eslint-disable max-lines-per-function */
 import { faPlay, faStop, faCircleNotch } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Row, Col, Form, Select, Skeleton, Checkbox } from 'antd';
+import { Button, Row, Col, Form, Select, Skeleton, Checkbox, Modal } from 'antd';
+import Text from 'antd/es/typography/Text';
 import Title from 'antd/es/typography/Title';
 import * as React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -84,6 +85,10 @@ const InterfaceExecutor: React.FC<IProps> = (props) => {
   const isRunAllSubSystems = useSelector(
     (state: RootState) => state.interfaceExecutor.runAllSubSystems
   );
+
+  const [vehicleObj, setVehihcleObj] = React.useState<any>();
+
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
 
   const { dataExecute, executeInterface, isExecutingInterface } = useExecuteInterface();
   const selectedMap = useSelector((state: RootState) => state.map.selectedMap);
@@ -233,13 +238,10 @@ const InterfaceExecutor: React.FC<IProps> = (props) => {
       interfaceId: values.interfaceId
     };
 
+    setVehihcleObj(vehicle);
+
     if (contextValue?.status === ExecutionStatus.RUNNING) {
-      dispatch(setSelectedMap(mapOptions[0].name));
-      stopInterface(vehicle, {
-        onSuccess: () => {
-          reInitVehicleInterfaceState();
-        }
-      });
+      setIsModalOpen(true);
     } else {
       const params: RunInterfaceParamDTO = {
         startAllSubSystem: isRunAllSubSystems
@@ -253,6 +255,20 @@ const InterfaceExecutor: React.FC<IProps> = (props) => {
         }
       );
     }
+  };
+
+  const handleOk = () => {
+    setIsModalOpen(false);
+    // dispatch(setSelectedMap(mapOptions[0].name));
+    stopInterface(vehicleObj, {
+      onSuccess: () => {
+        reInitVehicleInterfaceState();
+      }
+    });
+  };
+
+  const handleCancel = () => {
+    setIsModalOpen(false);
   };
 
   const runningAllCommands = useSelector(
@@ -381,6 +397,16 @@ const InterfaceExecutor: React.FC<IProps> = (props) => {
                           </Button>
                         </Form.Item>
                       </Form>
+                      <Modal
+                        width={400}
+                        onOk={handleOk}
+                        onCancel={handleCancel}
+                        title="Confirm"
+                        open={isModalOpen}
+                      >
+                        Are you sure you want to stop the <Text strong>{interfaceName}</Text>{' '}
+                        interface?
+                      </Modal>
                     </div>
                   </Skeleton>
                 </>

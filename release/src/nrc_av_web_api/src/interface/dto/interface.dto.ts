@@ -153,13 +153,11 @@ Subsystem:
         Command: roslaunch nrc_av_ui sim1.launch
         Type: Software
         LaunchTime: 0.0
-        Nodes:
-          - Name: sim1_node
+        Node: sim1_node
       - Name: 1 sim12
         Command: rosrun nrc_av_ui_ui sim2
         Type: Software
-        Nodes:
-          - Name: sim2
+        Node: sim2
         LaunchTime: 0.0
     DiagLED: 1
     Depends:
@@ -182,13 +180,11 @@ Subsystem:
         Command: roslaunch nrc_av_ui sim1.launch
         Type: Software
         LaunchTime: 0.0
-        Nodes:
-          - Name: sim1_node
+        Node: sim1_node
       - Name: 1 sim12
         Command: rosrun nrc_av_ui_ui sim2
         Type: Software
-        Nodes:
-          - Name: sim2
+        Node: sim2
         LaunchTime: 0.0
     DiagLED: 7
     Timeout:

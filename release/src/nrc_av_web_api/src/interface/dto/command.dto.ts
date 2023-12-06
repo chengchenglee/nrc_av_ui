@@ -49,7 +49,7 @@ export class CommandDTO {
 
   @ApiProperty({
     description: 'node',
-    example: [{ name: 'sim1_node' }, { name: 'sim2_node' }],
+    example: [{ name: 'sim1_node' }],
     isArray: true
   })
   nodes: NodeDTO[];
@@ -63,5 +63,5 @@ export const vCommandDTO = joi.object<CommandDTO>({
   autoStart: joi.boolean(),
   autoRecord: joi.boolean(),
   launchTime: joi.number(),
-  nodes: joi.array().items(vNodeDTO)
+  nodes: joi.array().max(1).items(vNodeDTO)
 });

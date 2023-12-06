@@ -379,21 +379,19 @@ export default class SubSystemService implements ISubSystem {
       }
       return constants.SubSystemStatusType.STOPPED;
     }
-    // const totalSubSystemNodes = subSystem.commands
-    //   .flatMap((command) => command.nodes)
-    //   .map((node) => node.name);
-    if (
-      !subSystem.topics.length
-      // && !totalSubSystemNodes.length
-    ) {
+    if (!startedSubSystemsMap.get(subSystemName)) {
+      return constants.SubSystemStatusType.STOPPED;
+    }
+    const totalSubSystemNodes = subSystem.commands
+      .flatMap((command) => command.nodes)
+      .map((node) => node.name);
+    if (!subSystem.topics.length && !totalSubSystemNodes.length) {
       // Because command status is no longer a metric to see if a sub system is alive
-      return startedSubSystemsMap.get(subSystemName)
-        ? constants.SubSystemStatusType.RUNNING
-        : constants.SubSystemStatusType.STOPPED;
+      return constants.SubSystemStatusType.RUNNING;
     }
     if (
-      deadSubSystemTopics.length >= subSystem.topics.length
-      // && this.returnDeadSubSystemNodes(subSystem).length >= totalSubSystemNodes.length
+      deadSubSystemTopics.length >= subSystem.topics.length &&
+      this.returnDeadSubSystemNodes(subSystem).length >= totalSubSystemNodes.length
     ) {
       const allTopicCleaned = deadSubSystemTopics.every((topic) => {
         if (this.runningTopicSet.has(topic.topicName)) {
@@ -402,15 +400,15 @@ export default class SubSystemService implements ISubSystem {
         }
         return true;
       });
-      return !allTopicCleaned && startedSubSystemsMap.get(subSystemName)
+      return !allTopicCleaned
         ? constants.SubSystemStatusType.RUNNING
         : constants.SubSystemStatusType.STOPPED;
     }
     if (
       deadSubSystemTopics.length < subSystem.topics.length ||
-      !subSystem.topics.length
-      // || this.returnDeadSubSystemNodes(subSystem).length < totalSubSystemNodes.length ||
-      // !totalSubSystemNodes.length
+      !subSystem.topics.length ||
+      this.returnDeadSubSystemNodes(subSystem).length < totalSubSystemNodes.length ||
+      !totalSubSystemNodes.length
     ) {
       return constants.SubSystemStatusType.RUNNING;
     }
@@ -588,19 +586,19 @@ export default class SubSystemService implements ISubSystem {
       });
       return;
     }
-    const dependencies = this.getDependentsList(subSystemName, true);
-    if (dependencies.length > 0) {
-      errorResponses.push({
-        status: 'error',
-        message: `Dependents: "${dependencies.join('" , "')}" not stopped`,
-        subSystemId: subSystem.id
-      });
-      replyOnChannel({
-        status: 'error',
-        message: errorResponses
-      });
-      return;
-    }
+    // const dependencies = this.getDependentsList(subSystemName, true);
+    // if (dependencies.length > 0) {
+    //   errorResponses.push({
+    //     status: 'error',
+    //     message: `Dependents: "${dependencies.join('" , "')}" not stopped`,
+    //     subSystemId: subSystem.id
+    //   });
+    //   replyOnChannel({
+    //     status: 'error',
+    //     message: errorResponses
+    //   });
+    //   return;
+    // }
     try {
       await this.stopSubSystemCommand(subSystem);
       // errorResponses.push(...commandError);

@@ -1,7 +1,7 @@
 /* eslint-disable indent */
 /* eslint-disable max-lines-per-function */
 /* eslint-disable import/order */
-import { Button, Typography } from 'antd';
+import { Button, Modal, Typography } from 'antd';
 import * as React from 'react';
 import './styles.scss';
 import { faCircleNotch, faStop, faPlay } from '@fortawesome/free-solid-svg-icons';
@@ -19,7 +19,6 @@ interface SubSystemsHeaderProps {
   vehicleId: number;
   setErrorSub: any;
   setTopicErrorSub: any;
-  setActiveKey: any;
   dataExecute: InterfaceMessage;
   toggleHealthCheck: (name: string) => void;
   healthCheckInfoState: Map<string, boolean>;
@@ -32,8 +31,7 @@ const SubSystemsHeader: React.FC<SubSystemsHeaderProps> = ({
   vehicleId,
   dataExecute,
   setErrorSub,
-  setTopicErrorSub,
-  setActiveKey
+  setTopicErrorSub
 }) => {
   const [execState, setExecState] = React.useState<boolean>(false);
   const [isLoadingExecAll, setIsLoadingExecAll] = React.useState<boolean>(false);
@@ -51,25 +49,18 @@ const SubSystemsHeader: React.FC<SubSystemsHeaderProps> = ({
   );
   const [lastSubSystemError, setLastSubSystemError] = React.useState<Message[]>([]);
 
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
+
   const isRunInterface = useSelector((state: RootState) => state.interfaceExecutor.runInterface);
 
   React.useEffect(() => {
     const dataExecuteSub = dataExecuteSubSystem as unknown as InterfaceMessage;
     const dataTerminationSub = dataStopSubSystem as unknown as Message;
     if (dataTerminationSub) {
-      setActiveKey(subSystems.id);
       setErrorSub(dataTerminationSub?.message);
     }
     if (dataExecuteSub?.message) {
-      setActiveKey(subSystems.id);
       setErrorSub(dataExecuteSub?.message);
-    }
-    if (dataExecute?.message) {
-      for (const message of dataExecute.message) {
-        if (message.subSystemId === subSystems.id) {
-          setActiveKey(subSystems.id);
-        }
-      }
     }
     const isSubSystemRunning = subSystems.status === SubSystemStatus.RUNNING;
     setExecState(isSubSystemRunning);
@@ -85,7 +76,6 @@ const SubSystemsHeader: React.FC<SubSystemsHeaderProps> = ({
     execState,
     isRunAllSubSystems,
     isRunInterface,
-    setActiveKey,
     setErrorSub,
     subSystems.id,
     subSystems.status
@@ -104,7 +94,6 @@ const SubSystemsHeader: React.FC<SubSystemsHeaderProps> = ({
           setLastSubSystemError(subSystems.error);
           setTopicErrorSub(subSystems.error);
           setCheckError(true);
-          setActiveKey(subSystems.id);
         }
       }
       if (subSystems.error.length === 0 && lastSubSystemError.length !== 0) {
@@ -118,21 +107,17 @@ const SubSystemsHeader: React.FC<SubSystemsHeaderProps> = ({
     isLoadingExecAll,
     isStopSubSystem,
     lastSubSystemError,
-    setActiveKey,
     setTopicErrorSub,
     subSystems.error,
     subSystems.id
   ]);
 
   const handleButtonClick = React.useCallback(
-    (name: string, event: React.MouseEvent, itemId?: number) => {
+    (name: string, event: React.MouseEvent) => {
       event.stopPropagation();
       toggleHealthCheck(name);
       if (!vehicleId) {
         return;
-      }
-      if (itemId) {
-        setActiveKey([itemId]);
       }
       if (!execState && name === 'exec') {
         resetMutateStopSubSystem();
@@ -142,28 +127,36 @@ const SubSystemsHeader: React.FC<SubSystemsHeaderProps> = ({
         setTopicErrorSub([]);
         setLastSubSystemError([]);
       } else if (execState && name === 'exec') {
-        resetMutateExecuteSubSystem();
-        stopSubSystem({ vehicleId, subSystemName: subSystems.name });
-        setCheckError(false);
-        setErrorSub([]);
-        setTopicErrorSub([]);
-        setLastSubSystemError([]);
+        setIsModalOpen(true);
       }
     },
     [
       execState,
       executeSubSystem,
-      resetMutateExecuteSubSystem,
       resetMutateStopSubSystem,
-      setActiveKey,
       setErrorSub,
       setTopicErrorSub,
-      stopSubSystem,
       subSystems.name,
       toggleHealthCheck,
       vehicleId
     ]
   );
+
+  const handleOk = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    setIsModalOpen(false);
+    resetMutateExecuteSubSystem();
+    stopSubSystem({ vehicleId, subSystemName: subSystems.name });
+    setCheckError(false);
+    setErrorSub([]);
+    setTopicErrorSub([]);
+    setLastSubSystemError([]);
+  };
+
+  const handleCancel = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    setIsModalOpen(false);
+  };
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', padding: '2px 2px' }}>
@@ -199,6 +192,15 @@ const SubSystemsHeader: React.FC<SubSystemsHeaderProps> = ({
               <FontAwesomeIcon icon={execState ? faStop : faPlay} style={{ color: '#ffffff' }} />
             )}
           </Button>
+          <Modal
+            width={400}
+            onOk={handleOk}
+            onCancel={handleCancel}
+            title="Confirm"
+            open={isModalOpen}
+          >
+            Are you sure you want to stop the <Text strong>{subSystems.name}</Text> subsytem?
+          </Modal>
         </div>
         <Text strong style={{ marginLeft: '10px', paddingRight: '10px', fontSize: 15 }}>
           {subSystems.name}
@@ -210,7 +212,7 @@ const SubSystemsHeader: React.FC<SubSystemsHeaderProps> = ({
           <Button
             key={item.name}
             className={`machine-state ${item.status.toLocaleLowerCase()}`}
-            onClick={(event) => handleButtonClick(item.name, event, subSystems.id)}
+            onClick={(event) => handleButtonClick(item.name, event)}
             style={{
               margin: '0 3px',
               padding: '4px 8px',

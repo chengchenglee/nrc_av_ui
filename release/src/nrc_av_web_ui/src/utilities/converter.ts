@@ -63,7 +63,8 @@ export const parseYAMLInterface = (
       const commands = item?.Commands?.map((commandItem: any) => ({
         command: commandItem.Command,
         name: commandItem.Name,
-        nodes: commandItem.Nodes?.map((node: { Name: string }) => ({ name: node.Name })) || [],
+        // nodes: commandItem.Nodes?.map((node: { Name: string }) => ({ name: node.Name })) || [],
+        nodes: commandItem.Node ? [{ name: commandItem.Node }] : [],
         launchTime: commandItem.LaunchTime
       }));
       if (item.Type === 'Sensor' || item.Type === 'Algorithm') {

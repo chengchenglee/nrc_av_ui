@@ -22,11 +22,6 @@ const SubSystemsPanel: React.FC<SubSystemsHeaderProps> = ({
 }) => {
   const [errorSub, setErrorSub] = React.useState<any>();
   const [topicErrorSub, setTopicErrorSub] = React.useState<any>();
-  const [activeKey, setActiveKey] = React.useState<string | string[]>([]);
-
-  const handleClick = (key: React.SetStateAction<string | string[]>) => {
-    setActiveKey(key);
-  };
 
   const renderRunSubSystem = (data?: Message[]) => {
     if (!data || (Array.isArray(data) && data.length === 0)) {
@@ -154,12 +149,11 @@ const SubSystemsPanel: React.FC<SubSystemsHeaderProps> = ({
     );
   };
   return (
-    <Collapse activeKey={activeKey} onChange={handleClick}>
+    <Collapse>
       <Panel
         key={item.id}
         header={
           <SubSystemsHeader
-            setActiveKey={setActiveKey}
             subSystems={item}
             setErrorSub={setErrorSub}
             setTopicErrorSub={setTopicErrorSub}
