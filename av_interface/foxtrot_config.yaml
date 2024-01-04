@@ -2,6 +2,40 @@ Configuration:
   Name: foxtrot
 
 Subsystem:
+  CAN:
+    Type: Sensor
+    Description: Vehicle CAN
+    HealthTopics:
+      - HealthTopic: /CtrlStateFLG
+        HealthName: CAR
+        HealthTopicType: CtrlStateFLG
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: CanZe1SvConsumer
+        Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=4 CanZe1SvConsumer:=true CanZe1SvWriter:=true Eyeq3Prod:=true Eyeq3ProdCh:=1
+        Type: Software
+        LaunchTime: 5.0
+    DiagLED: 2
+    DiagRetry: 5
+    Timeout: 30
+    Depends:
+    Diagnostic:
+    
+  ARD:
+    Type: Sensor
+    Description: Leaf Arduino
+    HealthTopics:
+    Commands:
+      - Name: ARD
+        Command: roslaunch nrc_hw_svcs leaf_interface_arduino.launch arduino_machine:=node02
+        Type: Software
+        LaunchTime: 1.0
+    DiagLED: 2
+    DiagRetry: 5
+    Timeout: 30
+    Depends:
+    Diagnostic:
+
   GPS_Raw:
     Type: Sensor
     Description: Raw GPS
@@ -13,6 +47,10 @@ Subsystem:
     Commands:
       - Name: GPS_Raw
         Command: roslaunch nrc_hw_svcs gps_leaf.launch
+        Type: Software
+        LaunchTime: 5.0
+      - Name: TF_Sys
+        Command: roslaunch nrc_svcs leaf_tf_subsystem.launch sanborn:=true
         Type: Software
         LaunchTime: 1.0
     DiagLED: 2
@@ -44,6 +82,10 @@ Subsystem:
     Type: Sensor
     Description: Mobileye Camera
     HealthTopics:
+      - HealthTopic: /ME5/health
+        HealthName: NOD
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
       - HealthTopic: /ME5_ObjData
         HealthName: ME5
         HealthTopicType: Mobileye5ObjectArray
@@ -78,21 +120,6 @@ Subsystem:
     Depends:
     Diagnostic: velo_diag.py
 
-  TF_Sys:
-    Type: Algorithm
-    Description: TF_Sys
-    HealthTopics:
-    Commands:
-      - Name: TF_Sys
-        Command: roslaunch nrc_svcs leaf_tf_subsystem.launch sanborn:=true
-        Type: Software
-        LaunchTime: 1.0
-    DiagLED:
-    DiagRetry: 5
-    Timeout: 30
-    Depends: Pose
-    Diagnostic:
-
   PCP:
     Type: Algorithm
     Description: Pointcloud_Processing
@@ -110,23 +137,34 @@ Subsystem:
         Command: roslaunch nrc_pcp_svcs pc_processor.launch dynamic_global_pose_topic_name:=/dynamic_global_pose Leaf_Foxtrot:=true
         Type: Software
         LaunchTime: 3.0
+      - Name: Me2Yolo
+        Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch
+        Type: Software
+        LaunchTime: 1.0
     DiagLED: 5
     DiagRetry: 5
     Timeout: 30
     Depends:
     Diagnostic: pcp_diag.py
-
-  Me2Yolo:
+    
+  CAM:
     Type: Algorithm
-    Description: Meye to Yolo
+    Description: Tower_Cams
     HealthTopics:
+      - HealthTopic: /tower_cam_front/image_stamped
+        HealthName: TCF
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 7, 3
     Commands:
-      - Name: Me2Yolo
-        Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch
+      - Name: CAM
+        Command: roslaunch nrc_hw_svcs pgr_gige_cameras.launch FrRCam:=true FrLCam:=true FrCam:=true BaRCam:=false BaLCam:=false BaCam:=false enableArduino:=true video_preprocess:=true leaf_foxtrot:=true
         Type: Software
-        LaunchTime: 1.0
+        LaunchTime: 5.0
+    DiagLED: 
+    DiagRetry: 5
+    Timeout: 5
     Depends:
-    Diagnostic:
+    Diagnostic: 
 
   WM:
     Type: Algorithm
@@ -139,7 +177,7 @@ Subsystem:
       - HealthTopic: /traffic_light/detection/health
         HealthName: TLR
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
+        NomWarnErrRate: 1, 0.6, 0.3
       - HealthTopic: /ailsv_virtual_objects
         HealthName: Virtual
         HealthTopicType: TrackedObjectSet
