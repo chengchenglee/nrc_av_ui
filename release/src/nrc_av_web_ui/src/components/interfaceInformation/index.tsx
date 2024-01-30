@@ -56,7 +56,7 @@ const InterfaceInformation: React.FC<IProps> = (props) => {
     );
   };
 
-  const panelKeys = ['machines', 'subsystems'];
+  const panelKeys = ['machines', 'subsystems', 'speed', 'gps'];
   return context && context.status === ExecutionStatus.RUNNING ? (
     <Collapse className="interface-information" defaultActiveKey={panelKeys}>
       <Collapse.Panel key="machines" header="Machines">

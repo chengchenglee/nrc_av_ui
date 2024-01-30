@@ -34,21 +34,24 @@ const InterfaceList: FC<InterfaceListProps> = ({
   const [showModalDelete, setShowModalDelete] = useState(false);
   const [idInterface, setIdInterface] = useState(Number);
 
-  const dataYaml = useGetContentByIdInterface(idInterface) as unknown as DataYaml;
+  const { data: dataYaml, refetch: refetchYml } = useGetContentByIdInterface(idInterface);
 
   useEffect(() => {
-    if (dataYaml?.data) {
-      setYamlContent(dataYaml?.data?.content);
+    if (dataYaml) {
+      setYamlContent((dataYaml as unknown as DataYaml).data.content);
     }
-  }, [dataYaml?.data, setYamlContent]);
+  }, [dataYaml, setYamlContent]);
 
   useEffect(() => {
     refetch();
-  }, [currentPage, refetch, setYamlContent]);
+  }, [refetch]);
 
   const handleEditButtonClick = (id: number) => {
     onUpdateIdChange?.(id);
     setIdInterface(id);
+    if (id === idInterface) {
+      refetchYml();
+    }
   };
 
   const handleCloneButtonClick = (id: number) => {

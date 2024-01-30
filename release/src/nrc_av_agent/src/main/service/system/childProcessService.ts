@@ -135,14 +135,31 @@ export default class ChildProcessService implements IChildProcess {
     return '';
   }
 
-  @logMethod('[LogicService][buildCommand]')
+  @logMethod('[LogicService][buildCommand]', log.debug)
   buildCommand(command: string, path = ''): string {
     const setupPath = this.pathSvc.join(
-      this.configSvc.getConfig<IHostConfig>(APP_CONFIG.CONNECTION, 'rosWorkspace') || '',
+      this.configSvc.getConfig<IHostConfig, 'rosWorkspace'>(
+        APP_CONFIG.CONNECTION,
+        'rosWorkspace'
+      ) || '',
       'devel/setup.sh'
     );
+    let res = `. ${setupPath}`;
+
+    const extraWS = this.configSvc.getConfig<IHostConfig, 'extraWS'>(
+      APP_CONFIG.CONNECTION,
+      'extraWS'
+    );
+    if (extraWS && Array.isArray(extraWS)) {
+      extraWS
+        .map((w) => this.pathSvc.join(w, 'devel/setup.sh'))
+        .forEach((s) => {
+          res = `${res} && . ${s}`;
+        });
+    }
+
     const execPath = this.pathSvc.join(path, command);
-    const res = `. ${setupPath} && ${execPath}`;
+    res = `${res} && ${execPath}`;
     return res;
   }
 

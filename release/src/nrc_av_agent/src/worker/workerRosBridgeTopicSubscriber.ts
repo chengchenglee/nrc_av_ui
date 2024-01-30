@@ -1,75 +1,100 @@
-import bigInt from 'big-integer';
+/* eslint-disable max-classes-per-file */
 import { Ros, Topic } from 'roslib';
 import * as constants from '../shared/constants';
+import { getRosBridgeConnection } from '../shared/workerUtils';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const now = require('nano-time');
+class FixedSizeQueue<T> {
+  private queue: T[] = [];
+
+  private maxSize: number;
+
+  constructor(maxSize: number) {
+    this.maxSize = maxSize;
+  }
+
+  enqueue(item: T): void {
+    this.queue.push(item);
+
+    if (this.queue.length > this.maxSize) {
+      this.queue.shift(); // Remove the oldest element if the queue exceeds the maximum size
+    }
+  }
+
+  getQueue(): T[] {
+    return this.queue;
+  }
+}
+
+class QueueMap extends Map<string, FixedSizeQueue<number>> {
+  // eslint-disable-next-line @typescript-eslint/no-useless-constructor
+  constructor() {
+    super();
+  }
+
+  private createQueue(key: string): void {
+    // Ensure that a queue with the specified key doesn't already exist
+    if (!this.has(key)) {
+      // Create a new FixedSizeQueue with a maximum size of 50000
+      this.set(key, new FixedSizeQueue<number>(50000));
+    }
+  }
+
+  enqueueValue(key: string, value: number): void {
+    // Ensure that a queue with the specified key exists
+    if (this.has(key)) {
+      // Enqueue the value into the corresponding FixedSizeQueue
+      this.get(key)?.enqueue(value);
+    } else {
+      // If the queue doesn't exist, create it and then enqueue the value
+      this.createQueue(key);
+      this.get(key)?.enqueue(value);
+    }
+  }
+
+  getQueue(key: string): number[] | undefined {
+    // Return the current state of the queue with the specified key
+    return this.get(key)?.getQueue();
+  }
+}
 
 const rosBridgeConnection = new Ros({
   url: `${constants.ROS_BRIDGE_SOCKET.SOCKET_URL}:${constants.ROS_BRIDGE_SOCKET.SOCKET_PORT}`
 });
 
 const topicMap: Map<string, constants.AlgorithmsTopic | constants.SensorsTopic> = new Map();
+const rosTopicMap: Map<string, Topic> = new Map();
+const topicMapTime = new QueueMap();
+const topicIgnore = new Set();
 
-const delayInMs = (time: number): Promise<void> =>
-  new Promise((resolve) => {
-    setTimeout(resolve, time);
-  });
-
-const rosBridgeConnect = async (): Promise<void> => {
-  try {
-    rosBridgeConnection.connect(
-      `${constants.ROS_BRIDGE_SOCKET.SOCKET_URL}:${constants.ROS_BRIDGE_SOCKET.SOCKET_PORT}`
-    );
-  } catch {
-    await delayInMs(constants.ROS_BRIDGE_WORKER_TOPIC.ROS_TOPIC_CONNECT_BUFFER_TIME);
-    rosBridgeConnect();
+const calRate = (topic: constants.AlgorithmsTopic | constants.SensorsTopic) => {
+  let rate = 0;
+  const timeQueue = topicMapTime.getQueue(topic.uuid);
+  if (!timeQueue || topicIgnore.has(topic.uuid)) {
+    return rate;
   }
-};
-
-const getRosBridgeConnection = async (): Promise<Ros> => {
-  if (!rosBridgeConnection.isConnected) {
-    await rosBridgeConnect();
+  if (topic.lastPrintedMsgStamp === topic.lastMsgStamp) {
+    // This will remove the time queue when the topic is determined dead
+    // Resulted in restarting a sub system will ramp up the rate
+    // Rate will eventually sync up with rostopic hz however
+    // rostopic hz will be slower to catch up
+    const floatSecs: number = Date.now() / 1000;
+    const secs: number = Math.floor(floatSecs);
+    const nsecs: number = Math.floor((floatSecs - secs) * 1e9);
+    const currentTimeCal = Math.round((secs + nsecs * 1e-9 + Number.EPSILON) * 1e6) / 1e6;
+    if (
+      currentTimeCal - topic.lastMsgStamp >=
+      constants.ROS_BRIDGE_WORKER_TOPIC.ROS_TOPIC_STOP_TIME / 1000
+    ) {
+      return rate;
+    }
   }
-  return rosBridgeConnection;
-};
-
-const calRate = (lastGlobalStamp: number, avgDowntimeInit: number) => {
-  const downtimeGlobal =
-    Number.parseFloat((bigInt(now.microseconds()).toJSNumber() / 1e6).toFixed(6)) - lastGlobalStamp;
-  const downtime = Math.max(avgDowntimeInit, downtimeGlobal);
-  let rate: number;
-  if (downtime > 0) {
-    rate = 1 / downtime;
-  } else {
-    rate = 0;
+  const sum = timeQueue.reduce((partialSum, a) => partialSum + a, 0);
+  const mean = sum / timeQueue.length;
+  rate = 1.0 / mean;
+  if (rate <= 0) {
+    return 0;
   }
-
   return rate;
-};
-
-const processTopicMapState = (topic: constants.SensorsStatus | constants.AlgorithmsStatus) => {
-  const selectedTopic = topicMap.get(topic.uuid);
-  if (selectedTopic && selectedTopic !== undefined) {
-    const rate = calRate(selectedTopic.lastGlobalStamp, selectedTopic.avgDowntimeInit);
-    let updatedStatus = constants.RosTopicStatusType.BAD;
-    if (rate > selectedTopic.warnRate) {
-      updatedStatus = constants.RosTopicStatusType.GOOD;
-    } else if (rate > selectedTopic.errRate) {
-      updatedStatus = constants.RosTopicStatusType.TERRIBLE;
-    }
-    selectedTopic.healthCheckRate = Math.round((rate + Number.EPSILON) * 100) / 100;
-
-    selectedTopic.msgCount += 1;
-    if (selectedTopic.msgCount >= 1000) {
-      selectedTopic.msgCount = 0;
-    }
-    if (selectedTopic.status !== updatedStatus) {
-      selectedTopic.status = updatedStatus;
-      topicMap.set(topic.uuid, selectedTopic);
-      process.parentPort.postMessage(Array.from(topicMap.values()));
-    }
-  }
 };
 
 const processAllTopicMapState = (
@@ -78,50 +103,42 @@ const processAllTopicMapState = (
   topicList.forEach((topic) => {
     const selectedTopic = topicMap.get(topic.uuid);
     if (selectedTopic && selectedTopic !== undefined) {
-      const rate = calRate(selectedTopic.lastGlobalStamp, selectedTopic.avgDowntimeInit);
+      const rate = calRate(selectedTopic);
       let updatedStatus = constants.RosTopicStatusType.BAD;
       if (rate > selectedTopic.warnRate) {
         updatedStatus = constants.RosTopicStatusType.GOOD;
       } else if (rate > selectedTopic.errRate) {
         updatedStatus = constants.RosTopicStatusType.TERRIBLE;
       }
+      selectedTopic.lastPrintedMsgStamp = selectedTopic.lastMsgStamp;
       selectedTopic.healthCheckRate = Math.round((rate + Number.EPSILON) * 100) / 100;
-      if (selectedTopic.status !== updatedStatus) {
-        selectedTopic.status = updatedStatus;
-        topicMap.set(topic.uuid, selectedTopic);
-      }
+      selectedTopic.status = updatedStatus;
+      topicMap.set(topic.uuid, selectedTopic);
     }
   });
 };
 
-const processTopicData = (
-  topic: constants.SensorsStatus | constants.AlgorithmsStatus,
-  message: constants.IRosBridgeMessage
-) => {
+const processTopicData = (topic: constants.SensorsStatus | constants.AlgorithmsStatus) => {
   const topicObj = topicMap.get(topic.uuid);
   if (topicObj && topicObj !== undefined) {
-    let stamps = 0;
-    if (message?.header?.stamp) {
-      stamps =
-        Math.round(
-          (message.header.stamp.secs + message.header.stamp.nsecs * 1e-9 + Number.EPSILON) * 1e6
-        ) / 1e6;
-    }
-    if (stamps < 1) {
-      stamps = Number.parseFloat((bigInt(now.microseconds()).toJSNumber() / 1e6).toFixed(6));
-    }
+    const floatSecs: number = Date.now() / 1000;
+    const secs: number = Math.floor(floatSecs);
+    const nsecs: number = Math.floor((floatSecs - secs) * 1e9);
 
-    const downtime = Math.min(5.0, Math.max(0.0, stamps - topicObj.lastMsgStamp));
-    const avgDowntime =
-      Math.round((0.99 * topicObj.avgDowntimeInit + 0.01 * downtime + Number.EPSILON) * 1e6) / 1e6;
-
-    topicObj.avgDowntimeInit = avgDowntime;
-    topicObj.lastMsgStamp = stamps;
-    topicObj.lastGlobalStamp = Number.parseFloat(
-      (bigInt(now.microseconds()).toJSNumber() / 1e6).toFixed(6)
-    );
+    const currentTimeCal = Math.round((secs + nsecs * 1e-9 + Number.EPSILON) * 1e6) / 1e6;
+    if (topicObj.lastGlobalStamp < 0 || topicObj.lastGlobalStamp > currentTimeCal) {
+      topicObj.lastMsgStamp = currentTimeCal;
+      topicObj.lastGlobalStamp = currentTimeCal;
+    } else {
+      const time = currentTimeCal - topicObj.lastMsgStamp;
+      topicMapTime.enqueueValue(topicObj.uuid, time);
+      topicObj.lastMsgStamp = currentTimeCal;
+    }
+    topicObj.msgCount += 1;
+    if (topicObj.msgCount >= 1000 || topicIgnore.has(topic.uuid)) {
+      topicObj.msgCount = 0;
+    }
     topicMap.set(topic.uuid, topicObj);
-    processTopicMapState(topic);
   }
 };
 
@@ -133,12 +150,20 @@ const subscribeToTopic = (
   const topicRos = new Topic({
     ros: rosConnection,
     name: topic.topicName,
-    messageType: topicTypeName
+    messageType: topicTypeName,
+    compression: 'cbor-raw',
+    queue_length: 0,
+    queue_size: 0
   });
-  topicRos.subscribe((message) => {
-    const res = message as constants.IRosBridgeMessage;
-    processTopicData(topic, res);
+  rosTopicMap.get(topic.uuid)?.unsubscribe();
+  rosTopicMap.set(topic.uuid, topicRos);
+  topicRos.subscribe(() => {
+    processTopicData(topic);
   });
+};
+
+const unsubscribeTopic = (topicUuid: string) => {
+  rosTopicMap.get(topicUuid)?.unsubscribe();
 };
 
 const getTopicTypeAndSubscribe = (
@@ -162,27 +187,77 @@ const getTopicTypeAndSubscribe = (
   });
 };
 
-const subscribeToAllTopics = (
-  rosConnection: Ros,
-  topicList: constants.SensorsStatus[] | constants.AlgorithmsStatus[]
-) => {
+const initAllTopics = (topicList: constants.SensorsStatus[] | constants.AlgorithmsStatus[]) => {
+  topicMapTime.clear();
   topicList.forEach((item) => {
     topicMap.set(item.uuid, {
       ...item,
-      avgDowntimeInit: 0,
-      lastGlobalStamp: 0,
+      lastPrintedMsgStamp: 0,
+      lastGlobalStamp: -1,
       lastMsgStamp: 0
     });
-    getTopicTypeAndSubscribe(rosConnection, item);
+    topicIgnore.add(item.uuid);
   });
 };
 
-getRosBridgeConnection();
-process.parentPort.once('message', async (e) => {
-  const topicListArr = e.data.topicList as constants.SensorsStatus[] | constants.AlgorithmsStatus[];
-  subscribeToAllTopics(await getRosBridgeConnection(), topicListArr);
-  setInterval(() => {
-    processAllTopicMapState(Array.from(topicMap.values()));
-    process.parentPort.postMessage(Array.from(topicMap.values()));
-  }, constants.ROS_BRIDGE_WORKER_TOPIC.ROS_TOPIC_PASSIVE_INTERVAL);
+const resetTopicStateFromIdList = (id: number[], addToIgnore: boolean, rosConnection: Ros) => {
+  const idSet = new Set(id);
+  topicMap.forEach((topic) => {
+    const topicReset = topicMap.get(topic.uuid);
+    if (idSet.has(topic.id) && topicReset) {
+      topicReset.lastPrintedMsgStamp = 0;
+      topicReset.lastGlobalStamp = -1;
+      topicReset.lastMsgStamp = 0;
+      topicMap.set(topic.uuid, topicReset);
+      topicMapTime.delete(topic.uuid);
+      if (addToIgnore) {
+        topicIgnore.add(topic.uuid);
+        unsubscribeTopic(topic.uuid);
+      } else {
+        topicIgnore.delete(topic.uuid);
+        topicMap.set(topic.uuid, {
+          ...topicReset
+        });
+        getTopicTypeAndSubscribe(rosConnection, topicReset);
+      }
+    }
+  });
+};
+
+// getRosBridgeConnection();
+process.parentPort.on('message', async (e) => {
+  const message = e.data as constants.IRosBridgeTopicWorkerMessage;
+  // eslint-disable-next-line default-case
+  switch (message.type) {
+    case constants.EnumRosBridgeTopicWorkerMessage.INIT: {
+      const initMessage = e.data as constants.IRosBridgeTopicWorkerMessageInit;
+      const topicListArr = initMessage.topicList as
+        | constants.SensorsStatus[]
+        | constants.AlgorithmsStatus[];
+      initAllTopics(topicListArr);
+      setInterval(() => {
+        processAllTopicMapState(Array.from(topicMap.values()));
+        process.parentPort.postMessage(Array.from(topicMap.values()));
+      }, constants.ROS_BRIDGE_WORKER_TOPIC.ROS_TOPIC_PASSIVE_INTERVAL);
+      break;
+    }
+    case constants.EnumRosBridgeTopicWorkerMessage.START: {
+      const startMessage = e.data as constants.IRosBridgeTopicWorkerMessageStart;
+      resetTopicStateFromIdList(
+        startMessage.topidIdList,
+        false,
+        await getRosBridgeConnection(rosBridgeConnection)
+      );
+      break;
+    }
+    case constants.EnumRosBridgeTopicWorkerMessage.STOP: {
+      const stopMessage = e.data as constants.IRosBridgeTopicWorkerMessageStop;
+      resetTopicStateFromIdList(
+        stopMessage.topidIdList,
+        true,
+        await getRosBridgeConnection(rosBridgeConnection)
+      );
+      break;
+    }
+  }
 });

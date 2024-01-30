@@ -2,18 +2,81 @@ import { Collapse, Descriptions, Empty, Form, Select, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/es/select';
 import moment from 'moment';
 import * as React from 'react';
-import { useDispatch } from 'react-redux';
-import { VehicleStatus } from '../../constants/vehicleStatus';
-import { VehicleDTO } from '../../dtos/vehicle';
+import { useDispatch, useSelector } from 'react-redux';
+import { ExtraVehicleInformation, VehicleDTO } from '../../dtos/vehicle';
 import { useActiveVehicles } from '../../hooks/queries/vehicle';
-import { useStoreVehicle } from '../../store';
+import { RootState, useStoreVehicle } from '../../store';
 import { setSelectedVehicle } from '../../store/vehicle';
 import InterfaceExecutor from './executor/interfaceExecutor';
 
 const { Title } = Typography;
+const { Panel } = Collapse;
 
-// eslint-disable-next-line max-lines-per-function
-const ROSRunner = () => {
+interface VehicleDetailsProps {
+  selectedVehicle: VehicleDTO | undefined;
+  lastPingTime: string;
+  extraVehicleInformation: ExtraVehicleInformation | undefined;
+}
+
+const VehicleDetails: React.FC<VehicleDetailsProps> = ({
+  selectedVehicle,
+  lastPingTime,
+  extraVehicleInformation
+}) => {
+  const renderStatusDescriptionItem = (key: string, value: string) => (
+    <Descriptions.Item key={key} style={{ display: 'block', padding: 1 }} label={key}>
+      {value} {lastPingTime}
+    </Descriptions.Item>
+  );
+
+  const renderExtraInformation = () => {
+    const latitude = extraVehicleInformation?.latitude || 0;
+    const longitude = extraVehicleInformation?.longitude || 0;
+    const velocity = extraVehicleInformation?.velocity || 0;
+
+    return (
+      <>
+        {selectedVehicle && (
+          <>
+            <Descriptions.Item style={{ display: 'block', padding: 1 }} label="Latitude, Longitude">
+              {`${latitude}, ${longitude}`}
+            </Descriptions.Item>
+            <Descriptions.Item style={{ display: 'block', padding: 1 }} label="Velocity">
+              {velocity}
+            </Descriptions.Item>
+          </>
+        )}
+      </>
+    );
+  };
+
+  return (
+    <Descriptions style={{ paddingLeft: '40px', marginTop: '-8px', paddingTop: '0px' }}>
+      {selectedVehicle &&
+        Object.entries(selectedVehicle).map(([key, value]) => {
+          if (typeof value !== 'object') {
+            switch (key) {
+              case 'id':
+              case 'isOnline':
+                return null;
+              case 'status':
+                return renderStatusDescriptionItem(key, value);
+              default:
+                return (
+                  <Descriptions.Item key={key} style={{ display: 'block', padding: 1 }} label={key}>
+                    {value}
+                  </Descriptions.Item>
+                );
+            }
+          }
+          return null;
+        })}
+      {renderExtraInformation()}
+    </Descriptions>
+  );
+};
+
+const ROSRunner: React.FC = () => {
   const selectedVehicle = useStoreVehicle();
   const dispatch = useDispatch();
 
@@ -23,9 +86,9 @@ const ROSRunner = () => {
     refetch
   } = useActiveVehicles();
 
-  const [lastSseTime, setLastSseTime] = React.useState(Date.now());
-  const [lastPingTime, setLastPingTime] = React.useState('');
-  const [loadVehicleDetails, setLoadVehicleDetails] = React.useState(Date.now());
+  const [lastSseTime, setLastSseTime] = React.useState<number>(Date.now());
+  const [lastPingTime, setLastPingTime] = React.useState<string>('');
+  const [loadVehicleDetails, setLoadVehicleDetails] = React.useState<number>(Date.now());
 
   const vehicleOptions = React.useMemo<DefaultOptionType[]>(() => {
     if (!activeVehicles) {
@@ -49,6 +112,10 @@ const ROSRunner = () => {
     [activeVehicles, dispatch]
   );
 
+  const extraVehicleInformation = useSelector(
+    (state: RootState) => state.vehicle.extraVehicleInformation
+  );
+
   React.useEffect(() => {
     const seconds = Math.round(
       moment
@@ -68,22 +135,12 @@ const ROSRunner = () => {
   }, [lastSseTime, loadVehicleDetails]);
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '1px'
-      }}
-    >
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
       <div id="vehicle-select">
         <Title level={3} style={{ margin: '0px 0px 2px' }}>
           Select Vehicle
         </Title>
-        <Form.Item
-          style={{
-            marginBottom: 0
-          }}
-        >
+        <Form.Item style={{ marginBottom: 0 }}>
           <Select
             className="app-select"
             options={vehicleOptions}
@@ -97,79 +154,20 @@ const ROSRunner = () => {
           />
         </Form.Item>
       </div>
-      <Collapse
-        size="small"
-        bordered={false}
-        style={{
-          background: 'transparent'
-        }}
-      >
-        <Collapse.Panel
+      <Collapse size="small" bordered={false} style={{ background: 'transparent' }}>
+        <Panel
           className="collapse-no-padding"
           header="Vehicle detail"
           key="1"
           style={{ padding: '0px' }}
         >
-          <Descriptions style={{ paddingLeft: '40px', marginTop: '-8px', paddingTop: '0px' }}>
-            {selectedVehicle &&
-              Object.entries(selectedVehicle).map(([k, v]) => {
-                if (typeof v !== 'object') {
-                  switch (k) {
-                    case 'id':
-                      return null;
-                    case 'isOnline':
-                      return null;
-                    case 'status':
-                      switch (v) {
-                        case VehicleStatus.ACTIVE:
-                          return (
-                            <Descriptions.Item
-                              key={k}
-                              style={{ display: 'block', padding: 1 }}
-                              label={k}
-                            >
-                              {v} {lastPingTime}
-                            </Descriptions.Item>
-                          );
-                        case VehicleStatus.OFFLINE:
-                          return (
-                            <Descriptions.Item
-                              key={k}
-                              style={{ display: 'block', padding: 1 }}
-                              label={k}
-                            >
-                              {v} {lastPingTime}
-                            </Descriptions.Item>
-                          );
-                        default:
-                          return (
-                            <Descriptions.Item
-                              key={k}
-                              style={{ display: 'block', padding: 1 }}
-                              label={k}
-                            >
-                              {v}
-                            </Descriptions.Item>
-                          );
-                      }
-
-                    default:
-                      return (
-                        <Descriptions.Item
-                          key={k}
-                          style={{ display: 'block', padding: 1 }}
-                          label={k}
-                        >
-                          {v}
-                        </Descriptions.Item>
-                      );
-                  }
-                }
-                return null;
-              })}
-          </Descriptions>
+          <VehicleDetails
+            selectedVehicle={selectedVehicle}
+            lastPingTime={lastPingTime}
+            extraVehicleInformation={extraVehicleInformation}
+          />
           {!selectedVehicle && <Empty />}
-        </Collapse.Panel>
+        </Panel>
       </Collapse>
       <InterfaceExecutor
         vehicleId={selectedVehicle?.id}

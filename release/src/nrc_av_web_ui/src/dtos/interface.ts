@@ -280,6 +280,11 @@ export interface Subsystem {
   error: Message[];
   diagnostic: string;
   status: string;
+  timeout: number;
+  diagRetry: number;
+  diagTries: number;
+  isProcessing: boolean;
+  isDiagnostic: boolean;
 }
 
 export interface InterfaceDetailDTO {

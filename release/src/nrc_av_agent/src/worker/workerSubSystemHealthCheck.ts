@@ -15,13 +15,16 @@ const processMessage = (data: ISubSystemWorkerMessage): ISubSystemWorkerReturn =
     diagnosticSubSystem: [],
     diagLedStatus: []
   };
+  let maxLed = 0;
   data.subSystems.forEach((subSystem) => {
+    if (subSystem.diagLed && subSystem.diagLed > maxLed) {
+      maxLed = subSystem.diagLed;
+    }
     subSystem.topics.forEach((topic) => {
       const subSystemTopic = data.topicMap.get(topic.id);
       if (
         data.startedSubSystem.get(subSystem.name) &&
-        subSystemTopic?.status === RosTopicStatusType.BAD &&
-        subSystem.diagnostic
+        subSystemTopic?.status === RosTopicStatusType.BAD
       ) {
         returnMessage.diagnosticSubSystem.push(subSystem);
       }
@@ -41,6 +44,11 @@ const processMessage = (data: ISubSystemWorkerMessage): ISubSystemWorkerReturn =
   // Index will start from 1 instead of 0
   if (returnMessage.diagLedStatus.length > 0) {
     returnMessage.diagLedStatus.shift();
+  }
+  if (maxLed > returnMessage.diagLedStatus.length) {
+    returnMessage.diagLedStatus = returnMessage.diagLedStatus.concat(
+      new Array(maxLed - returnMessage.diagLedStatus.length).fill(0)
+    );
   }
   return returnMessage;
 };

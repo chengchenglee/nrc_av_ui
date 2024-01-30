@@ -94,15 +94,9 @@ export class VehicleController {
     return res.status(HttpStatus.OK).send(await this.vehicleService.changeMap(id, mapName));
   }
 
-  @Post('/:id/termination/interface-files/:interfaceId')
-  async stopInterfaceFiles(
-    @Param('id', ParseIntPipe) id: number,
-    @Param('interfaceId', ParseIntPipe) interfaceId: number,
-    @Res() res: Response
-  ) {
-    return res
-      .status(HttpStatus.OK)
-      .send(await this.vehicleService.stopInterfaceFiles(id, interfaceId));
+  @Post('/:id/termination/interface-files')
+  async stopInterfaceFiles(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+    return res.status(HttpStatus.OK).send(await this.vehicleService.stopInterfaceFiles(id));
   }
 
   @Post('/:id/interface/:interfaceId/execution/command/:commandId')
@@ -150,27 +144,14 @@ export class VehicleController {
     const listener: Listener = this.eventEmitter.on(
       EventEmitterNameSpace.VEHICLE_INTERFACE_DETAIL_STATUS,
       (data: InterfaceInformationDTO) => {
-        const {
-          machines,
-          subSystems,
-          vehicleId,
-          interfaceName,
-          status,
-          interfaceId,
-          statusRunAll
-        } = data;
+        const { vehicleId } = data;
         if (id !== vehicleId) {
           return;
         }
         clearTimeout(subjectTimeout);
         subjectTimeout = setTimeout(subjectTimeoutError, SSE_TIMEOUT);
         subject.next({
-          machines,
-          subSystems,
-          interfaceName,
-          interfaceId,
-          status,
-          statusRunAll
+          ...data
         });
       },
       {

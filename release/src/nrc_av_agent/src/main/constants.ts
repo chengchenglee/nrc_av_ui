@@ -24,7 +24,6 @@ export const ROS = {
 export const INTERFACE_FILE = {
   INTERFACE_NOT_EXIST: 'Interface not exist',
   IS_RUNNING: 'already running',
-  IS_NOT_RUNNING: 'is not running',
   STOP_SUCESSFULLY: 'stop successfully'
 };
 
@@ -44,6 +43,7 @@ export const ROS_COMMAND = {
 
 export const SUB_SYSTEM = {
   SUBSYSTEM_NO_EXIST: 'Sub system do not exist',
+  SUBSYSTEM_DIAGNOSTIC_NO_EXIST: 'Sub system diagnostic do not exist',
   SET_SUBSYSTEM_SUCCESS: 'Set sub system successfully',
   RUN_SUBSYSTEM_SUCCESS: 'Run sub system successfully',
   RUN_SUBSYSTEM_FAIL: 'Run sub system fail',
@@ -52,7 +52,9 @@ export const SUB_SYSTEM = {
   STOP_SUBSYSTEM_ALREADY_STOP: 'Sub system already stopped',
   DEFAULT_TIMEOUT: 30000,
   DEFAULT_LAUNCH_TIME: 200,
-  DEFAULT_STOP_TIME: 5000
+  DEFAULT_RESTART_BUFFER: 2000,
+  DEFAULT_STOP_TIME: 8000,
+  DEFAULT_START_TIME: 8000
 };
 
 export const ROS_BRIDGE = {
@@ -71,7 +73,7 @@ export const ROS_BRIDGE = {
 };
 
 export const DIAGNOSTIC = {
-  DIAGNOSTIC_RETRY: 5,
   DIAGNOSTIC_PASSIVE_INTERVAL: 2000,
-  DIAGNOSTIC_COOLDOWN_INTERVAL: 30000
+  DIAGNOSTIC_BUFFER_TIME: 5000,
+  DIAGNOSTIC_BUFFER_END_TIME: 2000
 };

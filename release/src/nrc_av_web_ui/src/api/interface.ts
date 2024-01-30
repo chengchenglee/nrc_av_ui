@@ -23,7 +23,7 @@ export const getInterfaceByName = (name: string) =>
   publicClient.get<InterfaceDetailDTO>(`${url}/name/${name}`);
 
 export const getContentYamlByIdInterface = (id: number) =>
-  publicClient.get<string>(`${url}/${id}/content`);
+  publicClient.get<{ content: string }>(`${url}/${id}/content`);
 
 export const addInterfaceApi = (data: AddEditInterfaceDTO | ImportInterfaceDTO) =>
   publicClient.post('/interface', data);

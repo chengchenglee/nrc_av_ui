@@ -61,7 +61,7 @@ const ItemResult: React.FC<IProps> = (props) => {
       <Title level={5} style={{ marginTop: 0 }}>
         Interface information
       </Title>
-      <InterfaceInformation vehicleId={vehicleId || 0} dataExecute={dataExecute} />
+      <InterfaceInformation vehicleId={vehicleId ?? 0} dataExecute={dataExecute} />
     </div>
   );
 };

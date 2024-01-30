@@ -9,6 +9,11 @@
     &.bad {
       background-color: rgba($color: #ff4d4f, $alpha: 0.4);
     }
+
+    &.stopped {
+      background-color: rgba($color: #6d6b6b, $alpha: 0.4);
+    }
+
     &.terrible {
       background-color: rgba($color: #ffa500, $alpha: 0.4);
     }

@@ -20,7 +20,7 @@ import './service/communication/ipcService';
 
 const createWindow = () => {
   const mainWindow = new BrowserWindow({
-    icon: getAssetsPath('icon.ico'),
+    icon: getAssetsPath('icon.png'),
     width: 900,
     height: 750,
     webPreferences: {

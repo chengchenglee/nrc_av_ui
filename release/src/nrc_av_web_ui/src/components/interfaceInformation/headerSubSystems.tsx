@@ -1,10 +1,11 @@
+/* eslint-disable complexity */
 /* eslint-disable indent */
 /* eslint-disable max-lines-per-function */
 /* eslint-disable import/order */
-import { Button, Modal, Typography } from 'antd';
+import { Badge, Button, Modal, Typography } from 'antd';
 import * as React from 'react';
 import './styles.scss';
-import { faCircleNotch, faStop, faPlay } from '@fortawesome/free-solid-svg-icons';
+import { faCircleNotch, faStop, faPlay, faD } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useExecSubSystem, useTerminateSubSystem } from '../../hooks/queries/subSystems';
 import { InterfaceMessage, Message, Subsystem } from '../../dtos/interface';
@@ -29,13 +30,14 @@ const SubSystemsHeader: React.FC<SubSystemsHeaderProps> = ({
   toggleHealthCheck,
   healthCheckInfoState,
   vehicleId,
-  dataExecute,
   setErrorSub,
   setTopicErrorSub
 }) => {
   const [execState, setExecState] = React.useState<boolean>(false);
   const [isLoadingExecAll, setIsLoadingExecAll] = React.useState<boolean>(false);
   const [checkError, setCheckError] = React.useState<boolean>(false);
+  const [countdown, setCountdown] = React.useState(subSystems.timeout);
+  const [activeDiag, setActiveDiag] = React.useState<boolean>(false);
   const {
     dataExecuteSubSystem,
     executeSubSystem,
@@ -51,35 +53,74 @@ const SubSystemsHeader: React.FC<SubSystemsHeaderProps> = ({
 
   const [isModalOpen, setIsModalOpen] = React.useState(false);
 
+  const [numberRetry, setNumberRetry] = React.useState(subSystems.diagTries);
+
   const isRunInterface = useSelector((state: RootState) => state.interfaceExecutor.runInterface);
+
+  React.useEffect(() => {
+    if (!subSystems.isDiagnostic) {
+      setExecState(subSystems.status === SubSystemStatus.RUNNING);
+    }
+
+    if (isRunAllSubSystems && !execState && isRunInterface) {
+      setIsLoadingExecAll(true);
+    } else {
+      setIsLoadingExecAll(false);
+    }
+  }, [execState, isRunAllSubSystems, isRunInterface, subSystems]);
+
+  React.useEffect(() => {
+    setActiveDiag(subSystems.isDiagnostic);
+
+    let countdownInterval: number;
+    setNumberRetry(subSystems.diagTries);
+    if (activeDiag || subSystems.diagRetry === numberRetry) {
+      countdownInterval = window.setInterval(() => {
+        setCountdown((prevCountdown) => {
+          if (prevCountdown === 0 && numberRetry !== subSystems.diagRetry) {
+            setNumberRetry((prevNumberRetry) => prevNumberRetry + 1);
+          } else if (countdown === 0 && numberRetry === subSystems.diagRetry) {
+            return 0;
+          } else {
+            return prevCountdown - 1;
+          }
+          return countdown;
+        });
+      }, 1000);
+    } else {
+      // Reset countdown if activeDiag false
+      setCountdown(subSystems.timeout);
+    }
+
+    return () => {
+      window.clearInterval(countdownInterval);
+    };
+  }, [
+    execState,
+    countdown,
+    numberRetry,
+    subSystems.diagRetry,
+    subSystems.timeout,
+    activeDiag,
+    subSystems.isDiagnostic,
+    subSystems.diagTries
+  ]);
+
+  React.useEffect(() => {
+    setCountdown(subSystems.timeout);
+  }, [numberRetry, subSystems.timeout]);
 
   React.useEffect(() => {
     const dataExecuteSub = dataExecuteSubSystem as unknown as InterfaceMessage;
     const dataTerminationSub = dataStopSubSystem as unknown as Message;
+
     if (dataTerminationSub) {
       setErrorSub(dataTerminationSub?.message);
     }
     if (dataExecuteSub?.message) {
       setErrorSub(dataExecuteSub?.message);
     }
-    const isSubSystemRunning = subSystems.status === SubSystemStatus.RUNNING;
-    setExecState(isSubSystemRunning);
-    if (isRunAllSubSystems && !execState && isRunInterface) {
-      setIsLoadingExecAll(true);
-    } else {
-      setIsLoadingExecAll(false);
-    }
-  }, [
-    dataExecute.message,
-    dataExecuteSubSystem,
-    dataStopSubSystem,
-    execState,
-    isRunAllSubSystems,
-    isRunInterface,
-    setErrorSub,
-    subSystems.id,
-    subSystems.status
-  ]);
+  }, [dataExecuteSubSystem, dataStopSubSystem, setErrorSub, subSystems.isProcessing]);
 
   React.useEffect(() => {
     if (!isExecutingSubSystem && !isStopSubSystem && !isLoadingExecAll) {
@@ -158,6 +199,14 @@ const SubSystemsHeader: React.FC<SubSystemsHeaderProps> = ({
     setIsModalOpen(false);
   };
 
+  const calculateBackgroundColor = () => {
+    if (isExecutingSubSystem || isStopSubSystem || subSystems.isProcessing || isLoadingExecAll) {
+      return !activeDiag ? 'grey' : activeDiag && numberRetry !== 0 ? '#ffc01a' : 'green';
+    } else {
+      return activeDiag && numberRetry !== 0 ? '#ffc01a' : execState ? 'red' : 'green';
+    }
+  };
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', padding: '2px 2px' }}>
       <div
@@ -176,20 +225,28 @@ const SubSystemsHeader: React.FC<SubSystemsHeaderProps> = ({
             onClick={(event) => handleButtonClick('exec', event)}
             htmlType="submit"
             type="primary"
+            disabled={
+              isExecutingSubSystem ||
+              isStopSubSystem ||
+              isLoadingExecAll ||
+              subSystems.isProcessing ||
+              (subSystems.diagRetry === numberRetry && countdown !== 0 && numberRetry !== 0)
+            }
             style={{
               marginLeft: '5px',
-              backgroundColor:
-                isExecutingSubSystem || isStopSubSystem || isLoadingExecAll
-                  ? 'grey'
-                  : execState
-                  ? 'red'
-                  : 'green'
+              backgroundColor: calculateBackgroundColor()
             }}
           >
-            {isExecutingSubSystem || isStopSubSystem || isLoadingExecAll ? (
+            {(isExecutingSubSystem ||
+              isStopSubSystem ||
+              subSystems.isProcessing ||
+              isLoadingExecAll) &&
+            !activeDiag ? (
               <FontAwesomeIcon icon={faCircleNotch} spin />
-            ) : (
+            ) : !activeDiag ? (
               <FontAwesomeIcon icon={execState ? faStop : faPlay} style={{ color: '#ffffff' }} />
+            ) : (
+              <FontAwesomeIcon icon={faD} fontSize={15} style={{ color: 'red' }} />
             )}
           </Button>
           <Modal
@@ -207,11 +264,54 @@ const SubSystemsHeader: React.FC<SubSystemsHeaderProps> = ({
         </Text>
       </div>
 
+      {(activeDiag && lastSubSystemError) ||
+      (subSystems.diagTries === subSystems.diagRetry && subSystems.diagRetry !== 0) ? (
+        <Badge
+          count={numberRetry}
+          offset={[-7, 0]}
+          style={{
+            backgroundColor: 'red',
+            borderRadius: '10px',
+            border: '2px solid rgb(221, 221, 221)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <div
+            style={{
+              margin: '0 10px',
+              display: 'flex',
+              alignItems: 'center',
+              position: 'relative',
+              padding: '5px 15px',
+              backgroundColor: '#ffc01a',
+              borderRadius: '10px',
+              border: '2px solid red'
+            }}
+          >
+            <Text style={{ display: 'flex', alignItems: 'center', color: '#ff2804' }}>
+              {numberRetry !== 0
+                ? `${Math.floor(countdown / 60)}:${
+                    countdown % 60 < 10 ? `0${countdown % 60}` : countdown % 60
+                  }`
+                : '0:0'}
+            </Text>
+          </div>
+        </Badge>
+      ) : null}
+
+      <div></div>
+
       <div style={{ paddingLeft: '10px' }}>
         {subSystems.topics.map((item) => (
           <Button
             key={item.name}
-            className={`machine-state ${item.status.toLocaleLowerCase()}`}
+            className={
+              subSystems.status !== SubSystemStatus.STOPPED
+                ? `machine-state ${item.status.toLocaleLowerCase()}`
+                : `machine-state ${subSystems.status.toLocaleLowerCase()}`
+            }
             onClick={(event) => handleButtonClick(item.name, event)}
             style={{
               margin: '0 3px',

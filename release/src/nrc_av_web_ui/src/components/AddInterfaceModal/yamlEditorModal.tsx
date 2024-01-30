@@ -2,14 +2,16 @@
 import { Button, Modal, message } from 'antd';
 import jsYaml, { YAMLException } from 'js-yaml';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
-import { configureMonacoYaml } from 'monaco-yaml';
+import { SchemasSettings, configureMonacoYaml } from 'monaco-yaml';
 import * as React from 'react';
 import Editor from 'react-monaco-editor';
 import './yamlEditorModal.scss';
-import { ErrMsgEditor, ModeEditor } from '../../constants/editorYAML';
+import schema from '../../../public/schemaInterface.json';
+import { ErrMsgEditor, ModeEditor, Yaml } from '../../constants/editorYAML';
 import {
   useAddInterface,
   useEditInterface,
+  useGetContentByIdInterface,
   useGetInterfaceByName,
   useGetInterfaceList
 } from '../../hooks/queries/interface';
@@ -21,10 +23,10 @@ const checkDependencyExists = (data: any, dependencyName: string): boolean =>
 
 const checkDependencies = (data: any): string => {
   for (const item of data) {
-    if (item.depends) {
+    if (item?.depends) {
       for (const dependencyName of item.depends) {
         const dependency = data.find((obj: { name: string }) => obj.name === dependencyName);
-        if (dependency?.depends && dependency.depends.includes(item.name)) {
+        if (dependency?.depends && dependency?.depends.includes(item.name)) {
           const errMsg = replacePlaceholders(ErrMsgEditor.DEPENDENCY_CIRCULAR, {
             subSystemName: item.name,
             dependencyName: dependency.name
@@ -39,7 +41,7 @@ const checkDependencies = (data: any): string => {
 
 const validateFileYML = (data: any) => {
   for (const item of data) {
-    if (item.depends && item.depends.length > 0) {
+    if (item?.depends && item?.depends.length > 0) {
       for (const dependencyName of item.depends) {
         if (!checkDependencyExists(data, dependencyName)) {
           const errMsg = replacePlaceholders(ErrMsgEditor.DEPENDENCY_NOT_EXIST, {
@@ -57,6 +59,18 @@ const validateFileYML = (data: any) => {
   return '';
 };
 
+const generateKey = (marker: any) =>
+  `${marker.severity}-${marker.startLineNumber}-${marker.startColumn}-${marker.message}`;
+
+const transformErrorMessage = <T,>(keys: Record<keyof T, 1>) => {
+  const result: string[] = [];
+  const keysInObject = Object.keys(keys) as Array<keyof T>;
+  keysInObject.forEach((key) => {
+    result.push(`Message: Missing property ${String(key)}. /nLine: 1`);
+  });
+  return result;
+};
+
 interface IProps {
   interfaceId: number | undefined;
   content: string;
@@ -68,6 +82,33 @@ interface YAML {
   Configuration: {
     Name: string;
   };
+  Subsystem: {
+    Type: string;
+    Description: string | null;
+    Depends: string | null;
+    Commands: {
+      Name: string;
+      Command: string;
+      Type: string;
+      LaunchTime: number | null;
+      Node: string | null;
+    };
+    HealthTopics: {
+      HealthTopic: string;
+      HealthName: string;
+      HealthTopicType: string;
+      NomWarnErrRate: string;
+    };
+    DiagLED?: number | null;
+    Timeout?: number | null;
+    DiagRetry?: number | null;
+    Diagnostic?: {
+      Retry: number;
+      Timeout: number;
+      LED: number;
+      File: string;
+    };
+  };
 }
 
 export interface YamlEditorModalMethods {
@@ -77,14 +118,18 @@ export interface YamlEditorModalMethods {
 const YamlEditorModal = React.forwardRef<YamlEditorModalMethods, IProps>((props, ref) => {
   const { currentPage, modeEditor } = props;
   const [mode, setMode] = React.useState('');
-  const [content, setContent] = React.useState(props.content);
   const [newContent, setNewContent] = React.useState('');
   const [errorMessage, setErrorMessage] = React.useState('');
-  const [, setIsEditorInitialized] = React.useState(false);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [isModalConfirm, setIsModalConfirm] = React.useState(false);
   const [nameInterface, setNameInterface] = React.useState('');
   const [nameEditInterface, setNameEditInterface] = React.useState('');
+  const [markers, setMarkers] = React.useState<monaco.editor.IMarker[]>([]);
+  const [modelEditor, setModelEditor] = React.useState<monaco.editor.ITextModel | null>(null);
+
+  const { data: contentInterface, isFetching: isFetchingInterface } = useGetContentByIdInterface(
+    props.interfaceId
+  );
 
   const { mutate: addInterface } = useAddInterface();
 
@@ -92,7 +137,7 @@ const YamlEditorModal = React.forwardRef<YamlEditorModalMethods, IProps>((props,
 
   const { data: dataInterface, isFetching } = useGetInterfaceByName(nameInterface);
 
-  const { data, refetch } = useGetInterfaceList({ currentPage });
+  const { data: listInterfaces, refetch } = useGetInterfaceList({ currentPage });
 
   React.useImperativeHandle(ref, () => ({
     showModal: () => {
@@ -100,10 +145,36 @@ const YamlEditorModal = React.forwardRef<YamlEditorModalMethods, IProps>((props,
     }
   }));
 
+  const contentInterfaceData = React.useMemo(() => {
+    if (isFetchingInterface) {
+      return null;
+    }
+    if (contentInterface) {
+      return contentInterface.data.content;
+    }
+    return props.content;
+  }, [contentInterface, isFetchingInterface, props.content]);
+
+  const handleEditorDidMount = (editor: monaco.editor.IStandaloneCodeEditor) => {
+    if (editor) {
+      const model = editor.getModel();
+      if (model) {
+        setModelEditor(model);
+        editor.onDidDispose(() => {
+          setMarkers([]);
+          monaco.editor.setModelMarkers(model, 'yaml', []);
+        });
+      }
+    }
+  };
+
   React.useMemo(() => {
     try {
       setMode(modeEditor);
-      const parsedYaml = jsYaml.load(props.content) as YAML;
+      if (!contentInterfaceData) {
+        return;
+      }
+      const parsedYaml = jsYaml.load(contentInterfaceData) as YAML;
       const dataImport = parseYAMLInterface(parsedYaml);
       const isValid = validateFileYML(dataImport.subSystems);
       if (isValid !== '') {
@@ -111,19 +182,23 @@ const YamlEditorModal = React.forwardRef<YamlEditorModalMethods, IProps>((props,
       } else {
         setErrorMessage('');
       }
-      const name = parsedYaml?.Configuration?.Name;
-      setNameInterface(name);
-      setNameEditInterface(name);
+      const interfaceName = parsedYaml?.Configuration?.Name;
+      if (interfaceName) {
+        setNameInterface(interfaceName);
+        setNameEditInterface(interfaceName);
+      }
     } catch (e: unknown) {
       setErrorMessage((e as YAMLException).message);
     }
-  }, [modeEditor, props.content]);
+  }, [modeEditor, contentInterfaceData]);
 
   const fetchData = React.useMemo(
     () => () => {
       if (!isFetching) {
         if (mode === ModeEditor.CREATE || !props.interfaceId) {
-          const filteredData = data?.interfaces.filter((item) => item.name === nameEditInterface);
+          const filteredData = listInterfaces?.interfaces.filter(
+            (item) => item.name === nameEditInterface
+          );
           if (filteredData?.length !== 0) {
             const msgErr = replacePlaceholders(ErrMsgEditor.INTERFACE_NAME_ALREADY_EXIST, {
               nameInterface: nameEditInterface
@@ -131,7 +206,7 @@ const YamlEditorModal = React.forwardRef<YamlEditorModalMethods, IProps>((props,
             setErrorMessage(msgErr);
           }
         } else if (mode === ModeEditor.EDIT) {
-          const filteredDataByNameEdit = data?.interfaces.filter(
+          const filteredDataByNameEdit = listInterfaces?.interfaces.filter(
             (item) => item.name === nameEditInterface
           );
           if (nameEditInterface !== nameInterface && filteredDataByNameEdit?.length !== 0) {
@@ -146,9 +221,9 @@ const YamlEditorModal = React.forwardRef<YamlEditorModalMethods, IProps>((props,
       }
     },
     [
-      data?.interfaces,
       dataInterface?.name,
       isFetching,
+      listInterfaces?.interfaces,
       mode,
       nameEditInterface,
       nameInterface,
@@ -156,13 +231,13 @@ const YamlEditorModal = React.forwardRef<YamlEditorModalMethods, IProps>((props,
     ]
   );
 
-  React.useEffect(() => {
-    fetchData();
-  }, [content, fetchData, newContent]);
-
   const importInterface = React.useCallback(() => {
-    const parsedYaml = jsYaml.load(content);
-    const dataImport = parseYAMLInterface(parsedYaml, content);
+    if (!contentInterfaceData) {
+      return;
+    }
+
+    const parsedYaml = jsYaml.load(contentInterfaceData);
+    const dataImport = parseYAMLInterface(parsedYaml, contentInterfaceData);
 
     addInterface(dataImport, {
       onSuccess: () => {
@@ -177,7 +252,7 @@ const YamlEditorModal = React.forwardRef<YamlEditorModalMethods, IProps>((props,
         }
       }
     });
-  }, [addInterface, content, refetch]);
+  }, [addInterface, contentInterfaceData, refetch]);
 
   const importHaveEditInterface = React.useCallback(() => {
     const parsedYaml = jsYaml.load(newContent);
@@ -238,7 +313,16 @@ const YamlEditorModal = React.forwardRef<YamlEditorModalMethods, IProps>((props,
     setErrorMessage('');
     setNameEditInterface('');
     setNameInterface('');
-  }, [mode, props.interfaceId, importInterface, importHaveEditInterface, editInterface]);
+    setNewContent('');
+    modelEditor?.dispose();
+  }, [
+    editInterface,
+    importHaveEditInterface,
+    importInterface,
+    mode,
+    modelEditor,
+    props.interfaceId
+  ]);
 
   const handleYamlEditorCancel = () => {
     setIsModalConfirm(true);
@@ -246,14 +330,13 @@ const YamlEditorModal = React.forwardRef<YamlEditorModalMethods, IProps>((props,
   };
 
   const handleOkClose = React.useCallback(() => {
-    setIsModalConfirm(false);
     setErrorMessage('');
     setNameEditInterface('');
     setNameInterface('');
-    monaco.editor.getModels()?.forEach((model) => {
-      model.setValue(props.content);
-    });
-  }, [props.content]);
+    setNewContent('');
+    modelEditor?.dispose();
+    setIsModalConfirm(false);
+  }, [modelEditor]);
 
   const handleCancelClose = () => {
     setIsModalConfirm(false);
@@ -261,13 +344,22 @@ const YamlEditorModal = React.forwardRef<YamlEditorModalMethods, IProps>((props,
   };
 
   const handleEditorChange = (newContent: string) => {
+    if (newContent.trim().length === 0) {
+      setErrorMessage(transformErrorMessage<YAML>({ Configuration: 1, Subsystem: 1 }).join('/n'));
+      return;
+    } else {
+      setErrorMessage('');
+    }
+
     setNewContent(newContent);
     setMode(ModeEditor.EDIT);
     try {
       const parsedYaml = jsYaml.load(newContent) as YAML;
+
       const dataImport = parseYAMLInterface(parsedYaml);
+
       setNameEditInterface(parsedYaml?.Configuration?.Name);
-      // FIXME: return error in details
+
       const isValid = validateFileYML(dataImport.subSystems);
       if (isValid !== '') {
         setErrorMessage(isValid);
@@ -275,7 +367,10 @@ const YamlEditorModal = React.forwardRef<YamlEditorModalMethods, IProps>((props,
         setErrorMessage('');
       }
     } catch (e: unknown) {
-      setErrorMessage((e as YAMLException).message);
+      const yamlException = e as YAMLException;
+      if (yamlException.name === Yaml.YAML_EXCEPTION) {
+        setErrorMessage(yamlException.message);
+      }
     }
   };
 
@@ -283,57 +378,69 @@ const YamlEditorModal = React.forwardRef<YamlEditorModalMethods, IProps>((props,
     language: 'yaml',
     theme: 'custom-yaml-theme', // Use the custom theme
     automaticLayout: true,
-    autoIndent: 'full' // Enable full auto-indentation
+    autoIndent: 'full', // Enable full auto-indentation
+    quickSuggestions: {
+      other: true,
+      comments: false,
+      strings: true
+    }
   };
 
   React.useEffect(() => {
-    const loadMonaco = () => {
-      configureMonacoYaml(monaco);
+    fetchData();
+  }, [fetchData]);
 
-      //Register the 'yaml' language
-      monaco.languages.register({ id: 'yaml' });
-
-      monaco.languages.setMonarchTokensProvider('yaml', {
-        tokenizer: {
-          root: [
-            [/^.*?(?=:)/, 'key'],
-            [/:([\s\S]*?)(?=$|\n)/, 'value']
-          ]
-        }
-      });
-
-      // Define a custom theme based on 'vs-dark'
-      monaco.editor.defineTheme('custom-yaml-theme', {
-        base: 'vs-dark',
-        inherit: true,
-        rules: [
-          // Customize keyword color (blue)
-          { token: 'key', foreground: '569CD6', fontStyle: 'bold' },
-          // Customize key color (green)
-          { token: 'value', foreground: 'DCDCAA' },
-          // Customize keyword color (blue)
-          { token: 'identifier', foreground: '#569CD6' },
-          { token: 'identifier.function', foreground: 'DCDCAA' },
-          { token: 'type', foreground: '1AAFB0' }
-          // Define other styles as needed to match VSCode's dark theme
-        ],
-        colors: {
-          // Define custom colors here, if needed
-        }
-      });
-
-      // Set the theme for the editor
-      monaco.editor.setTheme('custom-yaml-theme');
-
-      setIsEditorInitialized(true);
+  React.useEffect(() => {
+    const defaultSchema: SchemasSettings = {
+      uri: '/schemaInterface.json',
+      schema: [schema],
+      fileMatch: ['*']
     };
+
+    // Define a custom theme based on 'vs-dark'
+    monaco.editor.defineTheme('custom-yaml-theme', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        // Customize keyword color (blue)
+        { token: 'key', foreground: '569CD6', fontStyle: 'bold' },
+        // Customize key color (green)
+        { token: 'value', foreground: 'DCDCAA' },
+        // Customize keyword color (blue)
+        { token: 'identifier', foreground: '#569CD6' },
+        { token: 'identifier.function', foreground: 'DCDCAA' },
+        { token: 'type', foreground: '1AAFB0' }
+        // Define other styles as needed to match VSCode's dark theme
+      ],
+      colors: {
+        // Define custom colors here, if needed
+      }
+    });
+
+    const loadMonaco = () =>
+      configureMonacoYaml(monaco, {
+        enableSchemaRequest: true,
+        schemas: [defaultSchema]
+      });
 
     loadMonaco();
   }, []);
 
   React.useEffect(() => {
-    setContent(props.content);
-  }, [props.content]);
+    if (modelEditor) {
+      modelEditor.onDidChangeDecorations(() => {
+        const modelMarkers = monaco.editor.getModelMarkers({
+          resource: modelEditor.uri,
+          owner: 'yaml'
+        });
+        if (modelMarkers.length > 0 || !contentInterfaceData) {
+          setMarkers(modelMarkers);
+        } else {
+          setMarkers([]);
+        }
+      });
+    }
+  }, [contentInterfaceData, markers, modelEditor]);
 
   return (
     <>
@@ -344,6 +451,7 @@ const YamlEditorModal = React.forwardRef<YamlEditorModalMethods, IProps>((props,
         open={isModalOpen}
         onCancel={handleYamlEditorCancel}
         maskClosable={false}
+        destroyOnClose
         footer={[
           <>
             <Button
@@ -354,27 +462,50 @@ const YamlEditorModal = React.forwardRef<YamlEditorModalMethods, IProps>((props,
             >
               Cancel
             </Button>
-            <Button type="primary" disabled={!!errorMessage} onClick={() => handleOk()} key="Save">
+            <Button
+              type="primary"
+              disabled={!!errorMessage || markers.length > 0}
+              onClick={() => handleOk()}
+              key="Save"
+            >
               Save
             </Button>
           </>
         ]}
       >
-        <div className="editor-container">
-          <Editor
-            language="yaml"
-            value={content}
-            options={editorOptions}
-            onChange={handleEditorChange}
-          />
-        </div>
-        {errorMessage ? (
+        {contentInterfaceData || mode === ModeEditor.CREATE || newContent ? (
+          <div className="editor-container">
+            <Editor
+              language="yaml"
+              value={contentInterfaceData || newContent}
+              options={editorOptions}
+              onChange={handleEditorChange}
+              editorDidMount={handleEditorDidMount}
+            />
+          </div>
+        ) : null}
+        {markers.length > 0 || errorMessage ? (
           <div className="error-panel">
             <h3>Errors:</h3>
-            <pre style={{ color: 'red' }}>{errorMessage}</pre>
+            {errorMessage && (
+              <div>
+                {errorMessage.split('/n').map((item, idx) => (
+                  <pre key={item + idx} style={{ color: 'red' }}>
+                    {item}
+                  </pre>
+                ))}
+              </div>
+            )}
+            {!isFetchingInterface &&
+              markers.map((marker) => (
+                <div key={generateKey(marker)}>
+                  <pre style={{ color: 'red' }}>Message: {marker.message}</pre>
+                  <pre style={{ color: 'red' }}>Line: {marker.startLineNumber}</pre>
+                </div>
+              ))}
           </div>
         ) : (
-          <div></div>
+          <></>
         )}
       </Modal>
       <Modal
@@ -383,6 +514,7 @@ const YamlEditorModal = React.forwardRef<YamlEditorModalMethods, IProps>((props,
         onCancel={handleCancelClose}
         title={`${nameEditInterface || nameInterface}`}
         open={isModalConfirm}
+        destroyOnClose
       >
         Closing the editor now will discard these changes. Are you sure you want to proceed and lose
         your modifications?

@@ -100,7 +100,10 @@ export default class ConfigurationService implements IConfiguration {
     return this.configs.get(configName) as T;
   }
 
-  getConfig<T extends ConfigType>(configName: string, propName: keyof T): T[keyof T] | undefined {
+  getConfig<T extends ConfigType, K extends keyof T>(
+    configName: string,
+    propName: K
+  ): T[K] | undefined {
     return this.getConfigs<T>(configName)?.[propName];
   }
 

@@ -10,9 +10,10 @@
     "format:check": "prettier --check --cache .",
     "lint": "eslint --fix --cache .",
     "lint:check": "eslint --cache .",
-    "start": "nest start",
+    "prepare": "husky install",
+    "start": "SET TZ=UTC && nest start",
     "start:debug": "nest start --debug --watch",
-    "start:dev": "nest start --watch",
+    "start:dev": "SET TZ=UTC && nest start --watch",
     "start:prod": "node dist/main",
     "upgrade:dependencies": "npx npm-check-updates -u"
   },

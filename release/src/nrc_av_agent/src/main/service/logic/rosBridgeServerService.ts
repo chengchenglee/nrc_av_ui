@@ -1,4 +1,5 @@
 import { exec, spawn } from 'child_process';
+import { connect } from 'net';
 import util from 'util';
 import { UtilityProcess, utilityProcess } from 'electron';
 import log from 'electron-log';
@@ -14,7 +15,8 @@ import type {
   IChildProcess,
   IRosBridgeServerService,
   IRosService,
-  IStatusInterfaceRosBridgeService
+  IStatusInterfaceRosBridgeService,
+  ISubSystem
 } from '../../inversify/interfaces';
 
 @injectable()
@@ -23,6 +25,8 @@ export default class RosBridgeServerService implements IRosBridgeServerService {
 
   private isRosBridgeReIniting: boolean;
 
+  private isHealthCheckProcessing: boolean;
+
   private lastMessageSent: { type: string | undefined; status: string } | undefined;
 
   constructor(
@@ -30,9 +34,12 @@ export default class RosBridgeServerService implements IRosBridgeServerService {
     @inject(TYPES.ChildProcess) private childProcessSvc: IChildProcess,
     @inject(TYPES.RosService) private rosSvc: IRosService,
     @inject(TYPES.StatusInterfaceRosBridgeService)
-    private statusInterfaceRosBridgeSvc: IStatusInterfaceRosBridgeService
+    private statusInterfaceRosBridgeSvc: IStatusInterfaceRosBridgeService,
+    @inject(TYPES.SubSystemService)
+    private subSystemSvc: ISubSystem
   ) {
     this.isRosBridgeReIniting = false;
+    this.isHealthCheckProcessing = false;
   }
 
   @logMethod('[RosBridgeServerService][rosBridgeInit]', log.info)
@@ -42,9 +49,12 @@ export default class RosBridgeServerService implements IRosBridgeServerService {
   ): Promise<void> {
     try {
       await this.rosBridgeInitTries();
-      await this.pingRosBridge();
+      const pingResult = await this.pingRosBridge();
+      if (!pingResult) {
+        await delayInMs(5000);
+        await this.rosBridgeInit(maxInitAttempt, tries);
+      }
       log.info('[RosBridgeServerService][rosBridgeInit] Ros-Bridge init completed!');
-
       return;
     } catch (err) {
       log.error(`[RosBridgeServerService][rosBridgeInit] ${err}, attempt: ${tries}`);
@@ -75,16 +85,30 @@ export default class RosBridgeServerService implements IRosBridgeServerService {
   ): Promise<void> {
     if (!this.isRosBridgeReIniting || forceReInit) {
       this.isRosBridgeReIniting = true;
-      log.info('[RosBridgeServerService][rosBridgeInit] Re-initing Ros-Bridge server...');
-      this.childProcessSvc.execAndForget(this.childProcessSvc.buildCommand('rosnode kill -a', ''));
-      this.rosSvc.setStatusRunAllCommands(constants.EnumStatusRunAllCommands.DEACTIVE);
-      await this.rosBridgeInit(maxInitAttempt);
-      this.isRosBridgeReIniting = false;
-      log.info(
-        // eslint-disable-next-line max-len
-        '[RosBridgeServerService][rosBridgeReInit] Ros-Bridge server re-init completed!'
-      );
-      await this.statusInterfaceRosBridgeSvc.clearCache();
+      try {
+        log.info('[RosBridgeServerService][rosBridgeReInit] Pinging Ros-Bridge server...');
+        const pingResult = await this.pingRosBridge(5);
+        if (!forceReInit) {
+          this.isRosBridgeReIniting = false;
+        } else if (forceReInit || !pingResult) {
+          // Force initialization
+          throw new Error();
+        }
+      } catch {
+        log.info('[RosBridgeServerService][rosBridgeReInit] Re-initing Ros-Bridge server...');
+        this.childProcessSvc.execAndForget(
+          this.childProcessSvc.buildCommand('rosnode kill -a', '')
+        );
+        this.rosSvc.setStatusRunAllCommands(constants.EnumStatusRunAllCommands.DEACTIVE);
+        await this.rosBridgeInit(maxInitAttempt);
+        this.isRosBridgeReIniting = false;
+        log.info(
+          // eslint-disable-next-line max-len
+          '[RosBridgeServerService][rosBridgeReInit] Ros-Bridge server re-init completed!'
+        );
+        await this.statusInterfaceRosBridgeSvc.clearCache();
+        this.subSystemSvc.clearCache();
+      }
     }
     if (createNewHealthcheck) {
       log.info(
@@ -106,32 +130,13 @@ export default class RosBridgeServerService implements IRosBridgeServerService {
   private async pingRosBridge(
     maxPingAttempt = ROS_BRIDGE.ROS_BRIDGE_SERVER_PING_RETRY,
     tries = 1
-  ): Promise<void> {
+  ): Promise<boolean> {
     try {
-      const pingTimeout = setTimeout(() => {
-        log.error(
-          // eslint-disable-next-line max-len
-          `[RosBridgeServerService][pingRosBridge] Ping tinmeout after ${ROS_BRIDGE.ROS_BRIDGE_SERVER_PING_TIMEOUT} ms!`
-        );
-        throw new Error(`Ping tinmeout after ${ROS_BRIDGE.ROS_BRIDGE_SERVER_PING_TIMEOUT} ms!`);
-      }, ROS_BRIDGE.ROS_BRIDGE_SERVER_PING_TIMEOUT);
-      const pingResult = await this.childProcessSvc.execAndWait(
-        `nc -vz ${constants.ROS_BRIDGE_SOCKET.SOCKET_URL.replace('ws://', '')} ${
-          constants.ROS_BRIDGE_SOCKET.SOCKET_PORT
-        }`
-      );
-      clearTimeout(pingTimeout);
-      if (!pingResult) {
-        throw new Error(`Ping unsuccessful after ${tries} attempts!`);
-      }
-      log.info(
-        // eslint-disable-next-line max-len
-        `[RosBridgeServerService][pingRosBridge] Ping successful after ${tries} attempts!`
-      );
-      return;
+      await this.pingRosBridgeTries();
+      return true;
     } catch (err) {
       if (tries >= maxPingAttempt) {
-        throw err;
+        return false;
       }
       const nextPingAttempt = tries + 1;
       log.info(
@@ -139,8 +144,31 @@ export default class RosBridgeServerService implements IRosBridgeServerService {
         `[RosBridgeServerService][pingRosBridge] Waiting to ping attempt: ${nextPingAttempt} after ${ROS_BRIDGE.ROS_BRIDGE_SERVER_PING_BUFFER_TIME} ms`
       );
       await delayInMs(ROS_BRIDGE.ROS_BRIDGE_SERVER_PING_BUFFER_TIME);
-      await this.pingRosBridge(maxPingAttempt, nextPingAttempt);
+      return await this.pingRosBridge(maxPingAttempt, nextPingAttempt);
     }
+  }
+
+  @logMethod('[RosBridgeServerService][pingRosBridgeTries]', log.debug)
+  private pingRosBridgeTries(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const client = connect(
+        {
+          port: constants.ROS_BRIDGE_SOCKET.SOCKET_PORT,
+          timeout: ROS_BRIDGE.ROS_BRIDGE_SERVER_PING_TIMEOUT
+        },
+        () => {
+          client.removeAllListeners();
+          client.end();
+          resolve();
+        }
+      );
+      log.error('[RosBridgeServerService][pingRosBridgeTries] Ros-Bridge connection refused');
+      client.once('error', () => {
+        client.removeAllListeners();
+        client.end();
+        reject(new Error('Ros-Bridge connection refused'));
+      });
+    });
   }
 
   @logMethod('[RosBridgeServerService][rosBridgeHealthcheck]', log.debug)
@@ -149,7 +177,7 @@ export default class RosBridgeServerService implements IRosBridgeServerService {
       this.checkAndKillWorker();
     }
 
-    if (!this.healthCheckWorker?.pid) {
+    if (!this.healthCheckWorker?.pid || forced) {
       this.forkWorker();
     }
 
@@ -216,32 +244,57 @@ export default class RosBridgeServerService implements IRosBridgeServerService {
   }
 
   @logMethod('[RosBridgeServerService][onceWorkerReceivedError]', log.debug)
-  private onceWorkerReceivedError(data: any) {
+  private async onceWorkerReceivedError(data: any) {
+    if (data.toString().includes('ROSLib uses utf8')) {
+      return;
+    }
     log.error(`[RosBridgeServerService][onceWorkerReceivedError] ${data.toString()}`);
-    if (!this.isRosBridgeReIniting) {
+    if (!this.isRosBridgeReIniting && !this.isHealthCheckProcessing) {
+      this.isHealthCheckProcessing = true;
       log.warn(
         '[RosBridgeServerService][onceWorkerReceivedError] Worker pid ' +
           `${this.healthCheckWorker.pid} detected Ros-Bridge is unresponsive!`
       );
+      try {
+        this.rosBridgeHealthcheck(true);
+        await this.rosBridgeReInit();
+      } catch {
+        log.error(
+          '[RosBridgeServerService][onWorkerReceivedMsg] Ros-Bridge healthcheck init error'
+        );
+      } finally {
+        setTimeout(() => {
+          this.isHealthCheckProcessing = false;
+        }, constants.ROS_BRIDGE_WORKER_HEALTHCHECK.ROS_BRIDGE_COOLDOWN);
+      }
     }
-    this.rosBridgeReInit(true);
   }
 
   @logMethod('[RosBridgeServerService][onWorkerReceivedMsg]', log.debug)
-  private onWorkerReceivedMsg(message: { type: string | undefined; status: string }) {
+  private async onWorkerReceivedMsg(message: { type: string | undefined; status: string }) {
     // Not an error
     if (!message.type) {
       if (JSON.stringify(message) !== JSON.stringify(this.lastMessageSent)) {
         this.lastMessageSent = message;
       }
-    } else {
-      if (!this.isRosBridgeReIniting) {
-        log.warn(
-          '[RosBridgeServerService][onWorkerReceivedMsg] Worker pid ' +
-            `${this.healthCheckWorker.pid} detected Ros-Bridge is unresponsive!`
+    } else if (!this.isRosBridgeReIniting && !this.isHealthCheckProcessing) {
+      this.isHealthCheckProcessing = true;
+      log.warn(
+        '[RosBridgeServerService][onWorkerReceivedMsg] Worker pid ' +
+          `${this.healthCheckWorker.pid} detected Ros-Bridge is unresponsive!`
+      );
+      try {
+        this.rosBridgeHealthcheck(true);
+        await this.rosBridgeReInit();
+      } catch {
+        log.error(
+          '[RosBridgeServerService][onWorkerReceivedMsg] Ros-Bridge healthcheck init error'
         );
+      } finally {
+        setTimeout(() => {
+          this.isHealthCheckProcessing = false;
+        }, constants.ROS_BRIDGE_WORKER_HEALTHCHECK.ROS_BRIDGE_COOLDOWN);
       }
-      this.rosBridgeReInit();
     }
   }
 

@@ -90,7 +90,7 @@ export interface SensorsStatus extends Sensor {
 export interface SensorsTopic extends SensorsStatus {
   lastMsgStamp: number;
   lastGlobalStamp: number;
-  avgDowntimeInit: number;
+  lastPrintedMsgStamp: number;
 }
 
 export interface AlgorithmsStatus extends Algorithm {
@@ -102,7 +102,7 @@ export interface AlgorithmsStatus extends Algorithm {
 export interface AlgorithmsTopic extends AlgorithmsStatus {
   lastMsgStamp: number;
   lastGlobalStamp: number;
-  avgDowntimeInit: number;
+  lastPrintedMsgStamp: number;
 }
 
 export type TopicType = SensorsStatus | AlgorithmsStatus;
@@ -189,6 +189,9 @@ export type SubSystemDto = Modify<
   SubSystem,
   {
     commands: CommandsStatus[];
+    isProcessing: boolean;
+    isDiagnostic: boolean;
+    diagTries: number;
     topics: TopicType[];
     status: SubSystemStatusType;
     error: (IResponse & ISubSystemExtraInfo)[];
@@ -204,7 +207,8 @@ export enum EnumVehicleStatusState {
 }
 
 export enum EnumRosBridgeTopic {
-  LED_DIAGNOSTIC = '/ledHealth'
+  LED_DIAGNOSTIC = '/ailsv_led_health',
+  ROS_BRIDGE_HEALTH = '/rosBridgeHealth'
 }
 
 export enum EnumVehicleConnectionState {
@@ -244,9 +248,23 @@ export interface InterfaceStatus {
   statusCommands: CommandsStatus[];
 }
 
+export interface ExtraVehicleDetail {
+  latitude: number;
+  longitude: number;
+  velocity: number;
+}
+
+export interface ExtraRosDetail {
+  rosNodes: string[];
+  rosTopics: string[];
+}
+
+export type WorkerVehicleDetailReturn = ExtraVehicleDetail & ExtraRosDetail;
+
 export interface InterfaceStatusDto extends InterfaceStatus {
   sensors: TopicType[];
   algorithms: TopicType[];
+  extraVehicleInformation: ExtraVehicleDetail;
 }
 
 export interface InterfaceStatusSubSystemDto extends InterfaceStatus {
@@ -272,23 +290,20 @@ export interface ROSBridgeHealthcheckData {
   socketUrl: string;
 }
 
-export interface IRosBridgePublishTopic {
-  topicName: EnumRosBridgeTopic;
-  messageType?: string;
-}
-
 export const ROS_BRIDGE_WORKER_HEALTHCHECK = {
-  ROS_BRIDGE_PING_RETRY: 10,
-  ROS_BRIDGE_PING_BUFFER_TIME: 5000,
-  ROS_BRIDGE_PING_TIMEOUT: 5000,
-  ROS_BRIDGE_PING_INTERVAL: 5000
+  ROS_BRIDGE_CONNECT_RETRY: 3,
+  ROS_BRIDGE_MESSAGE_TIMEOUT: 8000,
+  ROS_BRIDGE_CHECK_INTERVAL: 3000,
+  ROS_BRIDGE_PUBLISH_INTERVAL: 1000,
+  ROS_BRIDGE_COOLDOWN: 5000
 };
 
 export const ROS_BRIDGE_WORKER_TOPIC = {
   ROS_TOPIC_CHUNK_SIZE: 35,
   ROS_TOPIC_CONNECT_BUFFER_TIME: 1000,
-  ROS_TOPIC_POLL_INTERVAL: 1000,
-  ROS_TOPIC_PASSIVE_INTERVAL: 1000
+  ROS_TOPIC_POLL_INTERVAL: 4000,
+  ROS_TOPIC_PASSIVE_INTERVAL: 2000,
+  ROS_TOPIC_STOP_TIME: 4000
 };
 
 export const ROS_BRIDGE_INIT = {
@@ -304,6 +319,9 @@ export interface IRosBridgeMessage {
       nsecs: number;
     };
   };
+}
+
+export interface IRosBridgeMessagePose extends IRosBridgeMessage {
   pose: {
     position: {
       x: number;
@@ -331,6 +349,25 @@ export interface IRosBridgeMessage {
   };
 }
 
+export interface IRosBridgeMessageSpeed extends IRosBridgeMessage {
+  velocity?: number;
+}
+
+export interface IRosBridgeMessageGPS extends IRosBridgeMessage {
+  Latitude?: number;
+  Longitude?: number;
+}
+
+export enum EnumVehicleDetailTopic {
+  GPS = 'GPS',
+  SPEED = 'SPEED'
+}
+
+export interface VehicleDetailTopic {
+  topicName: string;
+  topicType: EnumVehicleDetailTopic;
+}
+
 export interface ISubSystemWorkerMessage {
   subSystems: SubSystem[];
   startedSubSystem: Map<string, SubSystem>;
@@ -343,6 +380,36 @@ export interface ISubSystemWorkerReturn {
   diagLedStatus: number[];
 }
 
+export enum EnumRosBridgeTopicWorkerMessage {
+  INIT = 'INIT',
+  STOP = 'STOP',
+  START = 'START'
+}
+
+export interface IRosBridgeTopicWorkerMessageType {
+  type: EnumRosBridgeTopicWorkerMessage;
+}
+
+export interface IRosBridgeTopicWorkerMessageInit extends IRosBridgeTopicWorkerMessageType {
+  topicList: TopicType[];
+}
+
+export interface IRosBridgeTopicWorkerMessageStop extends IRosBridgeTopicWorkerMessageType {
+  topidIdList: number[];
+}
+
+export interface IRosBridgeTopicWorkerMessageStart extends IRosBridgeTopicWorkerMessageType {
+  topidIdList: number[];
+}
+
+export type IRosBridgeTopicWorkerMessage =
+  | IRosBridgeTopicWorkerMessageInit
+  | IRosBridgeTopicWorkerMessageStop
+  | IRosBridgeTopicWorkerMessageStart;
+
 export interface StdInt16ArrayTopicMessage {
   data: number[];
+}
+export interface StdStringTopicMessage {
+  data: string;
 }

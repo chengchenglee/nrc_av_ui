@@ -16,6 +16,7 @@ export interface IVehicleConnection {
 export interface IHostConfig {
   host?: string;
   rosWorkspace?: string;
+  extraWS?: string[];
 }
 
 export interface IUpdatedVehicleConfig {

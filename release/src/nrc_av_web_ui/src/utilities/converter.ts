@@ -75,11 +75,11 @@ export const parseYAMLInterface = (
             item?.HealthTopics !== null
               ? convertNomWarnErrRateForArray(item?.HealthTopics)
               : item?.HealthTopics,
-          diagLed: item?.DiagLED,
-          timeout: item?.Timeout,
-          diagRetry: item?.DiagRetry,
+          diagLed: item?.Diagnostic?.LED,
+          timeout: item?.Diagnostic?.Timeout,
+          diagRetry: item?.Diagnostic?.Retry,
           depends: item?.Depends !== null ? item.Depends.split(',') : item?.Depends,
-          diagnostic: item?.Diagnostic,
+          diagnostic: item?.Diagnostic?.File,
           type: item?.Type,
           commands
         };
@@ -89,7 +89,7 @@ export const parseYAMLInterface = (
   }
 
   return {
-    name: data?.Configuration.Name,
+    name: data?.Configuration?.Name,
     machines: [],
     content,
     subSystems,

@@ -336,15 +336,10 @@ export class VehicleService {
     }
   }
 
-  async stopInterfaceFiles(vehicleId: number, interfaceId: number) {
+  async stopInterfaceFiles(vehicleId: number) {
     const vehicle = await this.getVehicle(vehicleId);
-    const agentInterface = await this.interfaceService.getInterfaceById(interfaceId);
     try {
-      return await this.getResultFromAgent(
-        vehicle,
-        SocketEventEnum.STOP_INTERFACE,
-        agentInterface.name
-      );
+      return await this.getResultFromAgent(vehicle, SocketEventEnum.STOP_INTERFACE, '');
     } catch (err) {
       throw new HttpException(err, HttpStatus.SERVICE_UNAVAILABLE);
     }

@@ -77,15 +77,22 @@ export default class LogicService implements ILogic {
   @logMethod('[LogicService][init]')
   init(): void {
     try {
-      const certKey = this.configSvc.getConfig<IVehicleInfoConfig>(APP_CONFIG.VEHICLE, 'certKey');
-      const name = this.configSvc.getConfig<IVehicleInfoConfig>(APP_CONFIG.VEHICLE, 'name');
-      const model = this.configSvc.getConfig<IVehicleInfoConfig>(APP_CONFIG.VEHICLE, 'model');
+      const certKey = this.configSvc.getConfig<IVehicleInfoConfig, 'certKey'>(
+        APP_CONFIG.VEHICLE,
+        'certKey'
+      );
+      const name = this.configSvc.getConfig<IVehicleInfoConfig, 'name'>(APP_CONFIG.VEHICLE, 'name');
+      const model = this.configSvc.getConfig<IVehicleInfoConfig, 'model'>(
+        APP_CONFIG.VEHICLE,
+        'model'
+      );
       const agentVersion = this.electronService.getAgentVersion();
       log.info('[LogicService][init] certKey: ', certKey);
 
-      const serverUrl = `${this.configSvc.getConfig<IHostConfig>(APP_CONFIG.CONNECTION, 'host')}/${
-        SOCKET.NAME_SPACE
-      }`;
+      const serverUrl = `${this.configSvc.getConfig<IHostConfig, 'host'>(
+        APP_CONFIG.CONNECTION,
+        'host'
+      )}/${SOCKET.NAME_SPACE}`;
       log.info('[LogicService][init] connect to: ', serverUrl);
 
       this.commSvc
@@ -272,7 +279,10 @@ export default class LogicService implements ILogic {
   ) {
     try {
       const idReceived = data.certKey;
-      const idSaved = this.configSvc.getConfig<IVehicleInfoConfig>(APP_CONFIG.VEHICLE, 'certKey');
+      const idSaved = this.configSvc.getConfig<IVehicleInfoConfig, 'certKey'>(
+        APP_CONFIG.VEHICLE,
+        'certKey'
+      );
       log.debug(`[LogicService][handleActivation] serverCertkey: ${idReceived}`);
       log.debug(`[LogicService][handleActivation] agentCertkey: ${idSaved}`);
       if (idReceived === idSaved) {

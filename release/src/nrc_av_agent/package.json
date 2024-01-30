@@ -1,6 +1,6 @@
 {
   "name": "nrc_av_agent",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "type": "module",
   "main": "app/dist/main/main.js",
   "scripts": {
@@ -20,6 +20,7 @@
     "make:linux": "yarn clean:build && yarn build && electron-builder build -l",
     "make:mac": "yarn clean:build && yarn build && electron-builder build -m",
     "make:win": "yarn clean:build && yarn build && electron-builder build -w",
+    "prepare": "husky install",
     "prod": "yarn build && electron .",
     "prod:debug": "yarn debug && electron .",
     "start": "ts-node --esm configs/check-port.ts && yarn clean:dist && yarn dev",
@@ -47,7 +48,6 @@
     "eventemitter2": "^6.4.9",
     "getmac": "^5.20.0",
     "inversify": "^6.0.1",
-    "nano-time": "^1.0.0",
     "node-schedule": "^2.1.1",
     "ping": "^0.4.4",
     "react": "^18.2.0",

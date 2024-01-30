@@ -20,7 +20,7 @@ import { RootState, store, useStoreVehicle } from '../../../../store';
 import { setRunAllSubSystems, setRunInterface } from '../../../../store/command';
 import { setSelectedMap } from '../../../../store/map';
 import { userThunk } from '../../../../store/user/thunks';
-import { setSelectedVehicle } from '../../../../store/vehicle';
+import { setExtraVehicleInformation, setSelectedVehicle } from '../../../../store/vehicle';
 import ItemResult from './itemResult';
 
 interface IProps {
@@ -60,7 +60,8 @@ const mapOptions = [
   { id: 5, name: 'SanMiguel_Cached' },
   { id: 6, name: 'Noe.set' },
   { id: 7, name: 'Franklin.set' },
-  { id: 8, name: 'THill_Cached' }
+  { id: 8, name: 'THill_Cached' },
+  { id: 9, name: 'SCTile' }
 ];
 
 // eslint-disable-next-line complexity
@@ -114,6 +115,7 @@ const InterfaceExecutor: React.FC<IProps> = (props) => {
       setStatus(parsedData.status);
       if (parsedData.interfaceId && parsedData.status === ExecutionStatus.RUNNING) {
         setInterfaceNameId(parsedData.interfaceId);
+        dispatch(setExtraVehicleInformation(parsedData.extraVehicleInformation));
         formInterface.setFieldValue('interfaceId', parsedData.interfaceId);
       }
       if (parsedData.status !== ExecutionStatus.RUNNING) {
@@ -142,7 +144,7 @@ const InterfaceExecutor: React.FC<IProps> = (props) => {
       setLoadVehicleDetails(Date.now());
     };
     // Do not put dispatch in dependencies
-  }, [formInterface, setLastSseTime, setLoadVehicleDetails, vehicleId]);
+  }, [dispatch, formInterface, setLastSseTime, setLoadVehicleDetails, vehicleId]);
 
   React.useEffect(() => {
     dispatch(setRunInterface(isExecutingInterface));

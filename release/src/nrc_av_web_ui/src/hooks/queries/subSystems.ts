@@ -7,8 +7,11 @@ export const useExecSubSystem = () => {
     onError: (err: AxiosError<{ message: string }>) => err
   });
 
+  let statusRunSubSystem = '';
+
   const getDataExecuted = () => {
     if (mutation.isSuccess) {
+      statusRunSubSystem = mutation.data?.data.status;
       return '';
     } else if (mutation.isError) {
       return mutation.error?.response?.data ?? '';
@@ -18,6 +21,7 @@ export const useExecSubSystem = () => {
   };
   return {
     dataExecuteSubSystem: getDataExecuted(),
+    statusRunSubSystem,
     executeSubSystem: mutation.mutate,
     isExecutingSubSystem: mutation.isLoading,
     resetMutateExecuteSubSystem: mutation.reset

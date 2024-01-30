@@ -1,0 +1,68 @@
+{
+  "type": "object",
+  "properties": {
+    "Configuration": {
+      "type": "object",
+      "properties": {
+        "Name": { "type": "string" }
+      },
+      "required": ["Name"]
+    },
+    "Subsystem": {
+      "type": "object",
+      "patternProperties": {
+        ".*": {
+          "type": "object",
+          "properties": {
+            "Type": { "type": "string" },
+            "Description": { "type": ["string", "null"] },
+            "HealthTopics": {
+              "type": ["array", "null"],
+              "items": {
+                "type": "object",
+                "properties": {
+                  "HealthTopic": { "type": "string" },
+                  "HealthName": { "type": "string" },
+                  "HealthTopicType": { "type": "string" },
+                  "NomWarnErrRate": { "type": "string" }
+                },
+                "required": ["HealthTopic", "HealthName", "HealthTopicType", "NomWarnErrRate"]
+              }
+            },
+            "Commands": {
+              "type": ["array", "null"],
+              "items": {
+                "type": "object",
+                "properties": {
+                  "Name": { "type": "string" },
+                  "Command": { "type": "string" },
+                  "Type": { "type": "string" },
+                  "LaunchTime": { "type": ["number", "null"] },
+                  "Node": { "type": ["string", "null"] }
+                },
+                "required": ["Name", "Command", "Type", "LaunchTime"]
+              }
+            },
+            "DiagLED": { "type": ["integer", "null"] },
+            "Timeout": { "type": ["number", "null"] },
+            "DiagRetry": { "type": ["integer", "null"] },
+            "Depends": { "type": ["string", "null"] },
+            "Diagnostic": {
+              "items": {
+                "type": "object",
+                "properties": {
+                  "Retry": { "type": "number" },
+                  "Timeout": { "type": "number" },
+                  "LED": { "type": ["number", "null"] },
+                  "File": { "type": ["string", "null"] }
+                }
+              }
+            }
+          },
+          "required": ["Type", "Description", "Depends", "Commands", "HealthTopics"]
+        }
+      }
+    }
+  },
+  "required": ["Configuration", "Subsystem"]
+}

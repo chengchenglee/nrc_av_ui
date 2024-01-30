@@ -1,3 +1,4 @@
+import { ExtraVehicleInformationDTO } from './extraVehicleInformation.dto';
 import { MachineStatusDTO } from './machineStatus.dto';
 import { SubSystemStatusDTO } from './subSystemStatus.dto';
 
@@ -9,6 +10,7 @@ export class InterfaceInformationDTO {
     readonly machines: MachineStatusDTO[],
     readonly subSystems: SubSystemStatusDTO[],
     readonly status: string,
-    readonly statusRunAll: string
+    readonly statusRunAll: string,
+    readonly extraVehicleInformation: ExtraVehicleInformationDTO
   ) {}
 }

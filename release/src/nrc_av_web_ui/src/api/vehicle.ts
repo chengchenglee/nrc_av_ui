@@ -68,7 +68,7 @@ export const stopInterfaceFile = (data: {
   vehicleId: number;
   interfaceId: number;
 }): ApiResponse<string> =>
-  publicClient.post(`/vehicle/${data.vehicleId}/termination/interface-files/${data.interfaceId}`);
+  publicClient.post(`/vehicle/${data.vehicleId}/termination/interface-files/`);
 
 export const executeInterfaceCommand = (data: InterfaceCommandAction): ApiResponse<string> =>
   publicClient.post(

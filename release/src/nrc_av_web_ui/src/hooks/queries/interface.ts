@@ -60,7 +60,6 @@ export const useGetContentByIdInterface = (id?: number) =>
       return getContentYamlByIdInterface(id);
     },
     {
-      select: (res) => res.data,
       enabled: !!id
     }
   );

@@ -66,7 +66,6 @@ export default defineConfig({
                 'getmac',
                 'roslib',
                 'big-integer',
-                'nano-time',
                 ...builtinModules
               ]
             }
@@ -89,7 +88,10 @@ export default defineConfig({
           build: {
             assetsDir: '',
             sourcemap: isDebug,
-            outDir: resolve('./app/dist/worker')
+            outDir: resolve('./app/dist/worker'),
+            rollupOptions: {
+              external: ['roslib', ...builtinModules]
+            }
           },
           plugins: [
             EnvironmentPlugin('all', { prefix: '' }),
@@ -131,7 +133,30 @@ export default defineConfig({
             sourcemap: isDebug,
             outDir: resolve('./app/dist/worker'),
             rollupOptions: {
-              external: ['roslib', 'big-integer', 'nano-time', ...builtinModules]
+              external: ['roslib', 'big-integer', ...builtinModules]
+            }
+          },
+          plugins: [
+            EnvironmentPlugin('all', { prefix: '' }),
+            TsConfigPaths({ projects: [resolve(__dirname, '../tsconfig.json')] })
+          ]
+        }
+      },
+      {
+        entry: './src/worker/workerRosBridgeVehicleDetailSubscriber.ts',
+        onstart(options) {
+          // Notify the Renderer-Process to reload the page
+          // when the Preload-Scripts build is complete,
+          // instead of restarting the entire Electron App.
+          options.reload();
+        },
+        vite: {
+          build: {
+            assetsDir: '',
+            sourcemap: isDebug,
+            outDir: resolve('./app/dist/worker'),
+            rollupOptions: {
+              external: ['roslib', ...builtinModules]
             }
           },
           plugins: [

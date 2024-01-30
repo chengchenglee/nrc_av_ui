@@ -78,7 +78,7 @@ dmg:
 
 # Linux Configuration
 linux:
-  icon: './assets/icon.icns'
+  icon: './assets/icon.png'
   target:
     - 'AppImage'
   maintainer: 'AJAY'

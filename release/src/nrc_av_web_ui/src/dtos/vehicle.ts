@@ -1,6 +1,11 @@
 import { VehicleStatus } from '../constants/vehicleStatus';
 import { ModelDTO } from './model';
 
+export interface ExtraVehicleInformation {
+  latitude: number;
+  longitude: number;
+  velocity: number;
+}
 export interface VehicleDTO {
   id: number;
   name: string;

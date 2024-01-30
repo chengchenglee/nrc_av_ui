@@ -27,7 +27,6 @@ import { AgentUpdationDTO } from '../vehicle/dto/agentUpdation.dto';
 import { VehicleService } from '../vehicle/vehicle.service';
 import { VehicleStatus } from './../core/enums/enum';
 import { InterfaceDetailStatusDTO } from './dto/interfaceDetailStatus.dto';
-import { InterfaceInformationDTO } from './dto/interfaceInformation.dto';
 
 @WebSocketGateway({
   namespace: 'nissan'
@@ -215,35 +214,22 @@ export class AgentGateway {
   ) {
     const clientKey = client.handshake.headers.certkey as string;
     const vehicle = await this.vehicleService.getVehicleOnCertKey(clientKey);
-    const { interfaceName, machines, status, statusRunAll, subSystems } = data;
+    const { interfaceName } = data;
     const agentInterface = await this.interfaceService.getInterfaceByName(interfaceName);
     if (!agentInterface) {
-      this.eventEmitter.emit(
-        EventEmitterNameSpace.VEHICLE_INTERFACE_DETAIL_STATUS,
-        new InterfaceInformationDTO(
-          vehicle.id,
-          null,
-          '',
-          machines,
-          subSystems,
-          status,
-          statusRunAll
-        )
-      );
+      this.eventEmitter.emit(EventEmitterNameSpace.VEHICLE_INTERFACE_DETAIL_STATUS, {
+        vehicleId: vehicle.id,
+        interfaceId: null,
+        interfaceName: '',
+        ...data
+      });
       return;
     }
-    this.eventEmitter.emit(
-      EventEmitterNameSpace.VEHICLE_INTERFACE_DETAIL_STATUS,
-      new InterfaceInformationDTO(
-        vehicle.id,
-        agentInterface.id,
-        interfaceName,
-        machines,
-        subSystems,
-        status,
-        statusRunAll
-      )
-    );
+    this.eventEmitter.emit(EventEmitterNameSpace.VEHICLE_INTERFACE_DETAIL_STATUS, {
+      vehicleId: vehicle.id,
+      interfaceId: agentInterface.id,
+      ...data
+    });
   }
 
   @UsePipes(

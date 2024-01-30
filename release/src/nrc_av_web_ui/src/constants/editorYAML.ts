@@ -9,3 +9,7 @@ export enum ErrMsgEditor {
   DEPENDENCY_NOT_EXIST = 'Subsystem "{subSystemName}" depends on subsystem "{dependencyName}", which is not defined in this YAML file.',
   DEPENDENCY_CIRCULAR = 'Subsytems "{subSystemName}" and "{dependencyName}" form a circular dependency.'
 }
+
+export enum Yaml {
+  YAML_EXCEPTION = 'YAMLException'
+}

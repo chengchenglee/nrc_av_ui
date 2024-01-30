@@ -12,8 +12,7 @@ import type {
   IStatusInterfaceRosBridgeService,
   ISubSystem,
   IChildProcess,
-  IStatusCommands,
-  IRosBridgeConnectionService
+  IStatusCommands
 } from '../../inversify/interfaces';
 
 @injectable()
@@ -22,9 +21,13 @@ export default class SubSystemService implements ISubSystem {
 
   private statusWorker!: UtilityProcess;
 
-  private isDiagnosticTimeout: boolean;
+  private subSystemDiagnosticTimeout: Map<string, constants.SubSystem>;
 
   private subSystemDiagnosticTries: Map<string, number>;
+
+  private subSystemIsProcessing: Map<string, constants.SubSystem>;
+
+  private subSystemIsDiagnostic: Map<string, constants.SubSystem>;
 
   private runningNodeSet: Set<string>;
 
@@ -35,9 +38,7 @@ export default class SubSystemService implements ISubSystem {
     @inject(TYPES.StatusInterfaceRosBridgeService)
     private statusInterfaceRosBridgeSvc: IStatusInterfaceRosBridgeService,
     @inject(TYPES.StatusCommandsService) private commandsStatusSvc: IStatusCommands,
-    @inject(TYPES.ChildProcess) private childProcessSvc: IChildProcess,
-    @inject(TYPES.RosBridgeConnectionService)
-    private rosBridgeConnectionService: IRosBridgeConnectionService
+    @inject(TYPES.ChildProcess) private childProcessSvc: IChildProcess
   ) {
     const initialValue: constants.SubSystemServiceState = {
       sortedSubSystems: [],
@@ -47,8 +48,10 @@ export default class SubSystemService implements ISubSystem {
     this.runningNodeSet = new Set();
     this.runningTopicSet = new Set();
     this.subSystemDiagnosticTries = new Map();
+    this.subSystemIsProcessing = new Map();
+    this.subSystemIsDiagnostic = new Map();
     this.sharedStore = createSharedStore<constants.SubSystemServiceState>(initialValue);
-    this.isDiagnosticTimeout = false;
+    this.subSystemDiagnosticTimeout = new Map();
     this.sendWorkerMessage = this.sendWorkerMessage.bind(this);
   }
 
@@ -66,6 +69,7 @@ export default class SubSystemService implements ISubSystem {
       constants.EnumRosBridgeCommunicationPort.INTERFACE_STATE
     );
     if (interfaceStateChannel) {
+      log.info('[SubSystemService][initStatusChecking] Status checking loop init!');
       interfaceStateChannel.on('message', (e) => {
         const message: constants.InterfaceStatusDto = e.data;
         const topics = [...message.algorithms, ...message.sensors];
@@ -78,27 +82,16 @@ export default class SubSystemService implements ISubSystem {
     }
   }
 
-  @logMethod('[SubSystemService][updateNodeStatus]', log.debug)
+  @logMethod('[SubSystemService][updateNodeAndTopicStatus]', log.debug)
   private updateNodeAndTopicStatus() {
-    this.rosBridgeConnectionService
-      .getRosBridgeConnection(5)
-      .then((connection) => {
-        this.statusInterfaceRosBridgeSvc.getRosNodes(connection).then((nodes) => {
-          const cleanedNodes = nodes.map((node) => {
-            if (node.startsWith('/')) {
-              return node.slice(1);
-            }
-            return node;
-          });
-          this.runningNodeSet = new Set(cleanedNodes);
-        });
-        this.statusInterfaceRosBridgeSvc.getRosTopics(connection).then((topics) => {
-          this.runningTopicSet = new Set(topics);
-        });
-      })
-      .catch(() => {
-        log.warn('[SubSystemService][updateNodeStatus] Connection to ros-bridge error!');
-      });
+    const cleanedNodes = this.statusInterfaceRosBridgeSvc.getRosNodesCache().map((node) => {
+      if (node.startsWith('/')) {
+        return node.slice(1);
+      }
+      return node;
+    });
+    this.runningNodeSet = new Set(cleanedNodes);
+    this.runningTopicSet = new Set(this.statusInterfaceRosBridgeSvc.getRosTopicsCache());
   }
 
   private sendWorkerMessage(
@@ -118,9 +111,10 @@ export default class SubSystemService implements ISubSystem {
     }
   }
 
+  // eslint-disable-next-line max-lines-per-function
   @logMethod('[SubSystemService][statusLoop]', log.debug)
   private forkWorker() {
-    this.isDiagnosticTimeout = false;
+    this.subSystemDiagnosticTimeout.clear();
     if (!this.statusWorker) {
       this.statusWorker = utilityProcess.fork(
         getWorkerPath('workerSubSystemHealthCheck.js'),
@@ -135,7 +129,7 @@ export default class SubSystemService implements ISubSystem {
       });
       this.statusWorker.on('message', (res) => {
         // Not an error
-        if (!res.type) {
+        if (!res.type && this.statusInterfaceRosBridgeSvc.interfaceRunning()) {
           const returnMessage: constants.ISubSystemWorkerReturn = res;
           if (returnMessage.diagLedStatus.length > 0) {
             const ledArray = Array.from(returnMessage.diagLedStatus, (value) => {
@@ -144,43 +138,72 @@ export default class SubSystemService implements ISubSystem {
               }
               return value;
             });
-            // Message format for std_msgs/Int16MultiArray
-            const message: constants.StdInt16ArrayTopicMessage = {
-              data: ledArray
-            };
-            this.statusInterfaceRosBridgeSvc.publishMessage(
-              constants.EnumRosBridgeTopic.LED_DIAGNOSTIC,
-              message
-            );
+            if (ledArray.length > 0) {
+              // Message format for std_msgs/Int16MultiArray
+              const message: constants.StdInt16ArrayTopicMessage = {
+                data: ledArray
+              };
+              this.statusInterfaceRosBridgeSvc.publishMessage(
+                constants.EnumRosBridgeTopic.LED_DIAGNOSTIC,
+                message
+              );
+            }
           }
-          if (returnMessage.diagnosticSubSystem.length > 0 && !this.isDiagnosticTimeout) {
-            this.isDiagnosticTimeout = true;
-            const diagnosticPromises: Promise<constants.IResponse>[] =
-              returnMessage.diagnosticSubSystem.flatMap((subSystem) => {
-                const maxRetries = subSystem.diagRetry || DIAGNOSTIC.DIAGNOSTIC_RETRY;
-                const tries = this.subSystemDiagnosticTries.get(subSystem.name);
-                let currentTries = 1;
-                if (tries) {
-                  currentTries = tries + 1;
-                }
-                if (currentTries <= maxRetries) {
-                  this.subSystemDiagnosticTries.set(subSystem.name, currentTries);
-                  return this.runDiagnostic(subSystem.diagnostic);
-                }
+          if (returnMessage.diagnosticSubSystem.length > 0) {
+            const restartSubSystemMap: Map<string, constants.SubSystem> = new Map();
+            const diagnosticPromises: Promise<
+              constants.IResponse & constants.ISubSystemExtraInfo
+            >[] = returnMessage.diagnosticSubSystem.flatMap((subSystem) => {
+              if (
+                this.subSystemDiagnosticTimeout.has(subSystem.name) ||
+                this.subSystemIsDiagnostic.has(subSystem.name) ||
+                this.subSystemIsProcessing.has(subSystem.name)
+              ) {
                 return [];
-              });
+              }
+              const maxRetries = subSystem.diagRetry;
+              const tries = this.subSystemDiagnosticTries.get(subSystem.name);
+              let currentTries = 1;
+              if (tries) {
+                currentTries = tries + 1;
+              }
+              if (maxRetries && currentTries <= maxRetries) {
+                restartSubSystemMap.set(subSystem.name, subSystem);
+                this.subSystemDiagnosticTimeout.set(subSystem.name, subSystem);
+                this.subSystemDiagnosticTries.set(subSystem.name, currentTries);
+                setTimeout(() => {
+                  this.subSystemDiagnosticTimeout.delete(subSystem.name);
+                  // eslint-disable-next-line max-len
+                }, DIAGNOSTIC.DIAGNOSTIC_BUFFER_TIME || DIAGNOSTIC.DIAGNOSTIC_BUFFER_TIME);
+                if (subSystem.diagnostic) {
+                  return this.runDiagnostic(subSystem);
+                }
+                return new Promise<constants.IResponse & constants.ISubSystemExtraInfo>(
+                  (resolve) => {
+                    resolve({
+                      status: 'error',
+                      message: SUB_SYSTEM.SUBSYSTEM_DIAGNOSTIC_NO_EXIST,
+                      subSystemId: subSystem.id
+                    });
+                  }
+                );
+              }
+              restartSubSystemMap.delete(subSystem.name);
+              return [];
+            });
             // The result will return array of IResponse of all the diagnostic command
             // This is for future sprint where we want to keep track of
             // result of diagnostic command
-            Promise.allSettled(diagnosticPromises)
-              .then((result: PromiseSettledResult<constants.IResponse>[]) => {
-                log.info(result);
-              })
-              .finally(() => {
-                setTimeout(() => {
-                  this.isDiagnosticTimeout = false;
-                }, DIAGNOSTIC.DIAGNOSTIC_COOLDOWN_INTERVAL);
-              });
+            Promise.allSettled(diagnosticPromises).then(
+              (
+                result: PromiseSettledResult<constants.IResponse & constants.ISubSystemExtraInfo>[]
+              ) => {
+                this.restartSortedSubSystem(restartSubSystemMap);
+                if (result.length > 0) {
+                  log.info(result);
+                }
+              }
+            );
           }
         }
       });
@@ -230,6 +253,23 @@ export default class SubSystemService implements ISubSystem {
     }
   }
 
+  @logMethod('[SubSystemService][restartSortedSubSystem]', log.debug)
+  private async restartSortedSubSystem(restartSubSystemMap: Map<string, constants.SubSystem>) {
+    // eslint-disable-next-line no-restricted-syntax
+    for (const subSystem of this.sharedStore.getState().sortedSubSystems) {
+      if (restartSubSystemMap.has(subSystem.name)) {
+        // eslint-disable-next-line no-await-in-loop
+        await delayInMs(SUB_SYSTEM.DEFAULT_RESTART_BUFFER);
+        if (
+          this.checkSubSystemStatus(subSystem.name, true) === constants.SubSystemStatusType.STOPPED
+        ) {
+          // eslint-disable-next-line no-await-in-loop
+          await this.restartSubSystem(subSystem.name);
+        }
+      }
+    }
+  }
+
   @logMethod('[SubSystemService][runSubSystemCommand]', log.debug)
   private async runSubSystemCommand(subSystem: constants.SubSystem) {
     const errorResponses: (constants.IResponse & constants.ISubSystemExtraInfo)[] = [];
@@ -241,6 +281,7 @@ export default class SubSystemService implements ISubSystem {
       );
       // eslint-disable-next-line no-console
       console.log(`Sub system ${subSystem.name} command :  ${command.command}`);
+      const commandStartTime = performance.now();
       // eslint-disable-next-line no-await-in-loop
       const commandResponse = await this.rosSvc
         .runCommandsForAll(command, command.launchTime * 1000)
@@ -269,8 +310,12 @@ export default class SubSystemService implements ISubSystem {
           }
         });
       if (commandResponse && commandResponse.status === 'success') {
+        const timeRemain = Math.max(
+          command.launchTime * 1000 - (performance.now() - commandStartTime),
+          SUB_SYSTEM.DEFAULT_LAUNCH_TIME
+        );
         // eslint-disable-next-line no-await-in-loop
-        await delayInMs(command.launchTime * 1000 || SUB_SYSTEM.DEFAULT_LAUNCH_TIME);
+        await delayInMs(timeRemain);
       }
     }
     return errorResponses;
@@ -415,13 +460,35 @@ export default class SubSystemService implements ISubSystem {
     return undefined;
   }
 
+  @logMethod('[SubSystemService][restartSubSystem]', log.debug)
+  private async restartSubSystem(subSystemName: string) {
+    const { subSystemsMap } = this.sharedStore.getState();
+    const subSystem = subSystemsMap.get(subSystemName);
+    if (!subSystem) {
+      return;
+    }
+    this.subSystemIsProcessing.set(subSystemName, subSystem);
+    await this.stopSubSystem(subSystemName, () => null, false, false, false);
+    await this.runSubSystem(subSystemName, () => null, true, false, false);
+    delayInMs(SUB_SYSTEM.DEFAULT_RESTART_BUFFER).then(() => {
+      if (
+        this.checkSubSystemStatus(subSystemName, true) === constants.SubSystemStatusType.RUNNING
+      ) {
+        this.subSystemDiagnosticTries.set(subSystemName, 0);
+      }
+    });
+    this.subSystemIsProcessing.delete(subSystemName);
+  }
+
   // eslint-disable-next-line max-lines-per-function
   @logMethod('[SubSystemService][runSubSystem]', log.debug)
   // eslint-disable-next-line complexity
   async runSubSystem(
     subSystemName: string,
     replyOnChannel: (response: constants.IResponse) => void,
-    ignoreNodes = true
+    ignoreNodes = true,
+    resetTriesCounter = true,
+    flagIsProcessing = true
   ) {
     const errorResponses: (constants.IResponse & constants.ISubSystemExtraInfo)[] = [];
     const { subSystemsMap } = this.sharedStore.getState();
@@ -438,46 +505,49 @@ export default class SubSystemService implements ISubSystem {
       });
       return;
     }
-    if (this.checkSubSystemStatus(subSystemName) === constants.SubSystemStatusType.RUNNING) {
-      errorResponses.push({
-        status: 'error',
-        message: SUB_SYSTEM.RUN_SUBSYSTEM_ALREADY_START,
-        subSystemId: subSystem.id
-      });
-      replyOnChannel({
-        status: 'error',
-        message: errorResponses
-      });
-      return;
-    }
-    const dependencies = this.getDependenciesList(subSystemName, true);
-    if (new Set(dependencies).size !== new Set([...dependencies, ...subSystem.depends]).size) {
-      const startDependenciesSet = new Set(dependencies);
-      const subSystemDependenciesSet = new Array(...subSystem.depends);
-      const difDependenciesSet = new Set(
-        [...subSystemDependenciesSet].filter(
-          (dependenciesName) => !startDependenciesSet.has(dependenciesName)
-        )
-      );
-      errorResponses.push({
-        status: 'error',
-        message: `Dependencies: "${Array.from(difDependenciesSet.values()).join(
-          '" , "'
-        )}" not started`,
-        subSystemId: subSystem.id
-      });
-      replyOnChannel({
-        status: 'error',
-        message: errorResponses
-      });
-      return;
-    }
     try {
+      if (flagIsProcessing) {
+        this.subSystemIsProcessing.set(subSystemName, subSystem);
+      }
+      if (this.checkSubSystemStatus(subSystemName) === constants.SubSystemStatusType.RUNNING) {
+        errorResponses.push({
+          status: 'error',
+          message: SUB_SYSTEM.RUN_SUBSYSTEM_ALREADY_START,
+          subSystemId: subSystem.id
+        });
+        replyOnChannel({
+          status: 'error',
+          message: errorResponses
+        });
+        return;
+      }
+      const dependencies = this.getDependenciesList(subSystemName, true);
+      if (new Set(dependencies).size !== new Set([...dependencies, ...subSystem.depends]).size) {
+        const startDependenciesSet = new Set(dependencies);
+        const subSystemDependenciesSet = new Array(...subSystem.depends);
+        const difDependenciesSet = new Set(
+          [...subSystemDependenciesSet].filter(
+            (dependenciesName) => !startDependenciesSet.has(dependenciesName)
+          )
+        );
+        errorResponses.push({
+          status: 'error',
+          message: `Dependencies: "${Array.from(difDependenciesSet.values()).join(
+            '" , "'
+          )}" not started`,
+          subSystemId: subSystem.id
+        });
+        replyOnChannel({
+          status: 'error',
+          message: errorResponses
+        });
+        return;
+      }
+
       const subSystemTimeout = delayInMs(subSystem.timeout * 1000 || SUB_SYSTEM.DEFAULT_TIMEOUT);
       const commandError = this.runSubSystemCommand(subSystem);
       const result = await Promise.race([commandError, subSystemTimeout]);
-      this.subSystemDiagnosticTries.set(subSystem.name, 0);
-      if (!result) {
+      if (!result && !Array.isArray(result)) {
         log.warn(`[SubSystemService][runSubSystem] Sub system "${subSystem.name}" timeout`);
         // eslint-disable-next-line no-console
         console.log(`Sub system "${subSystem.name}" timeout`);
@@ -519,6 +589,11 @@ export default class SubSystemService implements ISubSystem {
           state.startedSubSystemsMap = currentStartedMap;
         });
       }
+      const message: constants.IRosBridgeTopicWorkerMessageStart = {
+        type: constants.EnumRosBridgeTopicWorkerMessage.START,
+        topidIdList: subSystem.topics.map((topic) => topic.id)
+      };
+      this.statusInterfaceRosBridgeSvc.sendAllTopicWorker(message);
       if (errorResponses && errorResponses.length > 0) {
         const errorLog = errorResponses
           .map((res) => {
@@ -549,6 +624,15 @@ export default class SubSystemService implements ISubSystem {
         status: 'error',
         message: errorResponses
       });
+    } finally {
+      delayInMs(SUB_SYSTEM.DEFAULT_START_TIME).then(() => {
+        if (flagIsProcessing) {
+          this.subSystemIsProcessing.delete(subSystemName);
+        }
+      });
+      if (resetTriesCounter) {
+        this.subSystemDiagnosticTries.set(subSystemName, 0);
+      }
     }
   }
 
@@ -557,7 +641,9 @@ export default class SubSystemService implements ISubSystem {
   async stopSubSystem(
     subSystemName: string,
     replyOnChannel: (response: constants.IResponse) => void,
-    ignoreNodes = false
+    ignoreNodes = false,
+    resetTriesCounter = true,
+    flagIsProcessing = true
   ) {
     const errorResponses: (constants.IResponse & constants.ISubSystemExtraInfo)[] = [];
     const { subSystemsMap } = this.sharedStore.getState();
@@ -574,35 +660,38 @@ export default class SubSystemService implements ISubSystem {
       });
       return;
     }
-    if (this.checkSubSystemStatus(subSystemName) === constants.SubSystemStatusType.STOPPED) {
-      errorResponses.push({
-        status: 'error',
-        message: SUB_SYSTEM.STOP_SUBSYSTEM_ALREADY_STOP,
-        subSystemId: subSystem.id
-      });
-      replyOnChannel({
-        status: 'error',
-        message: errorResponses
-      });
-      return;
-    }
-    // const dependencies = this.getDependentsList(subSystemName, true);
-    // if (dependencies.length > 0) {
-    //   errorResponses.push({
-    //     status: 'error',
-    //     message: `Dependents: "${dependencies.join('" , "')}" not stopped`,
-    //     subSystemId: subSystem.id
-    //   });
-    //   replyOnChannel({
-    //     status: 'error',
-    //     message: errorResponses
-    //   });
-    //   return;
-    // }
     try {
+      if (flagIsProcessing) {
+        this.subSystemIsProcessing.set(subSystemName, subSystem);
+      }
+      if (this.checkSubSystemStatus(subSystemName) === constants.SubSystemStatusType.STOPPED) {
+        errorResponses.push({
+          status: 'error',
+          message: SUB_SYSTEM.STOP_SUBSYSTEM_ALREADY_STOP,
+          subSystemId: subSystem.id
+        });
+        replyOnChannel({
+          status: 'error',
+          message: errorResponses
+        });
+        return;
+      }
+      // const dependencies = this.getDependentsList(subSystemName, true);
+      // if (dependencies.length > 0) {
+      //   errorResponses.push({
+      //     status: 'error',
+      //     message: `Dependents: "${dependencies.join('" , "')}" not stopped`,
+      //     subSystemId: subSystem.id
+      //   });
+      //   replyOnChannel({
+      //     status: 'error',
+      //     message: errorResponses
+      //   });
+      //   return;
+      // }
+
       await this.stopSubSystemCommand(subSystem);
       // errorResponses.push(...commandError);
-      this.subSystemDiagnosticTries.delete(subSystem.name);
       // Buffer for the topic to actually stop
       await delayInMs(SUB_SYSTEM.DEFAULT_STOP_TIME);
       const totalSubSystemNode = subSystem.commands
@@ -667,6 +756,11 @@ export default class SubSystemService implements ISubSystem {
           state.startedSubSystemsMap = currentStartedMap;
         });
       }
+      const message: constants.IRosBridgeTopicWorkerMessageStop = {
+        type: constants.EnumRosBridgeTopicWorkerMessage.STOP,
+        topidIdList: subSystem.topics.map((topic) => topic.id)
+      };
+      this.statusInterfaceRosBridgeSvc.sendAllTopicWorker(message);
       if (errorResponses && errorResponses.length > 0) {
         const errorLog = errorResponses
           .map((res) => {
@@ -697,6 +791,13 @@ export default class SubSystemService implements ISubSystem {
         status: 'error',
         message: errorResponses
       });
+    } finally {
+      if (flagIsProcessing) {
+        this.subSystemIsProcessing.delete(subSystemName);
+      }
+      if (resetTriesCounter) {
+        this.subSystemDiagnosticTries.delete(subSystemName);
+      }
     }
   }
 
@@ -787,6 +888,9 @@ export default class SubSystemService implements ISubSystem {
         status,
         topics,
         commands,
+        isProcessing: this.subSystemIsProcessing.has(subSystem.name),
+        isDiagnostic: this.subSystemIsDiagnostic.has(subSystem.name),
+        diagTries: this.subSystemDiagnosticTries.get(subSystem.name) || 0,
         error: errorResponses
       };
     });
@@ -837,14 +941,16 @@ export default class SubSystemService implements ISubSystem {
       state.subSystemsMap = new Map();
     });
     this.subSystemDiagnosticTries.clear();
-    this.isDiagnosticTimeout = false;
+    this.subSystemIsProcessing.clear();
+    this.subSystemIsDiagnostic.clear();
+    this.subSystemDiagnosticTimeout.clear();
   }
 
   @logMethod('[SubSystemService][returnDeadSubSystemTopics]', log.debug)
   private returnDeadSubSystemTopics(subSystem: constants.SubSystem): constants.TopicSubSystem[] {
     const deadTopicArr: constants.TopicSubSystem[] = [];
     subSystem.topics.forEach((topic) => {
-      const currentTopic = this.statusInterfaceRosBridgeSvc.getTopic(topic.name, subSystem.type);
+      const currentTopic = this.statusInterfaceRosBridgeSvc.getTopicById(topic.id);
       if (!currentTopic || currentTopic.status === constants.RosTopicStatusType.BAD) {
         deadTopicArr.push(topic);
       }
@@ -868,27 +974,36 @@ export default class SubSystemService implements ISubSystem {
   }
 
   @logMethod('[SubSystemService][runDiagnostic]', log.debug)
-  private runDiagnostic(diagnostic: string): Promise<constants.IResponse> {
+  private runDiagnostic(
+    subSystem: constants.SubSystem
+  ): Promise<constants.IResponse & constants.ISubSystemExtraInfo> {
     const diagnosticCommand = this.childProcessSvc.buildCommand(
-      `rosrun nrc_av_ui ${diagnostic}`,
+      `rosrun nrc_av_ui ${subSystem.diagnostic}`,
       ''
     );
     log.info(`[SubSystemService][runDiagnostic] Running: ${diagnosticCommand}`);
-    return new Promise<constants.IResponse>((resolve, reject) => {
+    return new Promise<constants.IResponse & constants.ISubSystemExtraInfo>((resolve, reject) => {
       try {
+        this.subSystemIsDiagnostic.set(subSystem.name, subSystem);
         this.childProcessSvc.executeAndValid(
           diagnosticCommand,
-          10000,
+          subSystem.timeout * 1000 || SUB_SYSTEM.DEFAULT_TIMEOUT,
           (response: constants.IResponse) => {
+            setTimeout(
+              () => this.subSystemIsDiagnostic.delete(subSystem.name),
+              DIAGNOSTIC.DIAGNOSTIC_BUFFER_END_TIME
+            );
             if (response.status === 'error') {
-              const errorResponse: constants.IResponse = {
+              const errorResponse: constants.IResponse & constants.ISubSystemExtraInfo = {
                 status: 'error',
-                message: response.message
+                message: response.message,
+                subSystemId: subSystem.id
               };
               reject(errorResponse);
             } else {
-              const responseWithPID: constants.IResponse = {
-                ...response
+              const responseWithPID: constants.IResponse & constants.ISubSystemExtraInfo = {
+                ...response,
+                subSystemId: subSystem.id
               };
               resolve(responseWithPID);
             }
@@ -896,11 +1011,13 @@ export default class SubSystemService implements ISubSystem {
           true
         );
       } catch (err) {
-        const errorResponse: constants.IResponse = {
+        const errorResponse: constants.IResponse & constants.ISubSystemExtraInfo = {
           status: 'error',
-          message: ROS_COMMAND.RUN_COMMAND_FAIL
+          message: ROS_COMMAND.RUN_COMMAND_FAIL,
+          subSystemId: subSystem.id
         };
         log.error(`[SubSystemService][runDiagnostic] ${err}`);
+        this.subSystemIsDiagnostic.delete(subSystem.name);
         reject(errorResponse);
       }
     });

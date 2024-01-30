@@ -26,7 +26,8 @@ import {
   EnumRosBridgeTopic,
   EnumRosBridgeCommunicationPort,
   InterfaceStatusDto,
-  SubSystemDto
+  SubSystemDto,
+  IRosBridgeTopicWorkerMessage
 } from '../../shared/constants';
 
 // ------------- NodeJS built-in ------------- //
@@ -200,7 +201,10 @@ export interface IConfiguration {
   loadConfigs(configName: string): boolean;
   createConfig<T extends ConfigType>(configName: string, value: T): void;
   getConfigs<T extends ConfigType>(configName: string): T | undefined;
-  getConfig<T extends ConfigType>(configName: string, propName: keyof T): T[keyof T] | undefined;
+  getConfig<T extends ConfigType, K extends keyof T>(
+    configName: string,
+    propName: K
+  ): T[K] | undefined;
 }
 
 export interface IWebStorage {
@@ -220,14 +224,17 @@ export interface IStatusInterfaceRosBridgeService {
   setStatusInterface(fileNames: Interface): Promise<void>;
   clearCache(): Promise<void>;
   interfaceRunning(): InterfaceStatus;
+  getRosNodesCache(): string[];
+  getRosTopicsCache(): string[];
   getRosNodes(rosConnection: Ros): Promise<string[]>;
   getRosTopics(rosConnection: Ros): Promise<string[]>;
-  getTopic(topicName: string, topicType?: SubSystemType): TopicType | undefined;
+  getTopicById(topicId: number): TopicType | undefined;
   getAllTopics(topicType?: SubSystemType): TopicType[];
   initTopicPublish(rosConnection: Ros): void;
   getPublishTopic(topicName: EnumRosBridgeTopic): Topic | undefined;
   publishMessage(topicName: EnumRosBridgeTopic, message: any): void;
   getMessagePort(channelName: EnumRosBridgeCommunicationPort): MessagePortMain | undefined;
+  sendAllTopicWorker(message: IRosBridgeTopicWorkerMessage): void;
 }
 
 export interface IRosBridgeServerService {
@@ -284,12 +291,16 @@ export interface ISubSystem {
   runSubSystem(
     subSystemName: string,
     replyOnChannel: (response: IResponse) => void,
-    ignoreNodes?: boolean
+    ignoreNodes?: boolean,
+    resetTriesCounter?: boolean,
+    flagIsProcessing?: boolean
   ): void;
   stopSubSystem(
     subSystemName: string,
     replyOnChannel: (response: IResponse) => void,
-    ignoreNodes?: boolean
+    ignoreNodes?: boolean,
+    resetTriesCounter?: boolean,
+    flagIsProcessing?: boolean
   ): void;
   setSubSystem(subSystems: SubSystem[], replyOnChannel: (response: IResponse) => void): void;
   getSubSystem(): SubSystem[];
