@@ -12,6 +12,13 @@ interface ClassContructor {
   new (...args: any[]): object;
 }
 
+const convertData = (data: any[], dto: any) => {
+  if (data) {
+    return data.map((data: any) => plainToInstance(dto, data, { excludeExtraneousValues: true }));
+  }
+  return data;
+};
+
 @Injectable()
 export class SerializeInterceptor implements NestInterceptor {
   constructor(private dto: any) {}
@@ -19,9 +26,12 @@ export class SerializeInterceptor implements NestInterceptor {
     return handler.handle().pipe(
       map((response: any) => {
         if (response.data?.total !== undefined) {
-          response.data.interfaces = response.data.interfaces.map((data: any) =>
-            plainToInstance(this.dto, data, { excludeExtraneousValues: true })
-          );
+          if (response.data.interfaces) {
+            response.data.interfaces = convertData(response.data.interfaces, this.dto);
+          }
+          if (response.data.users) {
+            response.data.users = convertData(response.data.users, this.dto);
+          }
         } else {
           response.data = plainToInstance(this.dto, response.data, {
             excludeExtraneousValues: true

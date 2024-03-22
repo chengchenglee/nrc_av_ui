@@ -21,7 +21,8 @@ export const constant = Object.freeze({
     APP_WARN: 'app-warn',
     HTTP: 'http-app',
     MAIL: 'http-mail'
-  }
+  },
+  INITIAL_PASSWORD: '123@Abcde'
 });
 
 export const message = Object.freeze({
@@ -29,6 +30,7 @@ export const message = Object.freeze({
   notFound: 'Not found',
   forbidden: 'Forbidden',
   usernameExisted: 'Username already exists',
+  emailExisted: 'Email already exists',
   phoneExisted: 'Phone already exists',
   invalidImage: 'Invalid image',
   s3Error: 'S3 error',
@@ -47,5 +49,14 @@ export const message = Object.freeze({
   interfaceNoCommand: 'The interface does not have any commands',
   notHavePermission: 'You do not have permission',
   agentTimeout: 'Agent timeout',
-  invalidSubSystem: 'Invalid sub system configuration'
+  invalidSubSystem: 'Invalid sub system configuration',
+  somethingWentWrong: 'Something went wrong',
+  roleNotFound: 'Role not found',
+  usernamePasswordIncorrect: 'Username or password is not correct',
+  passwordIncorrect: 'The current password is not correct',
+  requestChangePassword: 'Request change password on next login',
+  userNotActive: 'User is not active',
+  noRole: 'No role found',
+  userNotFound: 'User not found',
+  invalidToken: 'Invalid token'
 });

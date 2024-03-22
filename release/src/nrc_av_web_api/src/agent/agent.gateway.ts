@@ -80,12 +80,21 @@ export class AgentGateway {
     const clientKey = client.handshake.headers.certkey as string;
     const vehicleName = client.handshake.headers.name as string;
     const modelName = client.handshake.headers.model as string;
+    const macAddress = client.handshake.headers.macaddress as string;
     const agentVersion = client.handshake.headers.agentversion as string;
     const vehicle = await this.vehicleService.handleVehicleConnection(clientKey);
     if (vehicle) {
+      let isUpdated = false;
+
+      if (macAddress !== vehicle.macAddress && clientKey === vehicle.certKey) {
+        await this.emitToClient(SocketEventEnum.VEHICLE_RESET_CERTKEY, client.id).catch((e) => {
+          console.error(`[handleConnection] Emit VEHICLE_RESET_CERTKEY failed with error: ${e}`);
+        });
+        return;
+      }
+
       await client.join(`${SocketEnum.ROOM_PREFIX}${clientKey}`);
 
-      let isUpdated = false;
       const model = await this.modelService.getAndCreateModelIfNotExisted(modelName);
 
       if (model.id !== vehicle.model.id) {
@@ -133,7 +142,9 @@ export class AgentGateway {
     this.loggerService.warn(`disconnected ${client.id}`);
 
     await this.vehicleService.handleVehicleDisconnection(
-      client.handshake.headers.certkey as string
+      // eslint-disable-next-line no-extra-parens
+      client.handshake.headers.certkey as string,
+      client.handshake.headers.macaddress as string
     );
   }
 
@@ -164,8 +175,17 @@ export class AgentGateway {
   ) {
     await client.join(`${SocketEnum.ROOM_PREFIX}${data?.certKey}`);
 
-    const vehicle = await this.vehicleService.registerVehicle(data);
+    const isVehicleExist = await this.dataSource.getRepository(Vehicle).findOne({
+      where: { certKey: data?.certKey }
+    });
+
+    if (isVehicleExist) {
+      this.emitToClient(SocketEventEnum.VEHICLE_RESET_CERTKEY, client.id);
+      return;
+    }
+
     try {
+      const vehicle = await this.vehicleService.registerVehicle(data);
       await this.vehicleService.getResultFromAgent(vehicle, SocketEventEnum.REGISTRATION_RESPONSE, {
         certKey: vehicle.certKey
       });

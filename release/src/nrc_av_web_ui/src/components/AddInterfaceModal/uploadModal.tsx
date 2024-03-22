@@ -1,6 +1,9 @@
-import { Modal, Upload, Button } from 'antd';
+import { Modal, Upload, Button, message } from 'antd';
 import { useState } from 'react';
 import * as React from 'react';
+import { userRole } from '../../constants/user';
+import { useStoreUser } from '../../store';
+import { roleCheck } from '../../utilities/data';
 
 interface UploadModalProps {
   setYamlContent: any;
@@ -13,6 +16,7 @@ export interface UploadModalMethods {
 
 const UploadModal = React.forwardRef<UploadModalMethods, UploadModalProps>((props, ref) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { roles } = useStoreUser();
 
   React.useImperativeHandle(ref, () => ({
     showModal: () => {
@@ -26,6 +30,10 @@ const UploadModal = React.forwardRef<UploadModalMethods, UploadModalProps>((prop
 
   const handleUpload = React.useCallback(
     async (file: File) => {
+      if (!roleCheck([userRole.admin, userRole.engineer], roles)) {
+        message.error('Not enough permission to upload');
+        return false;
+      }
       try {
         const textContent = await file.text();
         props.setYamlContent(textContent);
@@ -37,7 +45,7 @@ const UploadModal = React.forwardRef<UploadModalMethods, UploadModalProps>((prop
 
       return false;
     },
-    [props]
+    [props, roles]
   );
 
   return (

@@ -15,6 +15,7 @@ import { logMethod } from '../log/logDecorator';
 import type {
   IChildProcess,
   ICommunication,
+  IRedButton,
   IRosBridgeConnectionService,
   IRosService,
   IStatusCommands,
@@ -55,7 +56,9 @@ export default class StatusInterfaceRosBridgeService implements IStatusInterface
     @inject(TYPES.RosService) private rosSvc: IRosService,
     @inject(TYPES.StatusCommandsService) private commandsStatusSvc: IStatusCommands,
     @inject(TYPES.RosBridgeConnectionService)
-    private rosBridgeConnectionService: IRosBridgeConnectionService
+    private rosBridgeConnectionService: IRosBridgeConnectionService,
+    @inject(TYPES.RedButton)
+    private redButtonService: IRedButton
   ) {
     this.sensorsTopic = new Map();
     this.algorithmsTopic = new Map();
@@ -70,7 +73,8 @@ export default class StatusInterfaceRosBridgeService implements IStatusInterface
     this.extraVehicleDetailState = createSharedStore<constants.ExtraVehicleDetail>({
       latitude: 0,
       longitude: 0,
-      velocity: 0
+      velocity: 0,
+      redButton: 0
     });
     this.rosNodes = [];
     this.rosTopics = [];
@@ -192,6 +196,7 @@ export default class StatusInterfaceRosBridgeService implements IStatusInterface
     this.topicVehicleDetailWorker.on('message', (data: constants.WorkerVehicleDetailReturn) => {
       this.rosTopics = data.rosTopics;
       this.rosNodes = data.rosNodes;
+      this.redButtonService.setInt16(data.redButton);
       this.extraVehicleDetailState.setState(() => data);
     });
     this.topicVehicleDetailWorker.once('exit', (code: number) => {
@@ -232,15 +237,12 @@ export default class StatusInterfaceRosBridgeService implements IStatusInterface
 
   @logMethod('[StatusInterfaceRosBridgeService][combineTopicWorkerContent]', log.debug)
   private combineTopicWorkerContent(topicWorkerMap: Map<string, constants.TopicType[]>) {
-    const combinedTopicList: constants.TopicType[] = [];
-    topicWorkerMap.forEach((topic) => {
-      combinedTopicList.push(...topic);
-    });
-    return combinedTopicList;
+    return Array.prototype.concat(...Array.from(topicWorkerMap.values()));
   }
 
   @logMethod('[StatusInterfaceRosBridgeService][setStatusInterface]', log.debug)
   async setStatusInterface(dataInterface: constants.Interface): Promise<void> {
+    // TODO duplicated data in dataInterface
     const status = await this.updateInterfaceStatus(dataInterface);
     status.status = constants.InterfaceFileStatusType.RUNNING;
     this.chunkTopicAndFork(status);
@@ -251,26 +253,25 @@ export default class StatusInterfaceRosBridgeService implements IStatusInterface
   }
 
   getTopicById(topicId: number): constants.TopicType | undefined {
-    return [
-      ...this.combineTopicWorkerContent(this.algorithmsTopic),
-      ...this.combineTopicWorkerContent(this.sensorsTopic)
-    ].find((topic) => topic.id === topicId);
+    const combinedTopics = this.combineTopicWorkerContent(this.algorithmsTopic).concat(
+      this.combineTopicWorkerContent(this.sensorsTopic)
+    );
+
+    return combinedTopics.find((topic) => topic.id === topicId);
   }
 
   getAllTopics(topicType?: constants.SubSystemType): constants.TopicType[] {
     switch (topicType) {
-      case constants.SubSystemType.ALGORITHM: {
+      case constants.SubSystemType.ALGORITHM:
         return this.combineTopicWorkerContent(this.algorithmsTopic);
-      }
-      case constants.SubSystemType.SENSOR: {
+
+      case constants.SubSystemType.SENSOR:
         return this.combineTopicWorkerContent(this.sensorsTopic);
-      }
-      default: {
-        return [
-          ...this.combineTopicWorkerContent(this.algorithmsTopic),
-          ...this.combineTopicWorkerContent(this.sensorsTopic)
-        ];
-      }
+
+      default:
+        return this.combineTopicWorkerContent(this.algorithmsTopic).concat(
+          this.combineTopicWorkerContent(this.sensorsTopic)
+        );
     }
   }
 
@@ -285,6 +286,7 @@ export default class StatusInterfaceRosBridgeService implements IStatusInterface
     while (!(sensorIter = sensorsArr.next()).done) {
       const uuid = uuidv4();
       this.sensorsTopic.set(uuid, sensorIter.value);
+      // TODO double check duplicated data
       this.forkWorker(sensorIter.value, constants.EnumTopicType.SENSOR, uuid);
     }
     const algorithmsArr = chunkArray(
@@ -309,7 +311,8 @@ export default class StatusInterfaceRosBridgeService implements IStatusInterface
       ...nonTopicState,
       sensors: topicSensors,
       algorithms: topicAlgorithms,
-      extraVehicleInformation: topicExtra
+      extraVehicleInformation: topicExtra,
+      mapName: this.rosSvc.getCurrentMapName()
     };
     // this.commSvc.sendNoAck(GET_INTERFACE_DETAIL_STATUS, data);
     this.stateUpdatedChannel.port1.postMessage(data);
@@ -506,9 +509,9 @@ export default class StatusInterfaceRosBridgeService implements IStatusInterface
   async updateInterfaceStatus(
     dataInterface: constants.Interface
   ): Promise<constants.InterfaceStatus & constants.TopicStatus> {
-    const machinesStatus = await Promise.all(
-      dataInterface.machines.map((machine) => this.checkMachineStatus(machine))
-    );
+    // const machinesStatus = await Promise.all(
+    //   dataInterface.machines.map((machine) => this.checkMachineStatus(machine))
+    // );
 
     const sensorsStatus = await Promise.all(
       dataInterface.sensors.map((sensor) => this.checkSensorStatus(sensor))
@@ -520,7 +523,7 @@ export default class StatusInterfaceRosBridgeService implements IStatusInterface
     const interfaceStatus = await this.checkInterfaceStatus();
     return {
       interfaceName: dataInterface.name,
-      machines: machinesStatus,
+      machines: [],
       sensors: sensorsStatus,
       algorithms: algorithmsStatus,
       status: interfaceStatus,

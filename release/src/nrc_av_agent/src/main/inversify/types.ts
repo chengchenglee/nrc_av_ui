@@ -16,7 +16,8 @@ const TYPES = {
   RosBridgeServerService: Symbol.for('IRosBridgeServerService'),
   RosBridgeConnectionService: Symbol.for('IRosBridgeConnectionService'),
   StatusCommandsService: Symbol.for('IStatusCommands'),
-  SubSystemService: Symbol.for('ISubSystem')
+  SubSystemService: Symbol.for('ISubSystem'),
+  RedButton: Symbol.for('IRedButton')
 };
 
 export default TYPES;

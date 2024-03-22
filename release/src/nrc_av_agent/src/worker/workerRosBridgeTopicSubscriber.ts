@@ -238,7 +238,8 @@ process.parentPort.on('message', async (e) => {
       setInterval(() => {
         processAllTopicMapState(Array.from(topicMap.values()));
         process.parentPort.postMessage(Array.from(topicMap.values()));
-      }, constants.ROS_BRIDGE_WORKER_TOPIC.ROS_TOPIC_PASSIVE_INTERVAL);
+        // }, constants.ROS_BRIDGE_WORKER_TOPIC.ROS_TOPIC_PASSIVE_INTERVAL);
+      }, 5000);
       break;
     }
     case constants.EnumRosBridgeTopicWorkerMessage.START: {

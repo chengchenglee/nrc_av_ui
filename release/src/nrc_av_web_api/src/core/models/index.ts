@@ -11,3 +11,5 @@ export * from './multiDestination';
 export * from './machine';
 export * from './node';
 export * from './interfaceContent';
+export * from './permission';
+export * from './role';

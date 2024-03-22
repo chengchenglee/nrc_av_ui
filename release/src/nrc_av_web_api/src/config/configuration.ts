@@ -1,5 +1,6 @@
 export const configuration = () => ({
   port: Number(process.env.SERVER_PORT) || 4000,
+  bcrypt_salt: process.env.BCRYPT_SALT,
   database: {
     host: process.env.DATABASE_HOST || 'localhost',
     port: Number(process.env.DATABASE_PORT) || 5432,

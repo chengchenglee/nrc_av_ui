@@ -16,40 +16,52 @@ const processMessage = (data: ISubSystemWorkerMessage): ISubSystemWorkerReturn =
     diagLedStatus: []
   };
   let maxLed = 0;
-  data.subSystems.forEach((subSystem) => {
-    if (subSystem.diagLed && subSystem.diagLed > maxLed) {
-      maxLed = subSystem.diagLed;
-    }
-    subSystem.topics.forEach((topic) => {
-      const subSystemTopic = data.topicMap.get(topic.id);
-      if (
-        data.startedSubSystem.get(subSystem.name) &&
-        subSystemTopic?.status === RosTopicStatusType.BAD
-      ) {
-        returnMessage.diagnosticSubSystem.push(subSystem);
+  // console.log(data);
+  if (data.subSystems !== undefined) {
+    data.subSystems.forEach((subSystem) => {
+      if (subSystem.diagLed && subSystem.diagLed > maxLed) {
+        maxLed = subSystem.diagLed;
       }
-      // There is topic map state => RosBridge is functional
-      if (data.topicMap.size > 0 && subSystem.diagLed && subSystemTopic) {
-        const status = diagLedMap.get(subSystemTopic.status);
+      subSystem.topics.forEach((topic) => {
+        const subSystemTopic = data.topicMap.get(topic.id);
         if (
-          status !== undefined &&
-          (status < returnMessage.diagLedStatus[subSystem.diagLed] ||
-            returnMessage.diagLedStatus[subSystem.diagLed] === undefined)
+          data.startedSubSystem.get(subSystem.name) &&
+          subSystemTopic?.status === RosTopicStatusType.BAD
         ) {
-          returnMessage.diagLedStatus[subSystem.diagLed] = status;
+          const exists = returnMessage.diagnosticSubSystem.some(
+            (system) => system.name === subSystem.name
+          );
+          if (!exists) {
+            returnMessage.diagnosticSubSystem.push(subSystem);
+          }
         }
-      }
+        // There is topic map state => RosBridge is functional
+        if (data.topicMap.size > 0 && subSystem.diagLed && subSystemTopic) {
+          const status = diagLedMap.get(subSystemTopic.status);
+          if (
+            status !== undefined &&
+            (status < returnMessage.diagLedStatus[subSystem.diagLed] ||
+              returnMessage.diagLedStatus[subSystem.diagLed] === undefined)
+          ) {
+            returnMessage.diagLedStatus[subSystem.diagLed] = status;
+          }
+        }
+      });
     });
-  });
-  // Index will start from 1 instead of 0
-  if (returnMessage.diagLedStatus.length > 0) {
-    returnMessage.diagLedStatus.shift();
+    if (maxLed === 0) {
+      maxLed = data.subSystems.length;
+    }
+    // Index will start from 1 instead of 0
+    if (returnMessage.diagLedStatus.length > 0) {
+      returnMessage.diagLedStatus.shift();
+    }
+    if (maxLed > returnMessage.diagLedStatus.length) {
+      returnMessage.diagLedStatus = returnMessage.diagLedStatus.concat(
+        new Array(maxLed - returnMessage.diagLedStatus.length).fill(0)
+      );
+    }
   }
-  if (maxLed > returnMessage.diagLedStatus.length) {
-    returnMessage.diagLedStatus = returnMessage.diagLedStatus.concat(
-      new Array(maxLed - returnMessage.diagLedStatus.length).fill(0)
-    );
-  }
+
   return returnMessage;
 };
 

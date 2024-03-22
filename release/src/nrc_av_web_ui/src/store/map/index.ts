@@ -5,7 +5,7 @@ export interface MapState {
 }
 
 const initialState: MapState = {
-  selectedMap: localStorage.getItem('selectedMap') || 'Sanborn2019MMv24'
+  selectedMap: localStorage.getItem('selectedMap') ?? 'Sanborn2019MMv24'
 };
 
 const mapSlice = createSlice({

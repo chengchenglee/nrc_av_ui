@@ -3,9 +3,11 @@ import { CopyOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { Button, Pagination } from 'antd';
 import Table, { ColumnsType } from 'antd/es/table';
 import moment from 'moment';
-import { FC, useEffect, useState } from 'react';
-import { InterfaceListItem } from '../../dtos/interface';
-import { useGetContentByIdInterface, useGetInterfaceList } from '../../hooks/queries/interface';
+import { FC, useEffect, useMemo, useState } from 'react';
+import { InterfaceListItem } from 'dtos/interface';
+import { useGetContentByIdInterface, useGetInterfaceList } from 'hooks/queries/interface';
+import { useStoreUser } from 'store';
+import { adminEngineerCheck } from 'utilities/data';
 import CloneModal from '../CloneInterfaceModal';
 import DeleteModal from '../DeleteInterfaceModal';
 
@@ -30,11 +32,14 @@ const InterfaceList: FC<InterfaceListProps> = ({
   setYamlContent
 }) => {
   const { data, isFetching, refetch } = useGetInterfaceList({ currentPage });
+  const { roles } = useStoreUser();
   const [showModalUpdate, setShowModalUpdate] = useState(false);
   const [showModalDelete, setShowModalDelete] = useState(false);
   const [idInterface, setIdInterface] = useState(Number);
 
   const { data: dataYaml, refetch: refetchYml } = useGetContentByIdInterface(idInterface);
+
+  const shouldDisableAction = useMemo(() => adminEngineerCheck(roles), [roles]);
 
   useEffect(() => {
     if (dataYaml) {
@@ -93,6 +98,7 @@ const InterfaceList: FC<InterfaceListProps> = ({
               style={{ marginLeft: '10px', backgroundColor: 'green' }}
               onClick={() => handleEditButtonClick(record.id)}
               icon={<EditOutlined />}
+              disabled={shouldDisableAction}
             />
             <Button
               key="clone"
@@ -100,6 +106,7 @@ const InterfaceList: FC<InterfaceListProps> = ({
               style={{ marginLeft: '10px', backgroundColor: '#ffcc00' }}
               onClick={() => handleCloneButtonClick(record.id)}
               icon={<CopyOutlined />}
+              disabled={shouldDisableAction}
             />
             <Button
               key="delete"
@@ -107,6 +114,7 @@ const InterfaceList: FC<InterfaceListProps> = ({
               style={{ marginLeft: '10px', backgroundColor: 'red' }}
               onClick={() => handleDeleteButtonClick(record.id)}
               icon={<DeleteOutlined />}
+              disabled={shouldDisableAction}
             />
           </div>
         );

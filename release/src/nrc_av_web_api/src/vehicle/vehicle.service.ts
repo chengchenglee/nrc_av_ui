@@ -149,10 +149,11 @@ export class VehicleService {
     return vehicle;
   }
 
-  async handleVehicleDisconnection(certKey: string): Promise<void> {
+  async handleVehicleDisconnection(certKey: string, macAddress: string): Promise<void> {
     const vehicle = await this.dataSource.getRepository(Vehicle).findOne({
       where: {
-        certKey
+        certKey,
+        macAddress
       }
     });
     if (vehicle) {
@@ -266,6 +267,9 @@ export class VehicleService {
           subSystemDto,
           cacheSubSystem.subSystemSeq.split(',').map(Number)
         );
+        // subSystemDtoSorted.forEach((subSort) => {
+        //   subSort.diagRetry = 0;
+        // });
         await this.getResultFromAgent(
           vehicle,
           SocketEventEnum.SEND_SUBSYSTEM,
@@ -298,6 +302,9 @@ export class VehicleService {
           subSystemDto,
           subSystemCache.subSystemSeq
         );
+        // subSystemDtoSorted.forEach((subSort) => {
+        //   subSort.diagRetry = 0;
+        // });
         await this.getResultFromAgent(
           vehicle,
           SocketEventEnum.SEND_SUBSYSTEM,

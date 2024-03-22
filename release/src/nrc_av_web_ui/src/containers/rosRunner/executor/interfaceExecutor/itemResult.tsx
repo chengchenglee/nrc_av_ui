@@ -2,8 +2,8 @@
 import Title from 'antd/es/typography/Title';
 import * as React from 'react';
 import { useDispatch } from 'react-redux';
-import InterfaceInformation from '../../../../components/interfaceInformation';
-import { useRunAllCommands } from '../../../../hooks/queries/vehicle';
+import InterfaceInformation from 'components/interfaceInformation';
+import { useRunAllCommands } from 'hooks/queries/vehicle';
 
 interface IProps {
   vehicleId?: number;

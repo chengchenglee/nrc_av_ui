@@ -19,7 +19,15 @@ import { Response } from 'express';
 import { Subject, map } from 'rxjs';
 import { InterfaceInformationDTO } from '../agent/dto/interfaceInformation.dto';
 import { SSE_TIMEOUT } from '../constants';
-import { UserGuard, EventEmitterNameSpace, Vehicle, Serialize, ControllerResponse } from '../core';
+import {
+  UserGuard,
+  EventEmitterNameSpace,
+  Vehicle,
+  Serialize,
+  ControllerResponse,
+  PermissionEnum
+} from '../core';
+import { PermissionRequired } from '../core/guards/permission.decorator';
 import { TimeoutInterceptor } from '../core/interceptors';
 import { VehicleService } from './vehicle.service';
 
@@ -36,6 +44,7 @@ export class VehicleController {
 
   @Get('/active')
   @Serialize(Vehicle)
+  @PermissionRequired(PermissionEnum.READ_STATUS)
   async listActiveVehicle(@Res() res: Response) {
     return new ControllerResponse(
       res,
@@ -46,6 +55,7 @@ export class VehicleController {
 
   @Get('/waiting')
   @Serialize(Vehicle)
+  @PermissionRequired(PermissionEnum.READ_STATUS)
   async listWaitingVehicle(@Res() res: Response) {
     return new ControllerResponse(
       res,
@@ -56,12 +66,14 @@ export class VehicleController {
 
   @Get('/:id')
   @Serialize(Vehicle)
+  @PermissionRequired(PermissionEnum.READ_STATUS)
   async getVehicleById(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
     return new ControllerResponse(res, await this.vehicleService.getVehicle(id), HttpStatus.OK);
   }
 
   @Put('/:id/activation')
   @Serialize(Vehicle)
+  @PermissionRequired(PermissionEnum.ALLOW_NEW_VEHICLE)
   async activateVehicle(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
     return new ControllerResponse(
       res,
@@ -71,6 +83,7 @@ export class VehicleController {
   }
 
   @Post('/:id/execution/interface-files/:interfaceId/:mapName/options?')
+  @PermissionRequired(PermissionEnum.RUN_INTERFACE)
   async startInterfaceFiles(
     @Param('id', ParseIntPipe) id: number,
     @Param('interfaceId', ParseIntPipe) interfaceId: number,
@@ -95,11 +108,13 @@ export class VehicleController {
   }
 
   @Post('/:id/termination/interface-files')
+  @PermissionRequired(PermissionEnum.RUN_INTERFACE)
   async stopInterfaceFiles(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
     return res.status(HttpStatus.OK).send(await this.vehicleService.stopInterfaceFiles(id));
   }
 
   @Post('/:id/interface/:interfaceId/execution/command/:commandId')
+  @PermissionRequired(PermissionEnum.RUN_INTERFACE)
   async runInterfaceCommand(
     @Param('id', ParseIntPipe) id: number,
     @Param('interfaceId', ParseIntPipe) interfaceId: number,
@@ -112,6 +127,7 @@ export class VehicleController {
   }
 
   @Post('/:id/interface/:interfaceId/execution-all/command')
+  @PermissionRequired(PermissionEnum.RUN_INTERFACE)
   async runAllInterfaceCommands(
     @Param('id', ParseIntPipe) id: number,
     @Param('interfaceId', ParseIntPipe) interfaceId: number,
@@ -123,6 +139,7 @@ export class VehicleController {
   }
 
   @Post('/:id/interface/:interfaceId/termination/command/:commandId')
+  @PermissionRequired(PermissionEnum.RUN_INTERFACE)
   async stopInterfaceCommand(
     @Param('id', ParseIntPipe) id: number,
     @Param('interfaceId', ParseIntPipe) interfaceId: number,
@@ -135,6 +152,7 @@ export class VehicleController {
   }
 
   @Sse('/:id/interface/details-status')
+  @PermissionRequired(PermissionEnum.READ_STATUS)
   sseInterfaceDetailsStatus(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
     const subject = new Subject();
     const subjectTimeoutError = () => {

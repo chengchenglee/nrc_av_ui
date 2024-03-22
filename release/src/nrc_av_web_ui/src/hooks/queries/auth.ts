@@ -1,18 +1,18 @@
-import { useQuery } from '@tanstack/react-query';
-import { message } from 'antd';
-import { login } from '../../api/auth';
-import { AUTH } from '../../constants/query';
-import { LoginDTO } from '../../dtos/login';
-import { store } from '../../store';
-import { userThunk } from '../../store/user/thunks';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { changePasswordApi, login, logout } from 'api/auth';
+import { store } from 'store';
+import { userThunk } from 'store/user/thunks';
 
-export const useLogin = (loginDTO: LoginDTO) =>
-  useQuery([AUTH], () => login(loginDTO), {
-    select: (res) => res.data,
-    enabled: false,
+export const useLogin = () => useMutation(login);
+
+export const useLogout = () => {
+  const queryClient = useQueryClient();
+  return useMutation(logout, {
     onSuccess: () => {
-      message.success('Login successfully');
+      queryClient.removeQueries();
       store.dispatch(userThunk.getCurrentUser());
-    },
-    onError: () => message.error('Failed to login')
+    }
   });
+};
+
+export const useChangePassword = () => useMutation(changePasswordApi);

@@ -126,6 +126,8 @@ export default class InterfaceFileService implements IInterfaceFileService {
         '[InterfaceFileService][stopInterface] interface is running, start killing interface...'
       );
       try {
+        // TODO it should go through running subsytems to kill one by one,
+        // and each subsystem has its own stop function
         const rosConnection = await this.rosBridgeConnectionService.getRosBridgeConnection();
         const nodes = await this.statusInterfaceRosBridgeSvc.getRosNodes(rosConnection);
         const nodesName = nodes.map((a) => a.replace('/', ''));
@@ -137,6 +139,10 @@ export default class InterfaceFileService implements IInterfaceFileService {
             this.childProcessSvc.buildCommand(`rosnode kill ${node}`, '')
           );
         });
+        // eslint-disable-next-line no-restricted-syntax
+        for (const subsystem of this.subSystemSvc.getSubSystem()) {
+          this.subSystemSvc.stopSubSystem(subsystem.name, () => null);
+        }
       } catch (err) {
         log.error(`[InterfaceFileService][stopInterface] ${err}`);
         const nodes = await this.statusInterfaceRosBridgeSvc.getRosNodesCache();
@@ -197,5 +203,6 @@ export default class InterfaceFileService implements IInterfaceFileService {
     const commandParamMap = `rosrun nrc_av_ui paramsForMap.sh ${mapName}`;
     const paramsForMap = this.childProcessSvc.buildCommand(commandParamMap, '');
     this.childProcessSvc.execAndForget(paramsForMap);
+    this.rosSvc.setMapName(mapName);
   }
 }

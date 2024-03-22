@@ -284,6 +284,7 @@ export interface Subsystem {
   diagRetry: number;
   diagTries: number;
   isProcessing: boolean;
+  diagResponse: string;
   isDiagnostic: boolean;
 }
 

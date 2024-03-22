@@ -1,6 +1,6 @@
 {
   "name": "nrc_av_agent",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "type": "module",
   "main": "app/dist/main/main.js",
   "scripts": {
@@ -56,6 +56,7 @@
     "reflect-metadata": "^0.1.13",
     "roslib": "^1.3.0",
     "socket.io-client": "^4.6.1",
+    "tree-kill": "^1.2.2",
     "uuid": "^9.0.0"
   },
   "devDependencies": {

@@ -2,6 +2,7 @@ import { exec, spawn } from 'node:child_process';
 import util from 'util';
 import log from 'electron-log';
 import { inject, injectable } from 'inversify';
+import kill from 'tree-kill';
 import { IHostConfig } from '../../../shared/configurationTypes';
 import { IResponse } from '../../../shared/constants';
 import { APP_CONFIG, COMMUNICATION, ROS, ROS_COMMAND } from '../../constants';
@@ -49,27 +50,38 @@ export default class ChildProcessService implements IChildProcess {
     command: string,
     waitingTime: number,
     replyOnChannel: (response: IResponse) => void,
+    withBash = false,
     returnOutput?: boolean
   ): number {
     log.debug(`[ChildProcessService][executeAndValid] Executing command: ${command}`);
-    const args: readonly string[] | undefined = [];
-    const options = { shell: true, detached: true, env: { ...process.env } };
 
-    const child = spawn(command, args, options);
+    let child: any;
+    if (withBash) {
+      child = spawn('bash', ['-i', '-c', `${command}`], {
+        detached: true,
+        stdio: ['ignore'],
+        env: { ...process.env }
+      });
+    } else {
+      const args: readonly string[] | undefined = [];
+      const options = { shell: true, detached: true, env: { ...process.env } };
+      child = spawn(command, args, options);
+    }
+
     let stdoutData = '';
     let stdoutError = '';
 
-    child.stdout.on('data', (data) => {
+    child.stdout.on('data', (data: any) => {
       stdoutData += data.toString();
       log.debug(`[ChildProcessService][executeAndValid] stdout: ${data.toString()}`);
     });
 
-    child.stderr.on('data', (data) => {
+    child.stderr.on('data', (data: any) => {
       stdoutError += data.toString();
       log.debug(`[ChildProcessService][executeAndValid] stderr: ${data.toString()}`);
     });
 
-    child.on('error', (err) => {
+    child.on('error', (err: any) => {
       console.error('Error occurred while executing the command:', err);
     });
 
@@ -77,7 +89,10 @@ export default class ChildProcessService implements IChildProcess {
       // eslint-disable-next-line no-control-regex
       const ansiEscapeRegex = /\x1b\[\d+m/g;
       const cleanedError = stdoutError.replace(ansiEscapeRegex, '');
-      if (cleanedError) {
+      // TODO temporary using condition withBash as it raises error:
+      // bash: initialize_job_control: no job control in background: Bad file descriptor
+      if (!withBash && cleanedError) {
+        // console.log(cleanedError);
         replyOnChannel({
           status: 'error',
           message: cleanedError
@@ -170,7 +185,7 @@ export default class ChildProcessService implements IChildProcess {
     this.fsService.writeFile(filePath, data, null, () => undefined);
   }
 
-  @logMethod('[LogicService][waitForResultAndReturn]')
+  @logMethod('[ChildProcessService][waitForResultAndReturn]')
   async waitForResultAndReturn(
     replyOnChannel: (response: IResponse) => void,
     nodeName: string
@@ -207,5 +222,17 @@ export default class ChildProcessService implements IChildProcess {
       return ROS.SUCCESS;
     }
     return '';
+  }
+
+  @logMethod('[ChildProcessService][killCommandPid]', log.debug)
+  async killCommandPid(commandPid: number): Promise<void> {
+    try {
+      const commandResult = await this.execAndWait(`ps aux | grep ${commandPid}`);
+      if (commandResult) {
+        kill(commandPid);
+      }
+    } catch (err) {
+      log.error(`[ChildProcessService][killCommandPid] ${err}`);
+    }
   }
 }

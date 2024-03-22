@@ -25,8 +25,10 @@ import {
   Serialize,
   TimeoutInterceptor,
   Interface,
-  ControllerResponse
+  ControllerResponse,
+  PermissionEnum
 } from '../core';
+import { PermissionRequired } from '../core/guards/permission.decorator';
 import { InterfaceContentDTO } from '../interfaceContent/dto/interfaceContent.dto';
 import { InterfaceContentService } from './../interfaceContent/interfaceContent.service';
 import { InterfaceDTO, vInterfaceDTO } from './dto/interface.dto';
@@ -50,6 +52,7 @@ export class InterfaceController {
   @Get('/list')
   @UsePipes(new HttpQueryValidatorPipe(vInterfaceFilteringDTO))
   @Serialize(InterfaceSerialize)
+  @PermissionRequired(PermissionEnum.READ_INTERFACE)
   async listInterfaces(@Res() res: Response, @Query() query: InterfaceFilteringDTO) {
     return new ControllerResponse(
       res,
@@ -60,6 +63,7 @@ export class InterfaceController {
 
   @Get('/clone/:id')
   @Serialize(Interface)
+  @PermissionRequired(PermissionEnum.UPDATE_INTERFACE)
   async cloneInterface(
     @Res() res: Response,
     @Param('id', ParseIntPipe) id: number,
@@ -75,6 +79,7 @@ export class InterfaceController {
 
   @Get('/:id')
   @Serialize(InterfaceNoSubDTO)
+  @PermissionRequired(PermissionEnum.READ_INTERFACE)
   async getInterface(@Res() res: Response, @Param('id', ParseIntPipe) id: number) {
     return new ControllerResponse(
       res,
@@ -85,6 +90,7 @@ export class InterfaceController {
 
   @Get('/:id/content')
   @Serialize(InterfaceContentDTO)
+  @PermissionRequired(PermissionEnum.READ_INTERFACE)
   async getInterfaceContent(@Res() res: Response, @Param('id', ParseIntPipe) id: number) {
     return new ControllerResponse(
       res,
@@ -101,6 +107,7 @@ export class InterfaceController {
 
   @Get('/name/:name')
   @Serialize(Interface)
+  @PermissionRequired(PermissionEnum.READ_INTERFACE)
   async getInterfaceByName(@Res() res: Response, @Param('name') name: string) {
     try {
       const result = await this.interfaceService.getInterfaceByName(name);
@@ -117,6 +124,7 @@ export class InterfaceController {
   @Post('/')
   @UsePipes(new HttpBodyValidatorPipe(vInterfaceDTO))
   @Serialize(Interface)
+  @PermissionRequired(PermissionEnum.CREATE_INTERFACE)
   async createInterface(@Res() res: Response, @Body() body: InterfaceDTO, @Req() req: Request) {
     return new ControllerResponse(
       res,
@@ -128,6 +136,7 @@ export class InterfaceController {
   @Delete('/:id')
   @UsePipes(new HttpBodyValidatorPipe(vInterfaceDTO))
   @Serialize(Interface)
+  @PermissionRequired(PermissionEnum.DELETE_INTERFACE)
   async deleteInterface(@Res() res: Response, @Param('id', ParseIntPipe) id: number) {
     return new ControllerResponse(
       res,
@@ -139,6 +148,7 @@ export class InterfaceController {
   @Put('/:id')
   @UsePipes(new HttpBodyValidatorPipe(vInterfaceDTO))
   @Serialize(Interface)
+  @PermissionRequired(PermissionEnum.UPDATE_INTERFACE)
   async updateInterface(
     @Res() res: Response,
     @Body() body: InterfaceDTO,

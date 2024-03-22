@@ -1,3 +1,4 @@
+/* eslint-disable max-lines-per-function */
 import { Collapse, Descriptions, Empty, Form, Select, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/es/select';
 import moment from 'moment';
@@ -107,7 +108,15 @@ const ROSRunner: React.FC = () => {
         return;
       }
       const selected = activeVehicles.find((vehicle: VehicleDTO) => vehicle.id === value);
-      dispatch(setSelectedVehicle(selected));
+      const lastConnected = selected?.lastConnected as unknown as Date;
+      // Get the user's timezone from the browser
+      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const options = { timeZone: userTimezone };
+      const formattedDateString = lastConnected.toLocaleString('en-US', options);
+      const adjustedDate = new Date(formattedDateString).toString();
+      if (selected) {
+        dispatch(setSelectedVehicle({ ...selected, lastConnected: adjustedDate }));
+      }
     },
     [activeVehicles, dispatch]
   );

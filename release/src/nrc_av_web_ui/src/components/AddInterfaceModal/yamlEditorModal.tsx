@@ -199,7 +199,7 @@ const YamlEditorModal = React.forwardRef<YamlEditorModalMethods, IProps>((props,
           const filteredData = listInterfaces?.interfaces.filter(
             (item) => item.name === nameEditInterface
           );
-          if (filteredData?.length !== 0) {
+          if (filteredData && filteredData?.length !== 0) {
             const msgErr = replacePlaceholders(ErrMsgEditor.INTERFACE_NAME_ALREADY_EXIST, {
               nameInterface: nameEditInterface
             });

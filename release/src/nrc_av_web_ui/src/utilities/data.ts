@@ -1,3 +1,6 @@
+import { userRole } from 'constants/user';
+import { Role } from 'dtos/role';
+
 export const removeObjectKey = (data: any, keys: string[]) => {
   if (data instanceof Array) {
     data.forEach((item) => {
@@ -31,3 +34,9 @@ export const replacePlaceholders = (
   }
   return template;
 };
+
+export const roleCheck = (acceptedRoles: string[], data: Role[]): boolean =>
+  data.filter((role) => acceptedRoles.includes(role.name)).length > 0;
+
+export const adminEngineerCheck = (roles: Role[]) =>
+  !roleCheck([userRole.admin, userRole.engineer], roles);

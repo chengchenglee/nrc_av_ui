@@ -11,7 +11,8 @@ import { useExecSubSystem, useTerminateSubSystem } from '../../hooks/queries/sub
 import { InterfaceMessage, Message, Subsystem } from '../../dtos/interface';
 import { SubSystemStatus } from '../../constants/executionStatus';
 import { useSelector } from 'react-redux';
-import { RootState } from '../../store';
+import { RootState, useStoreUser } from 'store';
+import { adminEngineerCheck } from 'utilities/data';
 
 const { Text } = Typography;
 
@@ -19,6 +20,7 @@ interface SubSystemsHeaderProps {
   subSystems: Subsystem;
   vehicleId: number;
   setErrorSub: any;
+  setDiagResponse: any;
   setTopicErrorSub: any;
   dataExecute: InterfaceMessage;
   toggleHealthCheck: (name: string) => void;
@@ -31,13 +33,16 @@ const SubSystemsHeader: React.FC<SubSystemsHeaderProps> = ({
   healthCheckInfoState,
   vehicleId,
   setErrorSub,
-  setTopicErrorSub
+  setTopicErrorSub,
+  setDiagResponse
 }) => {
   const [execState, setExecState] = React.useState<boolean>(false);
   const [isLoadingExecAll, setIsLoadingExecAll] = React.useState<boolean>(false);
   const [checkError, setCheckError] = React.useState<boolean>(false);
   const [countdown, setCountdown] = React.useState(subSystems.timeout);
   const [activeDiag, setActiveDiag] = React.useState<boolean>(false);
+
+  const { roles } = useStoreUser();
   const {
     dataExecuteSubSystem,
     executeSubSystem,
@@ -57,7 +62,15 @@ const SubSystemsHeader: React.FC<SubSystemsHeaderProps> = ({
 
   const isRunInterface = useSelector((state: RootState) => state.interfaceExecutor.runInterface);
 
+  const shouldDisableButton = React.useMemo(() => adminEngineerCheck(roles), [roles]);
+
   React.useEffect(() => {
+    if (subSystems.diagResponse.includes('[rosrun]')) {
+      const formattedResponse = subSystems.diagResponse.split('[rosrun]').join('<br>[rosrun]');
+      setDiagResponse(formattedResponse);
+    } else {
+      setDiagResponse('');
+    }
     if (!subSystems.isDiagnostic) {
       setExecState(subSystems.status === SubSystemStatus.RUNNING);
     }
@@ -67,7 +80,7 @@ const SubSystemsHeader: React.FC<SubSystemsHeaderProps> = ({
     } else {
       setIsLoadingExecAll(false);
     }
-  }, [execState, isRunAllSubSystems, isRunInterface, subSystems]);
+  }, [execState, isRunAllSubSystems, isRunInterface, setDiagResponse, subSystems]);
 
   React.useEffect(() => {
     setActiveDiag(subSystems.isDiagnostic);
@@ -230,7 +243,8 @@ const SubSystemsHeader: React.FC<SubSystemsHeaderProps> = ({
               isStopSubSystem ||
               isLoadingExecAll ||
               subSystems.isProcessing ||
-              (subSystems.diagRetry === numberRetry && countdown !== 0 && numberRetry !== 0)
+              (subSystems.diagRetry === numberRetry && countdown !== 0 && numberRetry !== 0) ||
+              shouldDisableButton
             }
             style={{
               marginLeft: '5px',

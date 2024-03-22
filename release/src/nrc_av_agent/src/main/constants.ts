@@ -44,6 +44,8 @@ export const ROS_COMMAND = {
 export const SUB_SYSTEM = {
   SUBSYSTEM_NO_EXIST: 'Sub system do not exist',
   SUBSYSTEM_DIAGNOSTIC_NO_EXIST: 'Sub system diagnostic do not exist',
+  SUBSYSTEM_DIAGNOSTIC_EXCEED_TRIES: 'Sub system diagnostic exceeded max tries',
+  SUBSYSTEM_DIAGNOSTIC_RECOVERED: 'Sub system recovered after 60 second (ignoring diagnostic)',
   SET_SUBSYSTEM_SUCCESS: 'Set sub system successfully',
   RUN_SUBSYSTEM_SUCCESS: 'Run sub system successfully',
   RUN_SUBSYSTEM_FAIL: 'Run sub system fail',
@@ -54,7 +56,9 @@ export const SUB_SYSTEM = {
   DEFAULT_LAUNCH_TIME: 200,
   DEFAULT_RESTART_BUFFER: 2000,
   DEFAULT_STOP_TIME: 8000,
-  DEFAULT_START_TIME: 8000
+  DEFAULT_START_TIME: 2000,
+  DEFAULT_DIAGNOSTIC_WAIT: 60000,
+  DEFAULT_DIAGNOSTIC_BUFFER: 2000
 };
 
 export const ROS_BRIDGE = {

@@ -15,7 +15,8 @@ import {
   stopInterfaceFile,
   executeInterfaceCommand,
   stopInterfaceCommand,
-  runAllCommands
+  runAllCommands,
+  updateMap
 } from '../../api/vehicle';
 import { STATUS_INTERVAL } from '../../constants/executionStatus';
 import {
@@ -230,3 +231,5 @@ export const useRunAllCommands = () => {
     isExecutingCommand: mutation.isLoading
   };
 };
+
+export const useUpdateMap = () => useMutation(updateMap);

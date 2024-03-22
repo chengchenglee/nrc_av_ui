@@ -5,10 +5,12 @@ import {
   Injectable,
   HttpStatus
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
-import { DataSource } from 'typeorm';
+import { DataSource, In } from 'typeorm';
 import { AuthService } from '../../auth/auth.service';
-import { User } from '../models';
+import { message } from '../constants';
+import { Role, User } from '../models';
 
 export interface JwtToken {
   id: number;
@@ -16,7 +18,11 @@ export interface JwtToken {
 
 @Injectable()
 export class UserGuard implements CanActivate {
-  constructor(private readonly authService: AuthService, private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly dataSource: DataSource,
+    private readonly reflector: Reflector
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req: Request = context.switchToHttp().getRequest();
@@ -28,20 +34,51 @@ export class UserGuard implements CanActivate {
     }
 
     const user = await this.dataSource.getRepository(User).findOne({
-      where: { id: data.id }
+      relations: {
+        roles: true
+      },
+      where: { id: data.id, isDeleted: false }
     });
 
     if (!user) {
       throw new HttpException({}, HttpStatus.UNAUTHORIZED);
     }
 
+    if (!user.isActive) {
+      throw new HttpException({ errorMessage: message.userNotActive }, HttpStatus.BAD_REQUEST);
+    }
+
     user.password = '';
     req.user = user;
 
-    return true;
+    const roles = await this.dataSource.getRepository(Role).find({
+      relations: {
+        permissions: true
+      },
+      where: {
+        name: In(user.roles.map((role) => role.name)),
+        isDeleted: false
+      }
+    });
+
+    const requiredPermissions = this.reflector.get<string[]>('permissions', context.getHandler());
+
+    if (!requiredPermissions) {
+      return true;
+    }
+
+    const transformedPermissions = new Set<string>(
+      roles.flatMap((role) => role.permissions.map((permission) => permission.name))
+    );
+
+    return this.matchPermission(requiredPermissions, Array.from(transformedPermissions));
   }
 
-  getTokenFromHeader(authorization: string): string {
+  private getTokenFromHeader(authorization: string): string {
     return authorization.split(' ')[1];
+  }
+
+  private matchPermission(requiredPermissions: string[], userPermissions: string[]): boolean {
+    return requiredPermissions.every((permission) => userPermissions.includes(permission));
   }
 }

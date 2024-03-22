@@ -1,0 +1,1 @@
+ALTER TABLE "public"."vehicle" ADD CONSTRAINT unique_cert_key UNIQUE ("certKey");

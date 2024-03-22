@@ -10,7 +10,8 @@ import {
 } from '@nestjs/common';
 import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
-import { UserGuard, TimeoutInterceptor } from '../core';
+import { UserGuard, TimeoutInterceptor, PermissionEnum } from '../core';
+import { PermissionRequired } from '../core/guards/permission.decorator';
 import { VehicleService } from '../vehicle/vehicle.service';
 
 @ApiTags('subsystem')
@@ -22,6 +23,7 @@ export class SubSystemController {
   constructor(private readonly vehicleService: VehicleService) {}
 
   @Get('/:vehicleId/execution/:subsystemName')
+  @PermissionRequired(PermissionEnum.RUN_SUBSYSTEM)
   async runSubSystem(
     @Res() res: Response,
     @Param('vehicleId', ParseIntPipe) vehicleId: number,
@@ -33,6 +35,7 @@ export class SubSystemController {
   }
 
   @Get('/:vehicleId/termination/:subsystemName')
+  @PermissionRequired(PermissionEnum.RUN_SUBSYSTEM)
   async stopSubSystem(
     @Res() res: Response,
     @Param('vehicleId', ParseIntPipe) vehicleId: number,

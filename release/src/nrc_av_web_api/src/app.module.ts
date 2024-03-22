@@ -12,6 +12,7 @@ import { LoggerModule } from './logger/logger.module';
 import { MachineModule } from './machine/machine.module';
 import { ModelModule } from './model/model.module';
 import { MultiDestinationModule } from './multiDestination/multiDestination.module';
+import { RoleModule } from './role/role.module';
 import { SubSystemModule } from './subsystem/subsystem.module';
 import { TopicModule } from './topic/topic.module';
 import { UserModule } from './user/user.module';
@@ -41,7 +42,8 @@ import { VehicleModule } from './vehicle/vehicle.module';
     InterfaceDestinationModule,
     MultiDestinationModule,
     LoggerModule,
-    ModelModule
+    ModelModule,
+    RoleModule
   ]
 })
 export class AppModule {}

@@ -1,5 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import Cookies from 'universal-cookie';
+import { Role } from '../../dtos/role';
 import { UserDTO } from '../../dtos/user';
 import { userThunk } from './thunks';
 
@@ -7,6 +8,8 @@ export interface UserState extends UserDTO {
   id: number;
   isLogin: boolean;
   loading: boolean;
+  isActive: boolean;
+  roles: Role[];
 }
 
 const initialState: UserState = {
@@ -14,7 +17,9 @@ const initialState: UserState = {
   username: '',
   password: '',
   isLogin: false,
-  loading: true
+  loading: true,
+  isActive: false,
+  roles: []
 };
 
 const reducer = createSlice({

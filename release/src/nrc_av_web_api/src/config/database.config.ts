@@ -13,7 +13,9 @@ import {
   MultiDestination,
   Command,
   Node,
-  InterfaceContent
+  InterfaceContent,
+  Role,
+  Permission
 } from '../core';
 import { CacheSubSystem } from '../core/models/cache_subsystem';
 
@@ -40,7 +42,9 @@ export const DbModule = TypeOrmModule.forRootAsync({
       Command,
       CacheSubSystem,
       Node,
-      InterfaceContent
+      InterfaceContent,
+      Role,
+      Permission
     ]
   }),
   inject: [ConfigService]

@@ -4,6 +4,7 @@ import ConfigurationService from '../service/configuration/configurationService 
 import LogService from '../service/log/logService';
 import InterfaceFileService from '../service/logic/interfaceFileService';
 import LogicService from '../service/logic/logicService';
+import RedButton from '../service/logic/redButton';
 import RosBridgeConnectionService from '../service/logic/rosBridgeConnectionService';
 import RosBridgeServerService from '../service/logic/rosBridgeServerService';
 import RosService from '../service/logic/rosService';
@@ -35,7 +36,8 @@ import {
   IRosBridgeServerService,
   IRosBridgeConnectionService,
   IStatusCommands,
-  ISubSystem
+  ISubSystem,
+  IRedButton
 } from './interfaces';
 import TYPES from './types';
 
@@ -67,5 +69,6 @@ diContainer.bind<IInterfaceFileService>(TYPES.InterfaceFileService).to(Interface
 diContainer.bind<IRosService>(TYPES.RosService).to(RosService);
 diContainer.bind<IStatusCommands>(TYPES.StatusCommandsService).to(StatusCommandsService);
 diContainer.bind<ISubSystem>(TYPES.SubSystemService).to(SubSystemService);
+diContainer.bind<IRedButton>(TYPES.RedButton).to(RedButton);
 
 export default diContainer;

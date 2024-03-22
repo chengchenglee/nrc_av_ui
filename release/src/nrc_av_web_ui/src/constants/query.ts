@@ -16,3 +16,5 @@ export const INTERFACE = 'INTERFACE';
 export const INTERFACE_BY_ID = 'INTERFACE_BY_ID';
 export const INTERFACE_BY_NAME = 'INTERFACE_BY_NAME';
 export const CONTENT_BY_INTERFACE_ID = 'CONTENT_BY_INTERFACE_ID';
+
+export const USERS = 'users';

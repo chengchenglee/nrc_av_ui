@@ -21,6 +21,7 @@ const SubSystemsPanel: React.FC<SubSystemsHeaderProps> = ({
   vehicleId
 }) => {
   const [errorSub, setErrorSub] = React.useState<any>();
+  const [diagResponse, setDiagResponse] = React.useState<any>();
   const [topicErrorSub, setTopicErrorSub] = React.useState<any>();
 
   const renderRunSubSystem = (data?: Message[]) => {
@@ -65,7 +66,7 @@ const SubSystemsPanel: React.FC<SubSystemsHeaderProps> = ({
           <List.Item style={{ padding: '2px 10px' }}>
             <Space direction="horizontal" style={{ width: '100%', justifyContent: 'start' }}>
               <Typography.Text style={{ fontWeight: 'bold', fontSize: '14px' }}>
-                Error
+                Error:
               </Typography.Text>
               <Typography.Text
                 style={{
@@ -82,6 +83,25 @@ const SubSystemsPanel: React.FC<SubSystemsHeaderProps> = ({
       />
     );
   };
+
+  const renderDiagResponse = (data: any) => (
+    <>
+      <Typography.Text style={{ fontWeight: 'bold', fontSize: '14px', padding: '2px 10px' }}>
+        Diagnostic:
+      </Typography.Text>
+      <div
+        style={{
+          padding: '2px 0px',
+          fontWeight: 'bold',
+          fontSize: '14px',
+          color: 'red',
+          marginLeft: '10px',
+          marginTop: '-20px'
+        }}
+        dangerouslySetInnerHTML={{ __html: data }}
+      />
+    </>
+  );
 
   const renderRunallSub = (data?: InterfaceMessage, idSubSystem?: number) => {
     if (!data || (Array.isArray(data) && data.length === 0)) {
@@ -156,6 +176,7 @@ const SubSystemsPanel: React.FC<SubSystemsHeaderProps> = ({
           <SubSystemsHeader
             subSystems={item}
             setErrorSub={setErrorSub}
+            setDiagResponse={setDiagResponse}
             setTopicErrorSub={setTopicErrorSub}
             dataExecute={dataExecute}
             toggleHealthCheck={toggleHealthCheck}
@@ -166,6 +187,7 @@ const SubSystemsPanel: React.FC<SubSystemsHeaderProps> = ({
       >
         {errorSub ? renderRunSubSystem(errorSub) : renderRunallSub(dataExecute, item.id)}
         {topicErrorSub ? renderErrorSubSystem(topicErrorSub) : null}
+        {diagResponse ? renderDiagResponse(diagResponse) : null}
         {renderHealthCheckInfo(item.topics)}
       </Panel>
     </Collapse>

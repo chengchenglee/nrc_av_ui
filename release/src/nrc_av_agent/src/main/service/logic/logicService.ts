@@ -1,5 +1,6 @@
 import log from 'electron-log';
 import { inject, injectable } from 'inversify';
+import { v4 as uuidv4 } from 'uuid';
 import {
   IResponse,
   EnumVehicleStatusState,
@@ -35,6 +36,7 @@ enum SocketEventEnum {
   VEHICLE_STATUS = 'nissan/vehicle/status',
   VEHICLE_MACHINES_STATUS = 'nissan/vehicle/machines/status',
   VEHICLE_UPDATION = 'nissan/vehicle/updation',
+  VEHICLE_RESET_CERTKEY = 'nissan/vehicle/certkey-reset',
 
   SEND_SUBSYSTEM = 'nissan/interface/send/sub-system',
   RUN_ALL_INTERFACE_SUBSYSTEM = 'nissan/interface/exec-all/sub-system',
@@ -82,6 +84,10 @@ export default class LogicService implements ILogic {
         'certKey'
       );
       const name = this.configSvc.getConfig<IVehicleInfoConfig, 'name'>(APP_CONFIG.VEHICLE, 'name');
+      const macAddress = this.configSvc.getConfig<IVehicleInfoConfig, 'macAddress'>(
+        APP_CONFIG.VEHICLE,
+        'macAddress'
+      );
       const model = this.configSvc.getConfig<IVehicleInfoConfig, 'model'>(
         APP_CONFIG.VEHICLE,
         'model'
@@ -99,6 +105,7 @@ export default class LogicService implements ILogic {
         .connect(serverUrl, {
           extraHeaders: {
             certkey: certKey,
+            macaddress: macAddress,
             name,
             model,
             agentVersion
@@ -170,6 +177,10 @@ export default class LogicService implements ILogic {
         SocketEventEnum.STOP_INTERFACE,
         this.interfaceFileSvc.stopInterface.bind(this.interfaceFileSvc)
       );
+      this.commSvc.addEventHandler(
+        SocketEventEnum.VEHICLE_RESET_CERTKEY,
+        this.handleUpdateCertKey.bind(this)
+      );
       this.commSvc.addEventHandler('disconnect', this.onDisconnect.bind(this));
       this.commSvc.addEventHandler('connect', this.onConnect.bind(this));
       const interfaceStateChannel = this.statusInterfaceRosBridgeSvc.getMessagePort(
@@ -178,6 +189,7 @@ export default class LogicService implements ILogic {
       interfaceStateChannel?.on('message', (e) => {
         const interfaceDto: InterfaceStatusDto = e.data;
         const subSystemDto = this.subSystemSvc.mapSubSystem(interfaceDto);
+        // TODO need to check why duplicated data of topics
         const message: InterfaceStatusSubSystemDto = {
           ...interfaceDto,
           subSystems: subSystemDto
@@ -227,12 +239,11 @@ export default class LogicService implements ILogic {
   }
 
   @logMethod('[LogicService][registerVehicle]')
-  private registerVehicle(_: unknown, replyOnChannel: (response: IResponse) => void) {
+  private registerVehicle(_data: string, replyOnChannel: (response: IResponse) => void) {
     try {
       const vehicleInfo = this.configSvc.getConfigs<IVehicleInfoConfig>(APP_CONFIG.VEHICLE);
-      if (vehicleInfo) {
-        vehicleInfo.agentVersion = this.electronService.getAgentVersion();
-      }
+      if (!vehicleInfo) return;
+      vehicleInfo.agentVersion = this.electronService.getAgentVersion();
       log.debug(`[LogicService][registerVehicle] vehicleInfo: ${JSON.stringify(vehicleInfo)}`);
       this.commSvc.send(SocketEventEnum.VEHICLE_REGISTRATION, vehicleInfo);
       replyOnChannel({
@@ -313,5 +324,20 @@ export default class LogicService implements ILogic {
       status: 'success',
       data
     });
+  }
+
+  @logMethod('[LogicService][handleChangeCertKey]', log.debug)
+  private handleUpdateCertKey(_data: any, replyOnChannel: (response: IResponse) => void) {
+    try {
+      const vehicleInfo = this.configSvc.getConfigs<IVehicleInfoConfig>(APP_CONFIG.VEHICLE);
+      if (vehicleInfo) {
+        vehicleInfo.certKey = uuidv4();
+        replyOnChannel({ status: 'success', data: vehicleInfo.certKey });
+        this.configSvc.createConfig<IVehicleInfoConfig>(APP_CONFIG.VEHICLE, vehicleInfo);
+      }
+      this.reInit();
+    } catch (error) {
+      log.error(`[LogicService][handleChangeCertKey] ${error}`);
+    }
   }
 }

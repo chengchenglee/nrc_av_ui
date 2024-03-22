@@ -1,18 +1,25 @@
 import log from 'electron-log';
+import { createSharedStore } from 'electron-shared-state';
 import { inject, injectable } from 'inversify';
 import * as constants from '../../../shared/constants';
 import { ROS_COMMAND } from '../../constants';
 import TYPES from '../../inversify/types';
+import { isAliasCommand } from '../../utils';
 import { logMethod } from '../log/logDecorator';
 import type { IChildProcess, IRosService, IStatusCommands } from '../../inversify/interfaces';
 
 let statusRunAllCommands = constants.EnumStatusRunAllCommands.DEACTIVE;
 @injectable()
 export default class RosService implements IRosService {
+  private sharedStore;
+
   constructor(
     @inject(TYPES.ChildProcess) private childProcessSvc: IChildProcess,
     @inject(TYPES.StatusCommandsService) private commandsStatusSvc: IStatusCommands
-  ) {}
+  ) {
+    const initialValue: constants.RosServiceState = { mapName: '' };
+    this.sharedStore = createSharedStore<constants.RosServiceState>(initialValue);
+  }
 
   @logMethod('[RosService][runCommands]')
   runCommands(command: constants.Command, replyOnChannel: (response: constants.IResponse) => void) {
@@ -38,14 +45,23 @@ export default class RosService implements IRosService {
     command: constants.Command,
     waitingTime?: number
   ): Promise<constants.IResponse & constants.IRunAllResponse> {
-    return new Promise<constants.IResponse & constants.IRunAllResponse>((resolve, reject) => {
+    // eslint-disable-next-line no-async-promise-executor
+    return new Promise<constants.IResponse & constants.IRunAllResponse>(async (resolve, reject) => {
       try {
         log.info('[RosService][runCommandsForAll] start');
-        const buildCmd = this.childProcessSvc.buildCommand(command.command, '');
+        const isAlias = await isAliasCommand(command.command);
+        let buildCmd = '';
+        if (isAlias) {
+          buildCmd = command.command;
+        } else {
+          buildCmd = this.childProcessSvc.buildCommand(command.command, '');
+        }
+        // console.log(`command: ${buildCmd} ---- alias: ${isAlias}`);
         this.childProcessSvc.executeAndValid(
           buildCmd,
           waitingTime || 10000,
           (response: constants.IResponse) => {
+            // console.log(response);
             if (response.status === 'error') {
               const errorResponse: constants.IResponse & constants.IRunAllResponse = {
                 status: 'error',
@@ -53,6 +69,8 @@ export default class RosService implements IRosService {
                 commandId: command.id,
                 pid: -1
               };
+              // eslint-disable-next-line no-console
+              console.log(`[RosService][runCommandsForAll] err: ${response.message}`);
               reject(errorResponse);
             } else {
               const responseWithPID: constants.IResponse & constants.IRunAllResponse = {
@@ -66,9 +84,12 @@ export default class RosService implements IRosService {
                 command.name,
                 command.id
               );
+              // eslint-disable-next-line no-console
+              // console.log('[RosService][runCommandsForAll] done');
               resolve(responseWithPID);
             }
-          }
+          },
+          isAlias
         );
         log.info('[RosService][runCommandsForAll] done');
       } catch (err) {
@@ -90,6 +111,17 @@ export default class RosService implements IRosService {
 
   getStatusRunAllCommands(): constants.EnumStatusRunAllCommands {
     return statusRunAllCommands;
+  }
+
+  getCurrentMapName() {
+    return this.sharedStore.getState().mapName;
+  }
+
+  setMapName(mapName: string) {
+    return this.sharedStore.setState((state) => {
+      // eslint-disable-next-line no-param-reassign, func-names
+      state.mapName = mapName;
+    });
   }
 
   @logMethod('[RosService][runAllCommands]')
@@ -219,6 +251,7 @@ export default class RosService implements IRosService {
         return;
       }
       const command = `rosrun nrc_av_ui paramsForMap.sh ${map.mapName}`;
+      this.setMapName(map.mapName);
       const paramsForMap = this.childProcessSvc.buildCommand(command, '');
       this.childProcessSvc.execAndForget(paramsForMap);
       replyOnChannel({

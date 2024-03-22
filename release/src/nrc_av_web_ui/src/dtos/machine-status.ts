@@ -33,4 +33,5 @@ export interface GetInterfaceInfoDTO {
   algorithms: AlgorithmStatusDTO[];
   statusCommands: CommandsStatusDTO[];
   extraVehicleInformation: ExtraVehicleInformation;
+  mapName: string;
 }

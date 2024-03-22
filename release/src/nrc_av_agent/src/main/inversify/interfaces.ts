@@ -27,7 +27,8 @@ import {
   EnumRosBridgeCommunicationPort,
   InterfaceStatusDto,
   SubSystemDto,
-  IRosBridgeTopicWorkerMessage
+  IRosBridgeTopicWorkerMessage,
+  RecordingStatus
 } from '../../shared/constants';
 
 // ------------- NodeJS built-in ------------- //
@@ -135,6 +136,7 @@ export interface IChildProcess {
     command: string,
     waitingTime: number,
     replyOnChannel: (response: IResponse) => void,
+    withBash?: boolean,
     returnOutput?: boolean
   ): number | undefined;
   execAndWait(command: string, ignoreError?: boolean): Promise<string>;
@@ -143,6 +145,7 @@ export interface IChildProcess {
     replyOnChannel: (response: IResponse) => void,
     nodeName: string
   ): Promise<string>;
+  killCommandPid(commandPid: number): Promise<void>;
 }
 // ------------------------------------------- //
 
@@ -256,6 +259,8 @@ export interface IStatusCommands {
   reportStatus(_: unknown, replyOnChannel: (response: IResponse) => void): void;
   resetState(): void;
   getState(): CommandsStatus[];
+  killCommand(commandId: number): Promise<void>;
+  // killAll(): Promise<void>;
 }
 
 export interface ILog {
@@ -284,6 +289,8 @@ export interface IRosService {
   getStatusRunAllCommands(): EnumStatusRunAllCommands;
   runCommandsForAll(command: Command, waitingTime?: number): Promise<IResponse & IRunAllResponse>;
   getNodesFromCommand(command: Command): Promise<string[]>;
+  getCurrentMapName(): string;
+  setMapName(mapName: string): void;
 }
 
 export interface ISubSystem {
@@ -304,7 +311,13 @@ export interface ISubSystem {
   ): void;
   setSubSystem(subSystems: SubSystem[], replyOnChannel: (response: IResponse) => void): void;
   getSubSystem(): SubSystem[];
+  // mapSubSystem(interfaceData: InterfaceStatusDto): Promise<SubSystemDto[]>;
   mapSubSystem(interfaceData: InterfaceStatusDto): SubSystemDto[];
   initStatusChecking(): void;
   clearCache(): void;
+}
+
+export interface IRedButton {
+  setInt16(value: number): void;
+  getStatus(): RecordingStatus;
 }

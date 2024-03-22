@@ -158,12 +158,12 @@ export interface SubSystemServiceState {
   startedSubSystemsMap: Map<string, SubSystem>;
 }
 
-interface IErrorResponse {
+export interface IErrorResponse {
   status: 'error';
   message: any;
 }
 
-interface ISuccessResponse {
+export interface ISuccessResponse {
   status: 'success';
   data?: any;
   pid?: any;
@@ -191,6 +191,7 @@ export type SubSystemDto = Modify<
     commands: CommandsStatus[];
     isProcessing: boolean;
     isDiagnostic: boolean;
+    diagResponse: string;
     diagTries: number;
     topics: TopicType[];
     status: SubSystemStatusType;
@@ -207,7 +208,7 @@ export enum EnumVehicleStatusState {
 }
 
 export enum EnumRosBridgeTopic {
-  LED_DIAGNOSTIC = '/ailsv_led_health',
+  LED_DIAGNOSTIC = '/ailsv_av_led',
   ROS_BRIDGE_HEALTH = '/rosBridgeHealth'
 }
 
@@ -252,6 +253,7 @@ export interface ExtraVehicleDetail {
   latitude: number;
   longitude: number;
   velocity: number;
+  redButton: number;
 }
 
 export interface ExtraRosDetail {
@@ -265,6 +267,7 @@ export interface InterfaceStatusDto extends InterfaceStatus {
   sensors: TopicType[];
   algorithms: TopicType[];
   extraVehicleInformation: ExtraVehicleDetail;
+  mapName: string;
 }
 
 export interface InterfaceStatusSubSystemDto extends InterfaceStatus {
@@ -412,4 +415,13 @@ export interface StdInt16ArrayTopicMessage {
 }
 export interface StdStringTopicMessage {
   data: string;
+}
+
+export interface RosServiceState {
+  mapName: string;
+}
+
+export enum RecordingStatus {
+  RECORDING = 1,
+  STOP = 2
 }

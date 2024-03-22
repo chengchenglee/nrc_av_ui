@@ -1,9 +1,19 @@
-import { Body, Controller, Post, Res, UseInterceptors, UsePipes } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpStatus,
+  Post,
+  Put,
+  Res,
+  UseInterceptors,
+  UsePipes
+} from '@nestjs/common';
 import { ApiCreatedResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { HttpBodyValidatorPipe, constant } from '../core';
 import { TimeoutInterceptor } from '../core/interceptors';
 import { AuthService } from './auth.service';
+import { ChangePasswordDTO, vChangePasswordDTO } from './dto/changePasswordDTO';
 import { LoginDTO, vLoginDTO } from './dto/loginDTO';
 
 @ApiTags('auth')
@@ -33,5 +43,12 @@ export class AuthController {
         maxAge: 0
       })
       .send();
+  }
+
+  @Put('/change-password')
+  @UsePipes(new HttpBodyValidatorPipe(vChangePasswordDTO))
+  async changePassword(@Res() res: Response, @Body() body: ChangePasswordDTO) {
+    await this.authService.changePassword(body);
+    return res.status(HttpStatus.OK).send();
   }
 }

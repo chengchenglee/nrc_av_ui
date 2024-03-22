@@ -1,11 +1,13 @@
 import { UtilityProcess, utilityProcess } from 'electron';
 import log from 'electron-log';
 import { createSharedStore } from 'electron-shared-state';
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
+import kill from 'tree-kill';
 import { CommandsStatusType, CommandsStatus, IResponse } from '../../../shared/constants';
-import { getWorkerPath } from '../../utils';
+import TYPES from '../../inversify/types';
+import { getWorkerPath, isProcessRunning } from '../../utils';
 import { logMethod } from '../log/logDecorator';
-import type { IStatusCommands } from '../../inversify/interfaces';
+import type { IChildProcess, IStatusCommands } from '../../inversify/interfaces';
 
 @injectable()
 export default class StatusCommandsService implements IStatusCommands {
@@ -13,7 +15,7 @@ export default class StatusCommandsService implements IStatusCommands {
 
   private statusWorker!: UtilityProcess;
 
-  constructor() {
+  constructor(@inject(TYPES.ChildProcess) private childProcessSvc: IChildProcess) {
     this.sharedStore = createSharedStore<CommandsStatus[]>([]);
   }
 
@@ -46,6 +48,36 @@ export default class StatusCommandsService implements IStatusCommands {
     this.sharedStore.setState(reset);
   }
 
+  // @logMethod('[StatusCommandsService][killAll]', log.debug)
+  // killAll(): Promise<void> {
+  //   // TODO support killAll and called by InterfaceFileSvc
+  //   this.sharedStore.getState().map((command) => {
+  //     this.killCommand(command.id);
+  //   });
+  // }
+
+  @logMethod('[StatusCommandsService][killCommand]', log.debug)
+  async killCommand(commandId: number): Promise<void> {
+    try {
+      const commandResult = this.sharedStore.getState().find((command) => command.id === commandId);
+      // console.log(commandResult);
+      if (
+        commandResult &&
+        commandResult.pid &&
+        commandResult.status === CommandsStatusType.RUNNING
+      ) {
+        const isRunning = await isProcessRunning(commandResult.pid);
+        if (isRunning) {
+          kill(commandResult.pid);
+        } else {
+          // TODO do we need to handle this?
+        }
+      }
+    } catch (err) {
+      log.error(`[StatusCommandsService][killCommand] ${err}`);
+    }
+  }
+
   @logMethod('[StatusCommandsService][reportStatus]', log.debug)
   reportStatus(_: unknown, replyOnChannel: (response: IResponse) => void): void {
     replyOnChannel({
@@ -72,7 +104,7 @@ export default class StatusCommandsService implements IStatusCommands {
         // Not an error
         if (!res.type) {
           this.updateStatusState(res);
-          setTimeout(this.statusLoop.bind(this), 200);
+          setTimeout(this.statusLoop.bind(this), 2000);
         }
       });
       this.statusWorker.once('exit', (code: number) => {
