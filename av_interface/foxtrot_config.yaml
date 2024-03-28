@@ -153,7 +153,7 @@ Subsystem:
         NomWarnErrRate: 10, 7, 3
     Commands:
       - Name: PCP
-        Command: roslaunch nrc_pcp_svcs pc_processor.launch dynamic_global_pose_topic_name:=/dynamic_global_pose do_road_surf_change_detection:=true Leaf_Foxtrot:=true
+        Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Foxtrot:=true do_curb_detection:=false do_curb_points_accumulation:=false include_curb_points_for_drivable_area:=false include_lateral_curb_points_for_drivable_area:=false include_accumulated_curb_points_for_drivable_area:=false srcgs/cluster_height_threshold:=0.3
         Type: Software
         LaunchTime: 3.0
       - Name: Me2Yolo
