@@ -49,7 +49,13 @@ const UploadModal = React.forwardRef<UploadModalMethods, UploadModalProps>((prop
   );
 
   return (
-    <Modal title="Import Interface File" open={isModalOpen} onCancel={handleCancel} footer={null}>
+    <Modal
+      title="Import Interface File"
+      open={isModalOpen}
+      onCancel={handleCancel}
+      footer={null}
+      destroyOnClose
+    >
       <Upload beforeUpload={handleUpload} fileList={[]} accept=".yaml, .yml">
         <Button>Select Interface Configuration File</Button>
       </Upload>

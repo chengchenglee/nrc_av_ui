@@ -1,5 +1,6 @@
 import { CommandsStatus, ExecutionStatus, StatusRunAll } from '../constants/executionStatus';
 import { AlgorithmStatus, MachineStatus, SensorStatus } from '../constants/machineStatus';
+import { RedButtonStatus } from '../constants/vehicleStatus';
 import { ExtraVehicleInformation } from './vehicle';
 
 export type CommonInterfaceStatusDTO<T> = {
@@ -34,4 +35,5 @@ export interface GetInterfaceInfoDTO {
   statusCommands: CommandsStatusDTO[];
   extraVehicleInformation: ExtraVehicleInformation;
   mapName: string;
+  redButtonStatus: RedButtonStatus;
 }

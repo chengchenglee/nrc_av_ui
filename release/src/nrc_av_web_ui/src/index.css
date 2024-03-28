@@ -37,3 +37,32 @@ html {
 .ant-empty .ant-empty-image {
   margin-bottom: 0px;
 }
+
+.recording-circle {
+  background-color: red;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  animation: ease-in-out pulse 1s infinite;
+  margin-top: 6px;
+}
+
+.stop-record-circle {
+  margin-top: 6px;
+  background-color: gray;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+@keyframes pulse {
+  0% {
+    background-color: red;
+  }
+  50% {
+    background-color: #c8bcbc;
+  }
+  100% {
+    background-color: red;
+  }
+}

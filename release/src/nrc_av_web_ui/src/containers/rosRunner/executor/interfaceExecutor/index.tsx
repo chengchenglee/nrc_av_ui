@@ -17,9 +17,8 @@ import { useGetInterfaceList } from 'hooks/queries/interface';
 import { useExecuteInterface, useStopInterface, useUpdateMap } from 'hooks/queries/vehicle';
 import { RootState, store, useStoreUser, useStoreVehicle } from 'store';
 import { setRunAllSubSystems, setRunInterface } from 'store/command';
-import { setSelectedMap } from 'store/map';
 import { userThunk } from 'store/user/thunks';
-import { setExtraVehicleInformation, setSelectedVehicle } from 'store/vehicle';
+import { setExtraVehicleInformation, setRedButtonStatus, setSelectedVehicle } from 'store/vehicle';
 import { adminEngineerCheck } from 'utilities/data';
 import ItemResult from './itemResult';
 
@@ -73,6 +72,9 @@ const InterfaceExecutor: React.FC<IProps> = ({
   const dispatch = useDispatch();
 
   const selectedVehicle = useStoreVehicle();
+  const isRunAllSubSystems = useSelector(
+    (state: RootState) => state.interfaceExecutor.runAllSubSystems
+  );
 
   const { roles } = useStoreUser();
 
@@ -90,17 +92,13 @@ const InterfaceExecutor: React.FC<IProps> = ({
   const [vehicleObj, setVehihcleObj] = React.useState<any>();
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [isInterfaceSelected, setIsInterfaceSelected] = React.useState(false);
+  const [mapName, setMapName] = React.useState<undefined | string>(undefined);
 
   const { data: interfaceList } = useGetInterfaceList({ pageSize: 9999 });
 
   const { mutate: updateMapHandler } = useUpdateMap();
 
-  const isRunAllSubSystems = useSelector(
-    (state: RootState) => state.interfaceExecutor.runAllSubSystems
-  );
-
   const { dataExecute, executeInterface, isExecutingInterface } = useExecuteInterface();
-  const selectedMap = useSelector((state: RootState) => state.map.selectedMap);
 
   const { mutate: stopInterface, isLoading: isStopping } = useStopInterface();
 
@@ -129,7 +127,9 @@ const InterfaceExecutor: React.FC<IProps> = ({
       interfaceSubSystems,
       setInterfaceSubSystems,
       interfaceStatusRunAll,
-      setInterfaceStatusRunAll
+      setInterfaceStatusRunAll,
+      mapName,
+      setMapName
     }),
     [
       status,
@@ -137,7 +137,8 @@ const InterfaceExecutor: React.FC<IProps> = ({
       interfaceName,
       interfaceMachines,
       interfaceSubSystems,
-      interfaceStatusRunAll
+      interfaceStatusRunAll,
+      mapName
     ]
   );
 
@@ -162,8 +163,8 @@ const InterfaceExecutor: React.FC<IProps> = ({
     sseRef.current.onmessage = ({ data }) => {
       const parsedData = JSON.parse(data) as GetInterfaceInfoDTO;
 
-      if (parsedData.mapName !== selectedMap) {
-        dispatch(setSelectedMap(parsedData.mapName));
+      if (parsedData.mapName !== mapName) {
+        setMapName(parsedData.mapName);
       }
 
       setStatus(parsedData.status);
@@ -178,6 +179,7 @@ const InterfaceExecutor: React.FC<IProps> = ({
         setInterfaceNameId(undefined);
       }
 
+      dispatch(setRedButtonStatus(parsedData.redButtonStatus));
       setInterfaceName(parsedData.interfaceName);
       setInterfaceMachines(parsedData.machines);
       setInterfaceSubSystems(parsedData.subSystems);
@@ -199,57 +201,18 @@ const InterfaceExecutor: React.FC<IProps> = ({
       setVehicleStatus(VehicleStatus.OFFLINE);
       setLoadVehicleDetails(Date.now());
     };
-    // Do not put dispatch, selectedMap in dependencies
   }, [formInterface, setLastSseTime, setLoadVehicleDetails, vehicleId]);
 
-  React.useEffect(() => {
-    dispatch(setRunInterface(isExecutingInterface));
-  }, [
-    vehicleId,
-    formInterface,
-    handleSse,
-    selectedMap,
-    dataExecute,
-    isExecutingInterface,
-    dispatch
-  ]);
-
-  React.useEffect(() => {
-    setVehicleInit(true);
-    reInitVehicleInterfaceState();
-    if (vehicleId) {
-      handleSse();
-      const loadDetailInterval = setInterval(() => {
-        setLoadVehicleDetails(Date.now());
-      }, 1000);
-      return () => {
-        setVehicleInit(true);
-        clearInterval(loadDetailInterval);
-        if (sseRef.current) {
-          sseRef.current.close();
-        }
-      };
-    }
-    return () => {
-      setInterfaceStatusRunAll(StatusRunAll.DEACTIVE);
-      setVehicleInit(false);
-    };
-  }, [vehicleId, formInterface, handleSse, setLoadVehicleDetails]);
-
-  const handleMapChange = React.useCallback(
-    (value: string) => {
-      const selectedOption = mapOptions.find((option) => option.name === value);
-      if (selectedOption) {
-        try {
-          updateMapHandler({ vehicleId, mapName: selectedOption.name });
-          dispatch(setSelectedMap(selectedOption.name));
-        } catch (error) {
-          console.error(error);
-        }
+  const handleMapChange = React.useCallback((value: string) => {
+    const selectedOption = mapOptions.find((option) => option.name === value);
+    if (selectedOption) {
+      try {
+        setMapName(selectedOption.name);
+      } catch (error) {
+        console.error(error);
       }
-    },
-    [updateMapHandler, vehicleId, dispatch]
-  );
+    }
+  }, []);
 
   const onFinish = (values: SelectInterfaceForm) => {
     if (!vehicleId) {
@@ -269,7 +232,7 @@ const InterfaceExecutor: React.FC<IProps> = ({
         startAllSubSystem: isRunAllSubSystems
       };
       executeInterface(
-        { ...vehicle, mapName: selectedMap, params },
+        { ...vehicle, mapName: mapName || '', params },
         {
           onSuccess: () => {
             setVehicleInit(true);
@@ -293,6 +256,32 @@ const InterfaceExecutor: React.FC<IProps> = ({
   };
 
   React.useEffect(() => {
+    dispatch(setRunInterface(isExecutingInterface));
+  }, [vehicleId, formInterface, handleSse, mapName, dataExecute, isExecutingInterface, dispatch]);
+
+  React.useEffect(() => {
+    setVehicleInit(true);
+    reInitVehicleInterfaceState();
+    if (vehicleId) {
+      handleSse();
+      const loadDetailInterval = setInterval(() => {
+        setLoadVehicleDetails(Date.now());
+      }, 1000);
+      return () => {
+        setVehicleInit(true);
+        clearInterval(loadDetailInterval);
+        if (sseRef.current) {
+          sseRef.current.close();
+        }
+      };
+    }
+    return () => {
+      setInterfaceStatusRunAll(StatusRunAll.DEACTIVE);
+      setVehicleInit(false);
+    };
+  }, [vehicleId, formInterface, handleSse, setLoadVehicleDetails]);
+
+  React.useEffect(() => {
     if (vehicleStatus && selectedVehicle && vehicleStatus !== selectedVehicle?.status) {
       dispatch(
         setSelectedVehicle({
@@ -304,10 +293,10 @@ const InterfaceExecutor: React.FC<IProps> = ({
   }, [dispatch, selectedVehicle, vehicleStatus]);
 
   React.useEffect(() => {
-    if (vehicleId && selectedMap.length === 0) {
-      updateMapHandler({ vehicleId, mapName: mapOptions[0].name });
+    if (mapName !== undefined) {
+      updateMapHandler({ vehicleId, mapName: mapName || mapOptions[0].name });
     }
-  }, [selectedMap.length, updateMapHandler, vehicleId]);
+  }, [mapName, updateMapHandler, vehicleId]);
 
   return (
     <InterfaceExecutorContext.Provider value={contextValue}>
@@ -369,7 +358,7 @@ const InterfaceExecutor: React.FC<IProps> = ({
                               isRunAllSubSystems) ||
                             shouldDisableButton
                           }
-                          value={selectedMap}
+                          value={mapName}
                           style={{ width: '100%' }}
                           placeholder="Select map"
                           options={mapOptions.map((option) => ({
@@ -452,7 +441,11 @@ const InterfaceExecutor: React.FC<IProps> = ({
           <Skeleton active loading={vehicleInit}>
             <div style={{ width: '100%', display: 'block' }}>
               {contextValue?.interfaceNameId && (
-                <ItemResult vehicleId={vehicleId} mapName={selectedMap} dataExecute={dataExecute} />
+                <ItemResult
+                  vehicleId={vehicleId}
+                  mapName={mapName || ''}
+                  dataExecute={dataExecute}
+                />
               )}
             </div>
           </Skeleton>

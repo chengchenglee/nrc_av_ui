@@ -1,10 +1,6 @@
-import { Modal, Button, Input, message } from 'antd';
+import { Modal, Button, Input, message, Spin } from 'antd';
 import * as React from 'react';
-import {
-  useCloneInterface,
-  useGetInterfaceById,
-  useGetInterfaceList
-} from '../../hooks/queries/interface';
+import { useCloneInterface, useGetInterfaceById } from 'hooks/queries/interface';
 
 interface CloneModalProps {
   showModal: boolean;
@@ -15,9 +11,11 @@ interface CloneModalProps {
 
 const CloneModal: React.FC<CloneModalProps> = ({ showModal, onCancel, id, currentPage }) => {
   const [cloneName, setCloneName] = React.useState('');
-  const getInterfaceQuery = useGetInterfaceById(id);
-  const { mutate: cloneInterface } = useCloneInterface();
-  const { refetch } = useGetInterfaceList({ currentPage });
+
+  const { data: interfaceData } = useGetInterfaceById(id);
+
+  const { mutate: cloneInterface, isLoading: isCloning } = useCloneInterface({ currentPage });
+
   const handleCloneNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setCloneName(event.target.value);
   };
@@ -29,25 +27,14 @@ const CloneModal: React.FC<CloneModalProps> = ({ showModal, onCancel, id, curren
   }, [showModal]);
 
   const handleClone = () => {
-    if (getInterfaceQuery?.data) {
-      cloneInterface(
-        { id, data: { name: cloneName } },
-        {
-          onSuccess: () => {
-            message.success('Clone interface success');
-            refetch();
-          },
-          onError: (error: any) => {
-            if (error.response.data.message !== undefined) {
-              message.error(error.response.data.message);
-            } else {
-              message.error('An error occurred while attempting to clone the Interface');
-            }
-          }
-        }
-      );
+    if (cloneName.trim().length === 0) {
+      message.error('Blank interface name');
+      return 0;
     }
-    onCancel();
+    if (interfaceData) {
+      cloneInterface({ id, data: { name: cloneName } });
+    }
+    return onCancel();
   };
 
   return (
@@ -59,16 +46,23 @@ const CloneModal: React.FC<CloneModalProps> = ({ showModal, onCancel, id, curren
         <Button key="cancel" onClick={onCancel}>
           Cancel
         </Button>,
-        <Button key="clone" type="primary" onClick={handleClone}>
+        <Button key="clone" type="primary" onClick={handleClone} disabled={isCloning}>
           Clone
         </Button>
       ]}
+      destroyOnClose
     >
-      <p>
-        Clone from: <b>{getInterfaceQuery.data?.name}</b>
-      </p>
-      <p>Please enter the name for the clone interface:</p>
-      <Input value={cloneName} onChange={handleCloneNameChange} />
+      {interfaceData ? (
+        <>
+          <p>
+            Clone from: <b>{interfaceData?.name}</b>
+          </p>
+          <p>Please enter the name for the clone interface:</p>
+          <Input value={cloneName} onChange={handleCloneNameChange} />
+        </>
+      ) : (
+        <Spin />
+      )}
     </Modal>
   );
 };

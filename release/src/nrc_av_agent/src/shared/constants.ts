@@ -263,11 +263,16 @@ export interface ExtraRosDetail {
 
 export type WorkerVehicleDetailReturn = ExtraVehicleDetail & ExtraRosDetail;
 
+export enum RecordingStatus {
+  RECORDING = 1,
+  STOP = 2
+}
 export interface InterfaceStatusDto extends InterfaceStatus {
   sensors: TopicType[];
   algorithms: TopicType[];
   extraVehicleInformation: ExtraVehicleDetail;
   mapName: string;
+  redButtonStatus: RecordingStatus;
 }
 
 export interface InterfaceStatusSubSystemDto extends InterfaceStatus {
@@ -419,9 +424,4 @@ export interface StdStringTopicMessage {
 
 export interface RosServiceState {
   mapName: string;
-}
-
-export enum RecordingStatus {
-  RECORDING = 1,
-  STOP = 2
 }

@@ -11,7 +11,7 @@ import '../components/AddInterfaceModal/userWorker';
 import { ModeEditor } from '../constants/editorYAML';
 
 const InterfaceManagement = () => {
-  const [editingId, setEditingId] = React.useState<number | undefined>(undefined);
+  const [interfaceId, setInterfaceId] = React.useState<number | undefined>(undefined);
   const [currentPage, setCurrentPage] = React.useState<number>(0);
   const [yamlContent, setYamlContent] = React.useState<string>('');
   const [modeYamlEditor, setModeYamlEditor] = React.useState<string>('');
@@ -21,7 +21,7 @@ const InterfaceManagement = () => {
 
   const onInterfaceFileUploaded = React.useCallback(() => {
     uploadModal.current?.showModal();
-    setEditingId(undefined);
+    setInterfaceId(undefined);
   }, []);
 
   const onPaginationChange = (page: number) => {
@@ -31,7 +31,7 @@ const InterfaceManagement = () => {
   const onHandleOpenEditInterfacePopup = React.useCallback((id: number) => {
     setModeYamlEditor(ModeEditor.EDIT);
     yamlEditorModal.current?.showModal();
-    setEditingId(id);
+    setInterfaceId(id);
   }, []);
 
   const onUploadComplete = React.useCallback(() => {
@@ -60,6 +60,8 @@ const InterfaceManagement = () => {
         currentPage={currentPage}
         onPaginationChange={onPaginationChange}
         setYamlContent={setYamlContent}
+        setInterfaceId={setInterfaceId}
+        interfaceId={interfaceId}
       />
 
       <UploadModal
@@ -71,7 +73,7 @@ const InterfaceManagement = () => {
         ref={yamlEditorModal}
         modeEditor={modeYamlEditor}
         content={yamlContent}
-        interfaceId={editingId}
+        interfaceId={interfaceId}
         currentPage={currentPage}
       />
     </div>

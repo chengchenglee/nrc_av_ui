@@ -64,6 +64,7 @@ export default class StatusCommandsService implements IStatusCommands {
       if (
         commandResult &&
         commandResult.pid &&
+        commandResult.pid > 0 &&
         commandResult.status === CommandsStatusType.RUNNING
       ) {
         const isRunning = await isProcessRunning(commandResult.pid);

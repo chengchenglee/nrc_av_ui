@@ -32,7 +32,7 @@ import { PermissionRequired } from '../core/guards/permission.decorator';
 import { InterfaceContentDTO } from '../interfaceContent/dto/interfaceContent.dto';
 import { InterfaceContentService } from './../interfaceContent/interfaceContent.service';
 import { InterfaceDTO, vInterfaceDTO } from './dto/interface.dto';
-import { InterfaceCloneDTO } from './dto/interfaceClone.dto';
+import { InterfaceCloneDTO, vInterfaceCloneDTO } from './dto/interfaceClone.dto';
 import { InterfaceFilteringDTO, vInterfaceFilteringDTO } from './dto/interfaceFiltering.dto';
 import { InterfaceNoSubDTO } from './dto/interfaceNoSub.dto';
 import { InterfaceService } from './interface.service';
@@ -63,6 +63,7 @@ export class InterfaceController {
 
   @Get('/clone/:id')
   @Serialize(Interface)
+  @UsePipes(new HttpBodyValidatorPipe(vInterfaceCloneDTO))
   @PermissionRequired(PermissionEnum.UPDATE_INTERFACE)
   async cloneInterface(
     @Res() res: Response,

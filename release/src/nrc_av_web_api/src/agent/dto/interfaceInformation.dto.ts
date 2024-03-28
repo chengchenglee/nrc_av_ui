@@ -2,6 +2,11 @@ import { ExtraVehicleInformationDTO } from './extraVehicleInformation.dto';
 import { MachineStatusDTO } from './machineStatus.dto';
 import { SubSystemStatusDTO } from './subSystemStatus.dto';
 
+export enum RedButtonResponse {
+  RECORDING = 1,
+  STOP = 2
+}
+
 export class InterfaceInformationDTO {
   constructor(
     readonly vehicleId: number,
@@ -11,6 +16,8 @@ export class InterfaceInformationDTO {
     readonly subSystems: SubSystemStatusDTO[],
     readonly status: string,
     readonly statusRunAll: string,
-    readonly extraVehicleInformation: ExtraVehicleInformationDTO
+    readonly extraVehicleInformation: ExtraVehicleInformationDTO,
+    readonly mapName: string,
+    readonly redButtonStatus: RedButtonResponse
   ) {}
 }

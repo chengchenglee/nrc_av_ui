@@ -312,7 +312,8 @@ export default class StatusInterfaceRosBridgeService implements IStatusInterface
       sensors: topicSensors,
       algorithms: topicAlgorithms,
       extraVehicleInformation: topicExtra,
-      mapName: this.rosSvc.getCurrentMapName()
+      mapName: this.rosSvc.getCurrentMapName(),
+      redButtonStatus: this.redButtonService.getStatus()
     };
     // this.commSvc.sendNoAck(GET_INTERFACE_DETAIL_STATUS, data);
     this.stateUpdatedChannel.port1.postMessage(data);
@@ -392,6 +393,7 @@ export default class StatusInterfaceRosBridgeService implements IStatusInterface
         // eslint-disable-next-line no-param-reassign
         state.velocity = 0;
       });
+      this.redButtonService.stopRecording();
     });
   }
 

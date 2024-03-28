@@ -1,4 +1,5 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { message } from 'antd';
 import {
   addInterfaceApi,
   cloneInterfaceApi,
@@ -67,8 +68,22 @@ export const useGetContentByIdInterface = (id?: number) =>
 export const useAddInterface = () =>
   useMutation((data: AddEditInterfaceDTO | ImportInterfaceDTO) => addInterfaceApi(data));
 
-export const useCloneInterface = () =>
-  useMutation(({ id, data }: CloneInterfaceDTO) => cloneInterfaceApi(id, data));
+export const useCloneInterface = (filter?: FilterInterfaceParams) => {
+  const queryClient = useQueryClient();
+  return useMutation(({ id, data }: CloneInterfaceDTO) => cloneInterfaceApi(id, data), {
+    onSuccess: () => {
+      queryClient.invalidateQueries([INTERFACES, filter]);
+      message.success('Clone interface success');
+    },
+    onError: (error: any) => {
+      if (error.response.data.message !== undefined) {
+        message.error(error.response.data.message);
+      } else {
+        message.error('An error occurred while attempting to clone the Interface');
+      }
+    }
+  });
+};
 
 export const useGetFilterInterface = (payload: FilterInterfaceDTO, enabled = true) =>
   useQuery([INTERFACE, payload], () => getInterfaceApi(payload), {
@@ -96,4 +111,19 @@ export const useGetInterfaceById = (id?: number) =>
 export const useEditInterface = () =>
   useMutation(({ id, data }: EditInterfaceDTO) => editInterfaceApi(id, data));
 
-export const useDeleteInterface = () => useMutation((id: number) => deleteInterfaceApi(id));
+export const useDeleteInterface = (filter?: FilterInterfaceParams) => {
+  const queryClient = useQueryClient();
+  return useMutation((id: number) => deleteInterfaceApi(id), {
+    onSuccess: () => {
+      queryClient.invalidateQueries([INTERFACES, filter]);
+      message.success('Delete interface success');
+    },
+    onError: (error: any) => {
+      if (error.response.data.message !== undefined) {
+        message.error(error.response.data.message);
+      } else {
+        message.error('An error occurred while attempting to delete the Interface');
+      }
+    }
+  });
+};

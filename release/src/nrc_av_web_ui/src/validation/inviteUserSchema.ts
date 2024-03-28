@@ -3,7 +3,7 @@ import { ObjectSchema, object, string } from 'yup';
 export interface InviteUserFormValue {
   username: string;
   email: string;
-  role: string;
+  roles: string;
 }
 
 export const inviteUserSchema: ObjectSchema<InviteUserFormValue> = object({
@@ -16,5 +16,5 @@ export const inviteUserSchema: ObjectSchema<InviteUserFormValue> = object({
     .matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Must be a valid email')
     .required('Email is required')
     .matches(/^\S*$/, 'Whitespace is not allowed'),
-  role: string().required('Role is required')
+  roles: string().required('Role is required')
 });

@@ -5,14 +5,11 @@ import type { IChildProcess, IRedButton } from '../../inversify/interfaces';
 
 @injectable()
 export default class RedButton implements IRedButton {
-  // eslint-disable-next-line no-use-before-define
-  private static instance: RedButton | null = null;
-
   private int16Value: number | undefined;
 
   private status: RecordingStatus = RecordingStatus.STOP; // Initial status is 'stop'
 
-  private commandPid = 0;
+  private commandPid: number | undefined;
 
   constructor(@inject(TYPES.ChildProcess) private childProcessSvc: IChildProcess) {}
 
@@ -20,6 +17,24 @@ export default class RedButton implements IRedButton {
   setInt16(value: number): void {
     this.int16Value = value;
     this.updateStatus();
+  }
+
+  startRecording(): void {
+    this.status = RecordingStatus.RECORDING;
+    const command = this.childProcessSvc.buildCommand(
+      'roslaunch nrc_svcs record_separately.launch record_machine:=node02',
+      ''
+    );
+    this.commandPid = this.childProcessSvc.executeAndValid(command, 3000, () => null) || 0;
+    // roslaunch nrc_svcs record_separately.launch machine:=node02
+  }
+
+  stopRecording(): void {
+    this.status = RecordingStatus.STOP;
+    if (this.commandPid) {
+      this.childProcessSvc.killCommandPid(this.commandPid);
+    }
+    this.commandPid = undefined;
   }
 
   // Function to check the 3rd bit of the Int16 value and update status accordingly
@@ -35,22 +50,14 @@ export default class RedButton implements IRedButton {
     // console.log(thirdBit);
     // Update status based on the 3rd bit and current status
     if (thirdBit === 1 && this.status !== RecordingStatus.RECORDING) {
-      this.status = RecordingStatus.RECORDING;
       // eslint-disable-next-line no-console
       console.log('start recording...');
       // TODO execute this command
-      const command = this.childProcessSvc.buildCommand(
-        'roslaunch nrc_svcs record_separately.launch record_machine:=node02',
-        ''
-      );
-      this.commandPid = this.childProcessSvc.executeAndValid(command, 3000, () => null) || 0;
-      // roslaunch nrc_svcs record_separately.launch machine:=node02
+      this.startRecording();
     } else if (thirdBit === 0 && this.status === RecordingStatus.RECORDING) {
-      this.status = RecordingStatus.STOP;
       // eslint-disable-next-line no-console
       console.log('Stop recording...');
-      this.childProcessSvc.killCommandPid(this.commandPid);
-      // kill the process executing the above command
+      this.stopRecording();
     }
   }
 

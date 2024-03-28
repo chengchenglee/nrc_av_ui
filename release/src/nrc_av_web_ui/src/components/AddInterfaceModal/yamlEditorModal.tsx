@@ -117,6 +117,7 @@ export interface YamlEditorModalMethods {
 
 const YamlEditorModal = React.forwardRef<YamlEditorModalMethods, IProps>((props, ref) => {
   const { currentPage, modeEditor } = props;
+
   const [mode, setMode] = React.useState('');
   const [newContent, setNewContent] = React.useState('');
   const [errorMessage, setErrorMessage] = React.useState('');
@@ -195,27 +196,34 @@ const YamlEditorModal = React.forwardRef<YamlEditorModalMethods, IProps>((props,
   const fetchData = React.useMemo(
     () => () => {
       if (!isFetching) {
-        if (mode === ModeEditor.CREATE || !props.interfaceId) {
+        if (mode === ModeEditor.CREATE && !props.interfaceId) {
           const filteredData = listInterfaces?.interfaces.filter(
             (item) => item.name === nameEditInterface
           );
-          if (filteredData && filteredData?.length !== 0) {
+
+          if (dataInterface?.name) {
+            const msgErr = replacePlaceholders(ErrMsgEditor.INTERFACE_NAME_ALREADY_EXIST, {
+              nameInterface: nameEditInterface
+            });
+            setErrorMessage(msgErr);
+          }
+
+          if (filteredData && filteredData?.length !== 0 && props.interfaceId) {
             const msgErr = replacePlaceholders(ErrMsgEditor.INTERFACE_NAME_ALREADY_EXIST, {
               nameInterface: nameEditInterface
             });
             setErrorMessage(msgErr);
           }
         } else if (mode === ModeEditor.EDIT) {
-          const filteredDataByNameEdit = listInterfaces?.interfaces.filter(
+          const isInterfaceExist = listInterfaces?.interfaces.some(
             (item) => item.name === nameEditInterface
           );
-          if (nameEditInterface !== nameInterface && filteredDataByNameEdit?.length !== 0) {
-            if (dataInterface?.name) {
-              const msgErr = replacePlaceholders(ErrMsgEditor.INTERFACE_NAME_ALREADY_EXIST, {
-                nameInterface: nameEditInterface
-              });
-              setErrorMessage(msgErr);
-            }
+
+          if (nameEditInterface !== nameInterface && isInterfaceExist && dataInterface?.name) {
+            const msgErr = replacePlaceholders(ErrMsgEditor.INTERFACE_NAME_ALREADY_EXIST, {
+              nameInterface: nameEditInterface
+            });
+            setErrorMessage(msgErr);
           }
         }
       }
@@ -422,7 +430,6 @@ const YamlEditorModal = React.forwardRef<YamlEditorModalMethods, IProps>((props,
         enableSchemaRequest: true,
         schemas: [defaultSchema]
       });
-
     loadMonaco();
   }, []);
 
@@ -434,6 +441,19 @@ const YamlEditorModal = React.forwardRef<YamlEditorModalMethods, IProps>((props,
           owner: 'yaml'
         });
         if (modelMarkers.length > 0 || !contentInterfaceData) {
+          modelMarkers.forEach((marker) => {
+            // Keep parity with the regex in schema for this to work the best
+            const dependsTypoRegex = /\bDepe(?:n|ns|nd|d|ds|a|an|and|ad|ads|ands)?\b/;
+            if (
+              marker.message.includes('Matches a schema that is not allowed.') &&
+              dependsTypoRegex.test(modelEditor.getLineContent(marker.endLineNumber).split(':')[0])
+            ) {
+              marker.message = `${modelEditor
+                .getLineContent(marker.endLineNumber)
+                .split(':')[0]
+                .trim()} is wrong, did you mean Depends?`;
+            }
+          });
           setMarkers(modelMarkers);
         } else {
           setMarkers([]);

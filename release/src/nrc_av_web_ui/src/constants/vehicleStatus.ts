@@ -3,3 +3,8 @@ export enum VehicleStatus {
   ACTIVE = 'ACTIVE',
   OFFLINE = 'OFFLINE'
 }
+
+export enum RedButtonStatus {
+  RECORDING = 1,
+  STOP = 2
+}

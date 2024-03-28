@@ -4,9 +4,10 @@ import { DefaultOptionType } from 'antd/es/select';
 import moment from 'moment';
 import * as React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { RedButtonStatus } from '../../constants/vehicleStatus';
 import { ExtraVehicleInformation, VehicleDTO } from '../../dtos/vehicle';
 import { useActiveVehicles } from '../../hooks/queries/vehicle';
-import { RootState, useStoreVehicle } from '../../store';
+import { RootState, useAppSelector, useStoreVehicle } from '../../store';
 import { setSelectedVehicle } from '../../store/vehicle';
 import InterfaceExecutor from './executor/interfaceExecutor';
 
@@ -17,12 +18,14 @@ interface VehicleDetailsProps {
   selectedVehicle: VehicleDTO | undefined;
   lastPingTime: string;
   extraVehicleInformation: ExtraVehicleInformation | undefined;
+  redButtonStatus: RedButtonStatus | null;
 }
 
 const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   selectedVehicle,
   lastPingTime,
-  extraVehicleInformation
+  extraVehicleInformation,
+  redButtonStatus
 }) => {
   const renderStatusDescriptionItem = (key: string, value: string) => (
     <Descriptions.Item key={key} style={{ display: 'block', padding: 1 }} label={key}>
@@ -44,6 +47,16 @@ const VehicleDetails: React.FC<VehicleDetailsProps> = ({
             </Descriptions.Item>
             <Descriptions.Item style={{ display: 'block', padding: 1 }} label="Velocity">
               {velocity}
+            </Descriptions.Item>
+            <Descriptions.Item
+              style={{ display: 'flex', padding: 1, alignItems: 'center' }}
+              label="Bag Recording"
+            >
+              {redButtonStatus === RedButtonStatus.RECORDING ? (
+                <div className="recording-circle" />
+              ) : (
+                <div className="stop-record-circle" />
+              )}
             </Descriptions.Item>
           </>
         )}
@@ -78,8 +91,11 @@ const VehicleDetails: React.FC<VehicleDetailsProps> = ({
 };
 
 const ROSRunner: React.FC = () => {
-  const selectedVehicle = useStoreVehicle();
   const dispatch = useDispatch();
+
+  const selectedVehicle = useStoreVehicle();
+
+  const { redButtonStatus } = useAppSelector((state) => state.vehicle);
 
   const {
     data: activeVehicles,
@@ -174,6 +190,7 @@ const ROSRunner: React.FC = () => {
             selectedVehicle={selectedVehicle}
             lastPingTime={lastPingTime}
             extraVehicleInformation={extraVehicleInformation}
+            redButtonStatus={redButtonStatus}
           />
           {!selectedVehicle && <Empty />}
         </Panel>

@@ -11,5 +11,5 @@ export class InterfaceCloneDTO {
 }
 
 export const vInterfaceCloneDTO = joi.object<InterfaceCloneDTO>({
-  name: joi.string().required()
+  name: joi.string().required().min(1)
 });

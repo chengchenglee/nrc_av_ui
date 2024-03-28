@@ -6,7 +6,7 @@ export interface UserDTO {
   password: string;
 }
 
-enum UserRoleEnum {
+export enum UserRoleEnum {
   Admin = 'admin',
   Viewer = 'viewer',
   Engineer = 'engineer'
@@ -15,7 +15,7 @@ enum UserRoleEnum {
 export interface AddUserDTO {
   username: string;
   email: string;
-  role: UserRoleEnum[];
+  roles: string | string[];
 }
 
 export type AddUserErrorResponse = AddUserDTO & CommonErrorResponse;
@@ -47,3 +47,12 @@ export interface UserList {
   users: User[];
   total: number;
 }
+
+export interface EditUserDTO {
+  id: number;
+  email: string;
+  roles: number[];
+  isActive: boolean;
+}
+
+export type EditUserErrorResponse = CommonErrorResponse & Omit<EditUserDTO, 'id'>;

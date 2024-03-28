@@ -16,7 +16,8 @@ import type {
   IStatusInterfaceRosBridgeService,
   ISubSystem,
   IChildProcess,
-  IStatusCommands
+  IStatusCommands,
+  IRedButton
 } from '../../inversify/interfaces';
 
 @injectable()
@@ -49,7 +50,9 @@ export default class SubSystemService implements ISubSystem {
     @inject(TYPES.StatusInterfaceRosBridgeService)
     private statusInterfaceRosBridgeSvc: IStatusInterfaceRosBridgeService,
     @inject(TYPES.StatusCommandsService) private commandsStatusSvc: IStatusCommands,
-    @inject(TYPES.ChildProcess) private childProcessSvc: IChildProcess
+    @inject(TYPES.ChildProcess) private childProcessSvc: IChildProcess,
+    @inject(TYPES.RedButton)
+    private redButtonService: IRedButton
   ) {
     const initialValue: constants.SubSystemServiceState = {
       sortedSubSystems: [],
@@ -145,6 +148,9 @@ export default class SubSystemService implements ISubSystem {
   }
 
   private handleLedStatus(diagLedStatus: number[]) {
+    // eslint-disable-next-line no-param-reassign
+    diagLedStatus[SUB_SYSTEM.DEFAULT_RECORDING_LED_INDEX] =
+      this.redButtonService.getStatus() === constants.RecordingStatus.RECORDING ? 2 : 0;
     const ledArray = Array.from(diagLedStatus, (value) => {
       if (value === undefined) {
         return 0;

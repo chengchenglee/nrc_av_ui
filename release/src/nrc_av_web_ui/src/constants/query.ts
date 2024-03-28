@@ -18,3 +18,4 @@ export const INTERFACE_BY_NAME = 'INTERFACE_BY_NAME';
 export const CONTENT_BY_INTERFACE_ID = 'CONTENT_BY_INTERFACE_ID';
 
 export const USERS = 'users';
+export const USER = 'user';

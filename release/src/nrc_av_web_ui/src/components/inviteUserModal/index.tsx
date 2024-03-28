@@ -37,10 +37,8 @@ const InviteUserModal: React.FC<InviteUserModalProps> = ({ showModal, onCancel }
   const handleFinish = (values: InviteUserFormValue) => {
     const updatedValues = {
       ...values,
-      roles: Array.isArray(values.role) ? values.role : [values.role]
-    } as Partial<InviteUserFormValue>;
-
-    delete updatedValues.role;
+      roles: Array.isArray(values.roles) ? values.roles : [values.roles]
+    };
 
     addUser(updatedValues, {
       onSuccess: () => {
@@ -95,7 +93,7 @@ const InviteUserModal: React.FC<InviteUserModalProps> = ({ showModal, onCancel }
         >
           <TextField label="Username" name="username" asterisk />
           <TextField label="Email" name="email" asterisk />
-          <Select label="Role" name="role" options={roleOptions} asterisk />
+          <Select label="Role" name="roles" options={roleOptions} asterisk />
         </Form>
       </FormWrapper>
     </Modal>

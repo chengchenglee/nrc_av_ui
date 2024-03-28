@@ -68,6 +68,10 @@ export const parseYAMLInterface = (
         launchTime: commandItem.LaunchTime
       }));
       if (item.Type === 'Sensor' || item.Type === 'Algorithm') {
+        let currentDepend: string[] = [];
+        if (item.Depends) {
+          currentDepend = item.Depends.split(';');
+        }
         const commonProps = {
           name: key,
           description: item?.Description,
@@ -78,7 +82,7 @@ export const parseYAMLInterface = (
           diagLed: item?.Diagnostic?.LED,
           timeout: item?.Diagnostic?.Timeout,
           diagRetry: item?.Diagnostic?.Retry,
-          depends: item?.Depends !== null ? item.Depends.split(',') : item?.Depends,
+          depends: currentDepend,
           diagnostic: item?.Diagnostic?.File,
           type: item?.Type,
           commands

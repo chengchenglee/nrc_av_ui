@@ -59,7 +59,12 @@
               }
             }
           },
-          "required": ["Type", "Description", "Depends", "Commands", "HealthTopics"]
+          "patternProperties": {
+            "^Depe(?:n|ns|nd|d|ds|a|an|and|ad|ads|ands)?$": {
+              "not": {}
+            }
+          },
+          "required": ["Type", "Description", "Commands", "HealthTopics"]
         }
       }
     }

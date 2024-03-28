@@ -178,12 +178,16 @@ export default class RosBridgeServerService implements IRosBridgeServerService {
     }
 
     if (!this.healthCheckWorker?.pid || forced) {
-      this.forkWorker();
+      log.warn(
+        // eslint-disable-next-line max-len
+        '[RosBridgeServerService][rosBridgeHealthcheck Forking healthcheck worker is disabled for this build'
+      );
+      // this.forkWorker();
     }
 
     log.debug(
       // eslint-disable-next-line max-len
-      `[RosBridgeServerService][rosBridgeHealthcheck] Current worker's pid: ${this.healthCheckWorker.pid}`
+      `[RosBridgeServerService][rosBridgeHealthcheck] Current worker's pid: ${this.healthCheckWorker?.pid}`
     );
   }
 

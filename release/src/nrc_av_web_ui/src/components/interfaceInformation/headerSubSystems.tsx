@@ -244,7 +244,8 @@ const SubSystemsHeader: React.FC<SubSystemsHeaderProps> = ({
               isLoadingExecAll ||
               subSystems.isProcessing ||
               (subSystems.diagRetry === numberRetry && countdown !== 0 && numberRetry !== 0) ||
-              shouldDisableButton
+              shouldDisableButton ||
+              subSystems.isDiagnostic
             }
             style={{
               marginLeft: '5px',

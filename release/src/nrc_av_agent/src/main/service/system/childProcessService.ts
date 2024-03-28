@@ -7,7 +7,7 @@ import { IHostConfig } from '../../../shared/configurationTypes';
 import { IResponse } from '../../../shared/constants';
 import { APP_CONFIG, COMMUNICATION, ROS, ROS_COMMAND } from '../../constants';
 import TYPES from '../../inversify/types';
-import { delayInMs } from '../../utils';
+import { delayInMs, isProcessRunning } from '../../utils';
 import { logMethod } from '../log/logDecorator';
 import type {
   IChildProcess,
@@ -227,7 +227,11 @@ export default class ChildProcessService implements IChildProcess {
   @logMethod('[ChildProcessService][killCommandPid]', log.debug)
   async killCommandPid(commandPid: number): Promise<void> {
     try {
-      const commandResult = await this.execAndWait(`ps aux | grep ${commandPid}`);
+      // Invalid Pid
+      if (commandPid <= 0) {
+        return;
+      }
+      const commandResult = await isProcessRunning(commandPid);
       if (commandResult) {
         kill(commandPid);
       }

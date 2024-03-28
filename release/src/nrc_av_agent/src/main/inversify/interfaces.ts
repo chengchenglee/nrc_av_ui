@@ -320,4 +320,6 @@ export interface ISubSystem {
 export interface IRedButton {
   setInt16(value: number): void;
   getStatus(): RecordingStatus;
+  startRecording(): void;
+  stopRecording(): void;
 }

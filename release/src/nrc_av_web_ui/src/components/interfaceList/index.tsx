@@ -3,7 +3,7 @@ import { CopyOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { Button, Pagination } from 'antd';
 import Table, { ColumnsType } from 'antd/es/table';
 import moment from 'moment';
-import { FC, useEffect, useMemo, useState } from 'react';
+import { Dispatch, FC, SetStateAction, useEffect, useMemo, useState } from 'react';
 import { InterfaceListItem } from 'dtos/interface';
 import { useGetContentByIdInterface, useGetInterfaceList } from 'hooks/queries/interface';
 import { useStoreUser } from 'store';
@@ -16,6 +16,8 @@ interface InterfaceListProps {
   onPaginationChange: (page: number) => void;
   currentPage: number;
   setYamlContent: any;
+  setInterfaceId: Dispatch<SetStateAction<number | undefined>>;
+  interfaceId?: number;
 }
 
 interface DataYaml {
@@ -29,15 +31,16 @@ const InterfaceList: FC<InterfaceListProps> = ({
   onUpdateIdChange,
   onPaginationChange,
   currentPage,
-  setYamlContent
+  setYamlContent,
+  setInterfaceId,
+  interfaceId
 }) => {
   const { data, isFetching, refetch } = useGetInterfaceList({ currentPage });
   const { roles } = useStoreUser();
   const [showModalUpdate, setShowModalUpdate] = useState(false);
   const [showModalDelete, setShowModalDelete] = useState(false);
-  const [idInterface, setIdInterface] = useState(Number);
 
-  const { data: dataYaml, refetch: refetchYml } = useGetContentByIdInterface(idInterface);
+  const { data: dataYaml, refetch: refetchYml } = useGetContentByIdInterface(interfaceId);
 
   const shouldDisableAction = useMemo(() => adminEngineerCheck(roles), [roles]);
 
@@ -53,19 +56,18 @@ const InterfaceList: FC<InterfaceListProps> = ({
 
   const handleEditButtonClick = (id: number) => {
     onUpdateIdChange?.(id);
-    setIdInterface(id);
-    if (id === idInterface) {
+    if (id === interfaceId) {
       refetchYml();
     }
   };
 
   const handleCloneButtonClick = (id: number) => {
-    setIdInterface(id);
+    setInterfaceId(id);
     setShowModalUpdate(true);
   };
 
   const handleDeleteButtonClick = (id: number) => {
-    setIdInterface(id);
+    setInterfaceId(id);
     setShowModalDelete(true);
   };
 
@@ -155,13 +157,13 @@ const InterfaceList: FC<InterfaceListProps> = ({
       <CloneModal
         currentPage={currentPage}
         showModal={showModalUpdate}
-        id={idInterface}
+        id={Number(interfaceId)}
         onCancel={handleModalCancel}
       />
       <DeleteModal
         currentPage={currentPage}
         showModal={showModalDelete}
-        id={idInterface}
+        id={Number(interfaceId)}
         onCancel={handleModalDeleteCancel}
       />
     </>

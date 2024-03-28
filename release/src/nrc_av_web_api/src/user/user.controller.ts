@@ -12,7 +12,8 @@ import {
   Query,
   Delete,
   ParseIntPipe,
-  Param
+  Param,
+  Put
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
@@ -28,7 +29,7 @@ import {
 } from '../core';
 import { PermissionRequired } from '../core/guards/permission.decorator';
 import { CreateUserDto, vCreateUserDTO } from './dto/createUser.dto';
-import { DeleteUserDTO, vDeleteUserDTO } from './dto/deleteUser.dto';
+import { UpdateUserDto, vUpdateUserDTO } from './dto/updateUser.dto';
 import { UserFilterDTO, vUserFilterDTO } from './dto/userFilter.dto';
 import { UserService } from './user.service';
 
@@ -62,13 +63,27 @@ export class UserController {
 
   @Delete('/:id')
   @PermissionRequired(PermissionEnum.DELETE_USER)
-  @UsePipes(new HttpBodyValidatorPipe(vDeleteUserDTO))
-  async deleteUser(
+  async deleteUser(@Res() res: Response, @Param('id', ParseIntPipe) id: number) {
+    await this.userService.deleteUser(id);
+    return res.status(HttpStatus.OK).send();
+  }
+
+  @Put('/:id')
+  @PermissionRequired(PermissionEnum.UPDATE_USER)
+  @UsePipes(new HttpBodyValidatorPipe(vUpdateUserDTO))
+  async updateUser(
     @Res() res: Response,
     @Param('id', ParseIntPipe) id: number,
-    @Query() query: DeleteUserDTO
+    @Body() body: UpdateUserDto
   ) {
-    await this.userService.deleteUser(id, query);
-    return res.status(HttpStatus.OK).send();
+    const user = await this.userService.updateUser(id, body);
+    return res.status(HttpStatus.OK).send(user);
+  }
+
+  @Get('/:id')
+  @PermissionRequired(PermissionEnum.READ_USERS)
+  @Serialize(User)
+  async getUserById(@Res() res, @Param('id', ParseIntPipe) id: number) {
+    return new ControllerResponse(res, await this.userService.getUserById(id), HttpStatus.OK);
   }
 }
