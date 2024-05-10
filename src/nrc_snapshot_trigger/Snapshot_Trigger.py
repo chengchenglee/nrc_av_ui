@@ -42,7 +42,7 @@ class CsvWriterAVinterface:
 
         self.pub = rospy.Publisher('chatter', String, queue_size=10)
         
-        rospy.init_node('trigger_node', anonymous=True)
+        rospy.init_node('trigger_node')
         
         # Create a ROS Timer for reading data
         rospy.Timer(rospy.Duration(self.timerInterval), self.timerCallback)
