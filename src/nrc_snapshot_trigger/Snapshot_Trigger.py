@@ -4,6 +4,7 @@ import rospy
 from std_msgs.msg import Empty
 from std_msgs.msg import String
 from std_msgs.msg import Int32MultiArray
+from std_msgs.msg import Int16
 import numpy as np
 from nrc_msgs.msg import CtrlStateFLG
 #from nrc_msgs.msg import SnapShotTrigger
@@ -28,6 +29,8 @@ class CsvWriterAVinterface:
 
         self.ACC_Override = False
         self.ACC_OverrideTime = 0
+        
+        self.driverMarkerButton = False
         
         self.bicycleDetect = False
 
@@ -88,6 +91,10 @@ class CsvWriterAVinterface:
         else:
             self.bicycleDetectTimer = 0
             
+        if self.avEngaged and self.driverMarkerButton:
+            self.writeSnapshot = True
+            self.prefixList.append('snapButton')
+            
         # Arranging the name of the prefix for saving files.
         self.prefixList.sort()
         self.prefixList = list(set(self.prefixList))      # This removes any duplicate trigger names in the prefix.
@@ -116,7 +123,7 @@ class CsvWriterAVinterface:
                 #print("Reached after subprocess for snapshot trigger")
                 
                 # Now upload to AWS.
-                cmd = "cd " + self.csvDir + ";aws s3 sync . s3://rosbag-upload-test/snapshot_bagfiles/" + time.strftime("%Y%m%d") +"  --profile sachin".format(self.filename)
+                cmd = "cd " + self.csvDir + ";aws s3 sync . s3://foxtrot-snapshots/snapshot_bagfiles/" + time.strftime("%Y%m%d") +"  --profile foxtrot".format(self.filename) + "&"
                 subprocess.call(cmd, shell=True)
                 
             except:
@@ -157,10 +164,13 @@ class CsvWriterAVinterface:
         self.avEngaged = bool(data.data[2])
 
 
+    def DriverMarkerButtonCallback(self, data):
+        self.driverMarkerButton = bool(data)
+        
     def CtrlStateFLGcallback(self, data):
         #print('inside CtrlStateFLGcallback')
         self.BRK_Override = bool(data.BRK_Override)
-        self.ACC_Override = bool(data.ACC_Override)
+        self.ACC_Override = bool(data.ACC)
         self.avEngaged = bool(data.Engaged)
 
     #def SnapshotTriggercallback(self, data):
@@ -171,7 +181,8 @@ class CsvWriterAVinterface:
 
         rospy.Subscriber('chatter', String, self.callback)
         
-        #rospy.Subscriber('/CtrlStateFLG', CtrlStateFLG, self.CtrlStateFLGcallback)
+        rospy.Subscriber('/CtrlStateFLG', CtrlStateFLG, self.CtrlStateFLGcallback)
+        #rospy.Subscriber('/driver_marker_button', Int16, self.DriverMarkerButtonCallback)
         rospy.Subscriber('/CtrlStateFLGDummy', Int32MultiArray, self.dummyCallback)
 
         while not rospy.is_shutdown():
