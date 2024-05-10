@@ -34,7 +34,7 @@ class CsvWriterAVinterface:
         # Snapshot trigger.
         self.writeSnapshot = False
         self.writeTime = 0
-        self.writeTimeDuration = 30
+        self.writeTimeDuration = 10
         self.prefixList = []
         self.snapshotUpdated = False
         self.filename = ''
@@ -116,6 +116,8 @@ class CsvWriterAVinterface:
                 #print("Reached after subprocess for snapshot trigger")
                 
                 # Now upload to AWS.
+                cmd = "cd " + self.csvDir + ";aws s3 sync . s3://rosbag-upload-test/snapshot_bagfiles/" + time.strftime("%Y%m%d") +"  --profile sachin".format(self.filename)
+                subprocess.call(cmd, shell=True)
                 
             except:
                 print("rosbag_snapshot package not found. Please install to record disengagement/override snapshot bagfiles")
