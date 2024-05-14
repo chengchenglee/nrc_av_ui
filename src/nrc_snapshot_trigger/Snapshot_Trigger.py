@@ -26,11 +26,13 @@ class CsvWriterAVinterface:
 
         self.BRK_Override = False
         self.BRK_OverrideTimer = 0
+        self.brkTapDuration = 1         # If brake override is less than this time, it is classified as brake tap.
 
         self.ACC_Override = False
         self.ACC_OverrideTime = 0
         
-        self.driverMarkerButton = False
+        self.snapButton = False
+        self.snapButtonTimer = 0
         
         self.bicycleDetect = False
 
@@ -91,13 +93,18 @@ class CsvWriterAVinterface:
         else:
             self.bicycleDetectTimer = 0
             
-        if self.avEngaged and self.driverMarkerButton:
+        if self.avEngaged and self.snapButton:
             self.writeSnapshot = True
             self.prefixList.append('snapButton')
+            self.snapButtonTimer += self.timerInterval
+        else:
+            self.snapButtonTimer = 0
+            
             
         # Arranging the name of the prefix for saving files.
         self.prefixList.sort()
         self.prefixList = list(set(self.prefixList))      # This removes any duplicate trigger names in the prefix.
+        
         
         #Run snapshot trigger and record from the buffer
         
@@ -105,14 +112,21 @@ class CsvWriterAVinterface:
         if self.writeSnapshot:
             self.writeTime += self.timerInterval
             
-          
+        
         if self.writeSnapshot and self.writeTime > self.writeTimeDuration:
             #print("Line 102")
             self.csvDir = os.path.join(os.path.expanduser("~"), 'projects/disengagementData/', time.strftime("%Y%m%d"),'bags')
             dirExists = os.path.isdir(self.csvDir)
             if not dirExists:
                 os.makedirs(self.csvDir)
+                
             prefix = '_'.join(self.prefixList)                  # Used to create the filename to save txt and bag files.
+        
+            # If a brake override only happens for less than 1 second, then it is called a brake tap.
+            # Replacing those 'brkOverride' prefixes with 'brkTap' prefix.
+            if 'brkOverride' in prefix and self.BRK_OverrideTimer <= self.brkTapDuration:
+                prefix.replace('brkOverride', 'brkTap' )
+
             timeStamp = time.strftime('%Y-%m-%d-%H-%M-%S')      # Used to create the filename to save txt and bag files.
             self.filename = '{}_{}'.format(prefix, timeStamp)
             try:
@@ -165,7 +179,7 @@ class CsvWriterAVinterface:
 
 
     def DriverMarkerButtonCallback(self, data):
-        self.driverMarkerButton = bool(data)
+        self.snapButton = bool(data)
         
     def CtrlStateFLGcallback(self, data):
         #print('inside CtrlStateFLGcallback')
