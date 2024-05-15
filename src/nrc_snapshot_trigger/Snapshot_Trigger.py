@@ -12,6 +12,14 @@ import time
 import subprocess
 import os
 
+# AWS boto3 implementation
+import boto3
+import botocore
+from botocore.errorfactory import ClientError
+from threading import Thread
+from time import sleep
+import progressbar
+
 
 #from RosMsgMonitorForAVinterface import *
 
@@ -43,7 +51,13 @@ class CsvWriterAVinterface:
         self.prefixList = []
         self.snapshotUpdated = False
         self.filename = ''
-        self.csvDir = ''
+        
+        #AWS  variables
+        self.session = boto3.Session(profile_name='sachin')
+        self.s3 = self.session.resource('s3')
+        self.s3Client = self.session.client('s3')
+        self.csvDir = os.path.join(os.path.expanduser("~"), 'projects/disengagementData/', time.strftime("%Y%m%d"),'bags')
+        self.rospyUp = False
 
         self.pub = rospy.Publisher('chatter', String, queue_size=10)
         
@@ -115,7 +129,6 @@ class CsvWriterAVinterface:
         
         if self.writeSnapshot and self.writeTime > self.writeTimeDuration:
             #print("Line 102")
-            self.csvDir = os.path.join(os.path.expanduser("~"), 'projects/disengagementData/', time.strftime("%Y%m%d"),'bags')
             dirExists = os.path.isdir(self.csvDir)
             if not dirExists:
                 os.makedirs(self.csvDir)
@@ -136,9 +149,9 @@ class CsvWriterAVinterface:
                 subprocess.call(cmd, shell=True)
                 #print("Reached after subprocess for snapshot trigger")
                 
-                # Now upload to AWS.
-                cmd = "cd " + self.csvDir + ";aws s3 sync . s3://foxtrot-snapshots/snapshot_bagfiles/" + time.strftime("%Y%m%d") +"  --profile foxtrot".format(self.filename) + "&"
-                subprocess.call(cmd, shell=True)
+                # Now upload to AWS. UPDATE: Moved to a thread instead
+                #cmd = "cd " + self.csvDir + ";aws s3 sync . s3://foxtrot-snapshots/snapshot_bagfiles/" + time.strftime("%Y%m%d") +"  --profile foxtrot".format(self.filename) + "&"
+                #subprocess.call(cmd, shell=True)
                 
             except:
                 print("rosbag_snapshot package not found. Please install to record disengagement/override snapshot bagfiles")
@@ -189,29 +202,70 @@ class CsvWriterAVinterface:
 
     #def SnapshotTriggercallback(self, data):
         #Bicycle
-    
+        
+    def upload_to_aws(self,local_file, s3_bucket, s3_folder, s3_filename):
+        def write_to_aws():
+            statinfo = os.stat(local_file)
+            up_progress = progressbar.progressbar.ProgressBar(maxval=statinfo.st_size)
+            up_progress.start()
+
+            def upload_progress(chunk):
+                up_progress.update(up_progress.currval + chunk)
+
+            try:
+                print("Writing "+ s3_filename)
+                self.s3Client.upload_file(local_file, s3_bucket, s3_folder+"/"+s3_filename, Callback=upload_progress)
+                print("Upload Successful")
+                return True
+            except FileNotFoundError:
+                print("The source file was not found")
+                return False
+            except NoCredentialsError:
+                print("Credentials not available")
+                return False
+        try:
+            #print('bucket: ' + s3_bucket + ", key: " + s3_folder+s3_filename+'/')
+            self.s3Client.head_object(Bucket=s3_bucket, Key=s3_folder+'/'+s3_filename)
+            #print(s3_filename + " exists already, not uploading")
+        except ClientError as e:
+            write_to_aws()
+        
+    def awsSessionStart(self,data):
+        bucket = 'foxtrot-snapshots'
+        s3_folder = 'snapshot_bagfiles'+'/'+time.strftime("%Y%m%d")
+        while self.rospyUp:
+            for filename in os.listdir(self.csvDir):
+                fullPath = self.csvDir+'/'+filename
+                self.upload_to_aws(fullPath,bucket,s3_folder,filename)
+                #print(filename)
+            sleep(1)
 
     def listener(self):
-
         rospy.Subscriber('chatter', String, self.callback)
-        
         rospy.Subscriber('/CtrlStateFLG', CtrlStateFLG, self.CtrlStateFLGcallback)
         #rospy.Subscriber('/driver_marker_button', Int16, self.DriverMarkerButtonCallback)
         rospy.Subscriber('/CtrlStateFLGDummy', Int32MultiArray, self.dummyCallback)
+        
+        #Start aws thread
+        self.rospyUp = True
+        thread = Thread(target = self.awsSessionStart, args = (self, ))
+        thread.daemon = True
+        thread.start()
 
         while not rospy.is_shutdown():
             publishStr = 'Hello..... Time is: {}'.format(time.time())
-            
             self.pub.publish(publishStr)
             #print(self.avEngaged, self.updateThisCycle, self.writeSnapshot, self.BRK_Override, self.ACC_Override)
             
             rospy.sleep(1)  # sleep for one second.
         
+        #Join aws thread
+        self.rospyUp = False
+        thread.join()
+        
 if __name__ == '__main__':
     print ('Running')
-    
     clsObj = CsvWriterAVinterface()
-
     clsObj.listener()
 
 
