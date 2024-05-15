@@ -39,7 +39,7 @@ class CsvWriterAVinterface:
         self.ACC_Override = False
         self.ACC_OverrideTime = 0
         
-        self.snapButton = False
+        self.snapButton = 0
         self.snapButtonTimer = 0
         
         self.bicycleDetect = False
@@ -53,7 +53,7 @@ class CsvWriterAVinterface:
         self.filename = ''
         
         #AWS  variables
-        self.session = boto3.Session(profile_name='sachin')
+        self.session = boto3.Session(profile_name='foxtrot')
         self.s3 = self.session.resource('s3')
         self.s3Client = self.session.client('s3')
         self.csvDir = os.path.join(os.path.expanduser("~"), 'projects/disengagementData/', time.strftime("%Y%m%d"),'bags')
@@ -84,35 +84,27 @@ class CsvWriterAVinterface:
         if (not self.avEngaged) and self.updateThisCycle:
             self.writeSnapshot = True
             self.prefixList.append('avDisengaged')
-            self.avEngagedTimer = 0
         
         if self.avEngaged and self.BRK_Override:
             self.writeSnapshot = True
             self.prefixList.append('brkOverride')
             self.BRK_OverrideTimer += self.timerInterval
-        else:
-            self.BRK_OverrideTimer = 0
         
         if self.avEngaged and self.ACC_Override:
             self.writeSnapshot = True
             self.prefixList.append('accOverride')
             self.ACC_OverrideTimer += self.timerInterval
-        else:
-            self.ACC_OverrideTimer = 0
         
         if self.avEngaged and self.bicycleDetect:
             self.writeSnapshot = True
             self.prefixList.append('bicycleDetect')
             self.bicycleDetectTimer += self.timerInterval
-        else:
-            self.bicycleDetectTimer = 0
             
-        if self.avEngaged and self.snapButton:
+        if self.avEngaged and self.snapButton == 8:
             self.writeSnapshot = True
             self.prefixList.append('snapButton')
             self.snapButtonTimer += self.timerInterval
-        else:
-            self.snapButtonTimer = 0
+
             
             
         # Arranging the name of the prefix for saving files.
@@ -138,7 +130,7 @@ class CsvWriterAVinterface:
             # If a brake override only happens for less than 1 second, then it is called a brake tap.
             # Replacing those 'brkOverride' prefixes with 'brkTap' prefix.
             if 'brkOverride' in prefix and self.BRK_OverrideTimer <= self.brkTapDuration:
-                prefix.replace('brkOverride', 'brkTap' )
+                prefix = prefix.replace('brkOverride', 'brkTap' )
 
             timeStamp = time.strftime('%Y-%m-%d-%H-%M-%S')      # Used to create the filename to save txt and bag files.
             self.filename = '{}_{}'.format(prefix, timeStamp)
@@ -164,6 +156,13 @@ class CsvWriterAVinterface:
             self.writeTime = 0
             self.updateThisCycle = False
             self.prefixList = []
+
+            # Reset all timers.
+            self.avEngagedTimer = 0
+            self.BRK_OverrideTimer = 0
+            self.ACC_OverrideTimer = 0
+            self.bicycleDetectTimer = 0
+            self.snapButtonTimer = 0
     
             #Create a txt file for why snapshot was Running
             # When the event happened. Include the name of the event as a prefix into the text and bag file names.
@@ -192,7 +191,7 @@ class CsvWriterAVinterface:
 
 
     def DriverMarkerButtonCallback(self, data):
-        self.snapButton = bool(data)
+        self.snapButton = data.data
         
     def CtrlStateFLGcallback(self, data):
         #print('inside CtrlStateFLGcallback')
@@ -230,21 +229,25 @@ class CsvWriterAVinterface:
         except ClientError as e:
             write_to_aws()
         
-    def awsSessionStart(self,data):
+    def awsSessionStart(self, data):
         bucket = 'foxtrot-snapshots'
         s3_folder = 'snapshot_bagfiles'+'/'+time.strftime("%Y%m%d")
         while self.rospyUp:
-            for filename in os.listdir(self.csvDir):
-                fullPath = self.csvDir+'/'+filename
-                self.upload_to_aws(fullPath,bucket,s3_folder,filename)
-                #print(filename)
+            if os.path.isdir(self.csvDir):
+                for filename in os.listdir(self.csvDir):
+                    fullPath = self.csvDir+'/'+filename
+                    self.upload_to_aws(fullPath,bucket,s3_folder,filename)
+                    #print(filename)
+            else:
+                pass
+                #print("Dir does not exist")
             sleep(1)
 
     def listener(self):
         rospy.Subscriber('chatter', String, self.callback)
         rospy.Subscriber('/CtrlStateFLG', CtrlStateFLG, self.CtrlStateFLGcallback)
-        #rospy.Subscriber('/driver_marker_button', Int16, self.DriverMarkerButtonCallback)
-        rospy.Subscriber('/CtrlStateFLGDummy', Int32MultiArray, self.dummyCallback)
+        rospy.Subscriber('/driver_marker_button', Int16, self.DriverMarkerButtonCallback)
+        #rospy.Subscriber('/CtrlStateFLGDummy', Int32MultiArray, self.dummyCallback)
         
         #Start aws thread
         self.rospyUp = True
@@ -256,6 +259,7 @@ class CsvWriterAVinterface:
             publishStr = 'Hello..... Time is: {}'.format(time.time())
             self.pub.publish(publishStr)
             #print(self.avEngaged, self.updateThisCycle, self.writeSnapshot, self.BRK_Override, self.ACC_Override)
+            #print(self.snapButton)
             
             rospy.sleep(1)  # sleep for one second.
         
