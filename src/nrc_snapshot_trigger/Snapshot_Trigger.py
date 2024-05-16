@@ -59,24 +59,15 @@ class CsvWriterAVinterface:
         self.csvDir = os.path.join(os.path.expanduser("~"), 'projects/disengagementData/', time.strftime("%Y%m%d"),'bags')
         self.rospyUp = False
 
-        self.pub = rospy.Publisher('chatter', String, queue_size=10)
+        #self.pub = rospy.Publisher('chatter', String, queue_size=10)
         
         rospy.init_node('trigger_node')
         
         # Create a ROS Timer for reading data
         rospy.Timer(rospy.Duration(self.timerInterval), self.timerCallback)
     
-        
-        #self.timer = 
-
-    #brkOverride
-    #brkOverrideTimer += 0.1
-    #acc
-    #engaged
     
     def timerCallback(self, data):            # Interval decided by timerInterval.
-        #print(time.time
-        #print("Timer callback")
         if self.avEngaged:
             self.updateThisCycle = True
             self.avEngagedTimer += self.timerInterval
@@ -112,15 +103,11 @@ class CsvWriterAVinterface:
         self.prefixList = list(set(self.prefixList))      # This removes any duplicate trigger names in the prefix.
         
         
-        #Run snapshot trigger and record from the buffer
-        
-        
         if self.writeSnapshot:
             self.writeTime += self.timerInterval
             
         
         if self.writeSnapshot and self.writeTime > self.writeTimeDuration:
-            #print("Line 102")
             dirExists = os.path.isdir(self.csvDir)
             if not dirExists:
                 os.makedirs(self.csvDir)
@@ -135,11 +122,9 @@ class CsvWriterAVinterface:
             timeStamp = time.strftime('%Y-%m-%d-%H-%M-%S')      # Used to create the filename to save txt and bag files.
             self.filename = '{}_{}'.format(prefix, timeStamp)
             try:
-                #print("Line 111")
                 #cmd = "cd " + self.csvDir + ";rosrun rosbag_snapshot snapshot -t -n -O {}.bag".format(self.filename)
                 cmd = "cd " + self.csvDir + ";rosrun rosbag_snapshot snapshot -t -O {}.bag".format(self.filename)
                 subprocess.call(cmd, shell=True)
-                #print("Reached after subprocess for snapshot trigger")
                 
                 # Now upload to AWS. UPDATE: Moved to a thread instead
                 #cmd = "cd " + self.csvDir + ";aws s3 sync . s3://foxtrot-snapshots/snapshot_bagfiles/" + time.strftime("%Y%m%d") +"  --profile foxtrot".format(self.filename) + "&"
@@ -150,7 +135,6 @@ class CsvWriterAVinterface:
                 
             with open(os.path.join(self.csvDir, '{}.txt'.format(self.filename)), 'w') as txtFile:
                 txtFile.write('Event happened at: {}'.format(timeStamp))
-                #print("Created txt file")
                 
             self.writeSnapshot = False
             self.writeTime = 0
@@ -177,10 +161,10 @@ class CsvWriterAVinterface:
             #self.snapshotUpdated = False
       
         #Check if snapshot is still running and if there is a new trigger
-          
-    def callback(self, data):
-        pass
-        #print ('message received')
+
+    #def callback(self, data):
+        #pass
+        ##print ('message received')
         
 
     def dummyCallback(self,data):
@@ -194,7 +178,6 @@ class CsvWriterAVinterface:
         self.snapButton = data.data
         
     def CtrlStateFLGcallback(self, data):
-        #print('inside CtrlStateFLGcallback')
         self.BRK_Override = bool(data.BRK_Override)
         self.ACC_Override = bool(data.ACC)
         self.avEngaged = bool(data.Engaged)
@@ -202,7 +185,7 @@ class CsvWriterAVinterface:
     #def SnapshotTriggercallback(self, data):
         #Bicycle
         
-    def upload_to_aws(self,local_file, s3_bucket, s3_folder, s3_filename):
+    def upload_to_aws(self, local_file, s3_bucket, s3_folder, s3_filename):
         def write_to_aws():
             statinfo = os.stat(local_file)
             up_progress = progressbar.progressbar.ProgressBar(maxval=statinfo.st_size)
@@ -244,7 +227,7 @@ class CsvWriterAVinterface:
             sleep(1)
 
     def listener(self):
-        rospy.Subscriber('chatter', String, self.callback)
+        #rospy.Subscriber('chatter', String, self.callback)
         rospy.Subscriber('/CtrlStateFLG', CtrlStateFLG, self.CtrlStateFLGcallback)
         rospy.Subscriber('/driver_marker_button', Int16, self.DriverMarkerButtonCallback)
         #rospy.Subscriber('/CtrlStateFLGDummy', Int32MultiArray, self.dummyCallback)
@@ -256,8 +239,9 @@ class CsvWriterAVinterface:
         thread.start()
 
         while not rospy.is_shutdown():
-            publishStr = 'Hello..... Time is: {}'.format(time.time())
-            self.pub.publish(publishStr)
+            #publishStr = 'Hello..... Time is: {}'.format(time.time())
+            #self.pub.publish(publishStr)
+            
             #print(self.avEngaged, self.updateThisCycle, self.writeSnapshot, self.BRK_Override, self.ACC_Override)
             #print(self.snapButton)
             
