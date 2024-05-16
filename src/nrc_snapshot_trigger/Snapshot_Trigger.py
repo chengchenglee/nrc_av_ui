@@ -37,7 +37,7 @@ class CsvWriterAVinterface:
         self.brkTapDuration = 1         # If brake override is less than this time, it is classified as brake tap.
 
         self.ACC_Override = False
-        self.ACC_OverrideTime = 0
+        self.ACC_OverrideTimer = 0
         
         self.snapButton = 0
         self.snapButtonTimer = 0
