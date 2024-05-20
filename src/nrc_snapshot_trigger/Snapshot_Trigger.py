@@ -47,7 +47,7 @@ class CsvWriterAVinterface:
         # Snapshot trigger.
         self.writeSnapshot = False
         self.writeTime = 0
-        self.writeTimeDuration = 10
+        self.writeTimeDuration = 20
         self.prefixList = []
         self.snapshotUpdated = False
         self.filename = ''
@@ -120,7 +120,7 @@ class CsvWriterAVinterface:
                 prefix = prefix.replace('brkOverride', 'brkTap' )
 
             timeStamp = time.strftime('%Y-%m-%d-%H-%M-%S')      # Used to create the filename to save txt and bag files.
-            self.filename = '{}_{}'.format(prefix, timeStamp)
+            self.filename = '{}_{}'.format(timeStamp,prefix)
             try:
                 #cmd = "cd " + self.csvDir + ";rosrun rosbag_snapshot snapshot -t -n -O {}.bag".format(self.filename)
                 cmd = "cd " + self.csvDir + ";rosrun rosbag_snapshot snapshot -t -O {}.bag".format(self.filename)
