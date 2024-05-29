@@ -72,14 +72,6 @@ class CsvWriterAVinterface:
     
     
     def timerCallback(self, data):            # Interval decided by timerInterval.
-        if self.avEngaged:
-            self.updateThisCycle = True
-            self.avEngagedTimer += self.timerInterval
-        
-        if (not self.avEngaged) and self.updateThisCycle:
-            self.writeSnapshot = True
-            self.prefixList.append('avDisengaged')
-        
         if self.avEngaged and self.BRK_Override:
             self.writeSnapshot = True
             self.prefixList.append('brkOverride')
@@ -101,10 +93,17 @@ class CsvWriterAVinterface:
             self.eventTimer += self.timerInterval
             self.eventName = ''         # Reset the name of the event name to ''.
 
-            
+        if self.avEngaged:
+            self.updateThisCycle = True
+            self.avEngagedTimer += self.timerInterval
+        
+        if (not self.avEngaged) and self.updateThisCycle:
+            self.writeSnapshot = True
+            self.prefixList.append('avDisengaged')
+        
             
         # Arranging the name of the prefix for saving files.
-        self.prefixList.sort()
+        #self.prefixList.sort()
         self.prefixList = list(set(self.prefixList))      # This removes any duplicate trigger names in the prefix.
         
         
