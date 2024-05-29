@@ -62,8 +62,8 @@ class CsvWriterAVinterface:
         self.csvDir = os.path.join(os.path.expanduser("~"), 'projects/disengagementData/', time.strftime("%Y%m%d"),'bags')
         self.rospyUp = False
 
-        # Vehicle health publisher
-        self.pub = rospy.Publisher('health_status', DiagnosticArray, queue_size=10)
+        #Vehicle health publisher
+        #self.pub = rospy.Publisher('health_status', DiagnosticArray, queue_size=10)
         
         rospy.init_node('trigger_node')
         
@@ -90,11 +90,6 @@ class CsvWriterAVinterface:
             self.prefixList.append('accOverride')
             self.ACC_OverrideTimer += self.timerInterval
         
-        if self.avEngaged and self.bicycleDetect:
-            self.writeSnapshot = True
-            self.prefixList.append('bicycleDetect')
-            self.bicycleDetectTimer += self.timerInterval
-            
         if self.avEngaged and self.snapButton == 8:
             self.writeSnapshot = True
             self.prefixList.append('snapButton')
@@ -155,7 +150,6 @@ class CsvWriterAVinterface:
             self.avEngagedTimer = 0
             self.BRK_OverrideTimer = 0
             self.ACC_OverrideTimer = 0
-            self.bicycleDetectTimer = 0
             self.snapButtonTimer = 0
             self.eventTimer = 0
     
@@ -177,8 +171,8 @@ class CsvWriterAVinterface:
         #pass
         ##print ('message received')
     
-        publishStr = 'Vehicle_Health'
-        self.pub.publish(publishStr)
+        #publishStr = 'Vehicle_Health'
+        #self.pub.publish(publishStr)
         
 
     #def dummyCallback(self,data):
@@ -195,6 +189,8 @@ class CsvWriterAVinterface:
         other values will be for other purposes.
         '''
         self.snapButton = data.data
+        #if self.snapButton > 0:
+            #print('\n\n snapbutton value: {} \n\n'.format(self.snapButton))
         
         
     def CtrlStateFLGcallback(self, data):
@@ -259,7 +255,7 @@ class CsvWriterAVinterface:
             else:
                 pass
                 #print("Dir does not exist")
-            sleep(1)
+            sleep(60)
 
     def listener(self):
         rospy.Subscriber('/snapshot_event_trigger', String, self.EventTriggerCallback)
@@ -277,7 +273,7 @@ class CsvWriterAVinterface:
         while not rospy.is_shutdown():
             
             #print(self.avEngaged, self.updateThisCycle, self.writeSnapshot, self.BRK_Override, self.ACC_Override)
-            #print(self.snapButton)
+            #print('\n\n snapbutton value: {} \n\n'.format(self.snapButton))
             
             rospy.sleep(1)  # sleep for one second.
         
