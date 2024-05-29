@@ -65,9 +65,6 @@ class CsvWriterAVinterface:
         # Vehicle health publisher
         self.pub = rospy.Publisher('health_status', DiagnosticArray, queue_size=10)
         
-        self.st = time.time()
-        self.pubDummy = rospy.Publisher('snapshot_event_trigger', DiagnosticArray, queue_size=10)
-        
         rospy.init_node('trigger_node')
         
         # Create a ROS Timer for reading data
@@ -182,12 +179,6 @@ class CsvWriterAVinterface:
     
         publishStr = 'Vehicle_Health'
         self.pub.publish(publishStr)
-        
-        if time.time() - self.st > 10:
-            publishDummyStr = 'test_trigger'
-            self.pubDummy.publish(publishDummyStr)
-            self.st = time.time()
-
         
 
     #def dummyCallback(self,data):
