@@ -6,6 +6,7 @@ class Monitor:
   def __init__(self, topic):
     self.name = ""
     self.topic = topic
+    self.topicType = ""
     self.good = -1
     self.failing = -1
     self.failed = -1
@@ -27,3 +28,6 @@ class Monitor:
     # Using exponential moving average with a time constant of 3 seconds
     alpha = 1 - exp(-time_difference / 3)
     self.average_message_rate = alpha * (1/time_difference) + (1 - alpha) * self.average_message_rate
+
+  def msgCallback(self, data):
+    a = 1

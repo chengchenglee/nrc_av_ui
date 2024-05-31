@@ -9,10 +9,10 @@ class Subsystem:
     self.commands = []
     self.monitors = []
 
-  def add_command(self, command):
+  def add_command(self, command, printDebug):
     self.commands.append(command)
-    print("Add command: ", command.name)
+    if printDebug: print("Add command",len(self.commands),":", command.name)
 
-  def add_monitor(self, monitor):
+  def add_monitor(self, monitor, printDebug):
     self.monitors.append(monitor)
-    print("Add monitor:", monitor.name, monitor.topic, monitor.good, monitor.failing, monitor.failed)
+    if printDebug: print("Add monitor",len(self.monitors),":", monitor.name, monitor.topic, monitor.good, monitor.failing, monitor.failed)

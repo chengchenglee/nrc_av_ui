@@ -11,7 +11,8 @@ Subsystem:
         Command: mrcyNtrip
         Type: Software
         LaunchTime: 5
-    Depends: 
+    Depends:
+
   CAN:
     Type: Sensor
     Description: Vehicle CAN

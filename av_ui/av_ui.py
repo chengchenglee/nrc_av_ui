@@ -1,107 +1,60 @@
 #!/usr/bin/python
 
-from subsystem import Subsystem
-from monitor import Monitor
-from command import Command
-import re
+import rospy
+import os
+import signal # Catch ctrl-c
+import sys
+from RoscoreObj import *
+
+import loader as Loader
 import time
-from math import exp
 
-def leadingSpaces(text_line):
-  return len(text_line) - len(text_line.lstrip(' '))
+from nrc_msgs.msg import *  # InterventionRequest
 
-def parse_subsystems(text):
-  print("Parse subsystems.")
-  subsystems = []
-  #subsystem_data = text.split('\n\n')
+running = True
 
-  #for subsystem_text in subsystem_data:
-  lines = text.split('\n')
-    #subsystem_name = re.search(r'Subsystem \d+', lines[0]).group()
-  current_subsystem = []
-  current_monitor = Monitor("blank")
-  current_command = Command("blank")
-  foundSubsystem = False
+def signal_handler(sig, frame):
+  global running
+  running = False
+  print('Caught ctrl-c')
   
-  mode = 'Init'
-  
-  for line in lines:
-    #print(line)
-    
-    if mode == 'Init':
-      if 'Subsystem:' in line:
-        foundSubsystem = True
-    
-    if foundSubsystem and leadingSpaces(line) == 2:
-      subsystemName = line.rstrip(':').lstrip(' ')
-      current_subsystem = Subsystem(subsystemName)
-      current_monitor.good = -1
-      print(" ")
-      #print("New Subsystem:",current_subsystem.name)
-      mode = 'Health Topics'
-      print("==== Search for health ====")
-    
-    if mode == 'Health Topics':
-      if 'Commands:' in line:
-        mode = 'Commands'
-        print("==== Search for commands ====")
-        
-      elif '- HealthTopic:' in line:
-        topic = line.split(': ')[1]
-        current_monitor = Monitor(topic)
-      elif 'HealthName:' in line:
-        name = line.split(': ')[1]
-        current_monitor.name = name
-      elif 'HealthTopicType:' in line:
-        topic = line.split(': ')[1]
-        current_monitor.topic = topic
-      elif 'NomWarnErrRate:' in line:
-        rates = list(map(float, line.split(': ')[1].split(', ')))
-        current_monitor.setRates(rates)
-        current_subsystem.add_monitor(current_monitor)
-    
-    if mode == 'Commands':
-      if 'Depends' in line:
-        subsystems.append(current_subsystem)
-    
-      elif '- Name:' in line:
-        name = line.split(': ')[1]
-        current_command.name = name
-        #print(name)
-      elif 'Command:' in line:
-        command = line.split(': ')[1]
-        current_command.command = command
-        #print(command)
-      elif 'LaunchTime:' in line:
-        launch_time = line.split(': ')[1]
-        current_command.launchTime = launch_time
-        #print(launch_time)
-        current_subsystem.add_command(current_command)
-        
-
-  return subsystems
-
-#def interfaceHealth(agent_name, ping_machines, sensors_list, algs_list, cmd_list, dest_list = [], multi_dest_list = []):
+# Catch ctrl-c
+signal.signal(signal.SIGINT, signal_handler)
 
 text = []
-with open('foxtrot_config.yaml', 'r') as file:
+with open('sim_config.yaml', 'r') as file:
   text = file.read()
-subsystems = parse_subsystems(text)
 
-#for subsystem in subsystems:
-  #print("Subsystem Name: {subsystem.name}")
-  #print("Commands:", subsystem.commands)
-    
-  #for monitor in subsystem.monitors:
-    #print("Monitor Topic: {monitor.topic}, Rates: Good: {monitor.good}, Failing: {monitor.failing}, Failed: {monitor.failed}")
-    #print("Average Message Rate: {monitor.average_message_rate}, Time Since Last Received: {monitor.time_since_last_received}")
-    
-# Start roscore 
-#roscore = Roscore()
-#roscore.run()
+printDebug = True
+subsystems = Loader.read_subsystems(text, printDebug)
 
-# Main function starts here
-#rospy.init_node('listener', anonymous=True)
-    
-#while (running and (not rospy.is_shutdown())):
-#  a = 1
+# Start roscore
+if True:
+  roscore = Roscore()
+  roscore.run()
+  rospy.init_node('listener', anonymous=True)
+
+  # Subscribe health topics
+  Loader.subscribe_health_msgs(subsystems)
+  
+  avStatusPub = rospy.Publisher("ailsv_av_status",InterventionRequest,queue_size=1)
+  
+  agent_name = 'Test1'
+  map_name = 'Franklin.set'
+  
+  os.system("rosparam set /agent_name "+agent_name)
+  os.system("rosrun nrc_svcs paramsForDriving.sh")
+  os.system("rosrun nrc_svcs paramsForMap.sh "+map_name)
+  
+  Loader.launch_subsystems(subsystems)
+
+  while running:    
+    # Wait for updates
+    time.sleep(0.5)
+            
+  # End rospy
+  print("Closing interface monitor")
+  #Loader.stop_subsystems(subsystems)
+  roscore.terminate()
+  sys.exit(0)
+  

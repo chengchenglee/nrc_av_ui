@@ -1,0 +1,76 @@
+Configuration:
+  Name: sim
+
+Subsystem:
+  Sim:
+    Type: Sensor
+    Description: command to start simulator
+    HealthTopics:
+      - HealthTopic: /dynamic_global_pose
+        HealthName: OxtsRaw
+        HealthTopicType: DynamicPoseWithCovar
+        NomWarnErrRate: 100, 80, 60
+    Commands:
+      - Name: Simulator
+        Command: rosrun nrc_sim SimpleatorSimNode __name:=SimpleSimNode
+        Type: Software
+        LaunchTime: 1
+      - Name: TfSys
+        Command: roslaunch nrc_svcs leaf_tf_subsystem.launch sanborn:=true
+        Type: Software
+        LaunchTime: 1
+    Depends:
+    
+  WM:
+    Type: Algorithm
+    Description: World Model
+    HealthTopics:
+      - HealthTopic: /object_tracker/health
+        HealthName: Fusion
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /traffic_light/detection/health
+        HealthName: TLR
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 1, 0.6, 0.3
+      - HealthTopic: /ailsv_virtual_objects
+        HealthName: Virtual
+        HealthTopicType: TrackedObjectSet
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /master_filter/health
+        HealthName: WOS
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: WM
+        Command: roslaunch nrc_wm2_svcs leaf_pred.launch
+        Type: Software
+        LaunchTime: 1.0
+    Diagnostic:
+      LED: 5
+      Retry: 3
+      Timeout: 30
+      File: 
+    Depends:
+    
+  AutoGoals:
+    Type: Algorithm
+    Description: AutoGoals
+    HealthTopics:
+      - HealthTopic: /drive_plan
+        HealthName: DRV_PLAN
+        HealthTopicType: DriveGoalList
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: AutoGoals
+        Command: roslaunch nrc_wm2_svcs leaf_route.launch
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 6
+      Retry: 5
+      Timeout: 30
+    # Diagnostic:
+    Depends:
+    
+    
