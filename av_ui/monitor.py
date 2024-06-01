@@ -31,3 +31,6 @@ class Monitor:
 
   def msgCallback(self, data):
     a = 1
+
+  def displayMore(self):
+    a = 1

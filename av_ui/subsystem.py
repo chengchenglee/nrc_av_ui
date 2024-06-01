@@ -16,3 +16,13 @@ class Subsystem:
   def add_monitor(self, monitor, printDebug):
     self.monitors.append(monitor)
     if printDebug: print("Add monitor",len(self.monitors),":", monitor.name, monitor.topic, monitor.good, monitor.failing, monitor.failed)
+    
+  def start(self):
+    for c in self.commands:
+      print("Launch: ", c.name)
+      c.start()
+    
+  def stop(self):
+    for c in self.commands:
+      print("Stopping: ", c.name)
+      c.stop()

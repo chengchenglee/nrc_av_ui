@@ -10,7 +10,7 @@ class Command:
     self.launchTime = 30
     self.started = False
     
-  def launch(self):
+  def start(self):
     print(self.command)
     if not self.started:
       currentDir = os.getcwd()
@@ -22,15 +22,17 @@ class Command:
 
   def stop(self):
     if (self.started):
-      # Get nodes list from roslaunch file
-      nodes = os.popen(self.command+" --nodes &").read()
-      command = "rosnode kill"
-      for row in nodes.split('\n'):
-        node = row.rstrip('\n')
-        command = command + " " + node[1:]
-      
-      print (command)
-      os.system(command)
-      time.sleep(1.0)
-      
-      self.started = False
+      if 'rosrun' in self.command:
+        a = 1
+      else:
+        # Get nodes list from roslaunch file
+        nodes = os.popen(self.command+" --nodes &").read()
+        command = "rosnode kill"
+        for row in nodes.split('\n'):
+          node = row.rstrip('\n')
+          command = command + " " + node[1:]
+        
+        print (command)
+        os.system(command)
+        time.sleep(1.0)
+        self.started = False

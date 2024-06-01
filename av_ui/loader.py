@@ -60,7 +60,7 @@ def read_subsystems(text, printDebug):
         
       elif 'HealthTopicType:' in line:
         topicType = line.split(': ')[1]
-        print(topicType)
+        if printDebug: print(topicType)
         current_monitor.topicType = get_class(topicType)
         
       elif 'NomWarnErrRate:' in line:
@@ -97,12 +97,11 @@ def subscribe_health_msgs(subsystems):
 def launch_subsystems(subsystems):    
   for subsystem in subsystems:
     print("Start subsystem:",subsystem.name)
-    for c in subsystem.commands:
-      print("Launch: ", c.name)
-      c.launch()
+    subsystem.start()
       
 def stop_subsystems(subsystems):
   for subsystem in subsystems:
-    for c in subsystem.commands:
-      print("Stopping: ", c.name)
-      c.stop()
+    subsystem.stop()
+    #for c in subsystem.commands:
+    #  print("Stopping: ", c.name)
+    #  c.stop()

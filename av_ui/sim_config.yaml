@@ -53,24 +53,4 @@ Subsystem:
       File: 
     Depends:
     
-  AutoGoals:
-    Type: Algorithm
-    Description: AutoGoals
-    HealthTopics:
-      - HealthTopic: /drive_plan
-        HealthName: DRV_PLAN
-        HealthTopicType: DriveGoalList
-        NomWarnErrRate: 10, 6, 3
-    Commands:
-      - Name: AutoGoals
-        Command: roslaunch nrc_wm2_svcs leaf_route.launch
-        Type: Software
-        LaunchTime: 3.0
-    Diagnostic:
-      LED: 6
-      Retry: 5
-      Timeout: 30
-    # Diagnostic:
-    Depends:
-    
     
