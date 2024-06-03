@@ -11,26 +11,39 @@ class Monitor:
     self.failing = -1
     self.failed = -1
     self.average_message_rate = 0
-    self.time_since_last_received = time.time()
+    self.avgTimeDiff = 0
+    self.tLastRvcd = time.time()
+    self.status = 0
+    self.label = 0
 
   def setRates(self,rates):
     self.good, self.failing, self.failed = rates
-    
-  #def printInfo():
-  #  print(self.name)
-  #  print(self.topic)
-  #  print(self.good,self.failing,self.failed)
-
-  def update_message_received(self):
-    current_time = time.time()
-    time_difference = current_time - self.time_since_last_received
-    self.time_since_last_received = current_time
-    # Using exponential moving average with a time constant of 3 seconds
-    alpha = 1 - exp(-time_difference / 3)
-    self.average_message_rate = alpha * (1/time_difference) + (1 - alpha) * self.average_message_rate
 
   def msgCallback(self, data):
-    a = 1
+    current_time = time.time()
+    tDiff = min(10, max(0.005, current_time - self.tLastRvcd))
+    self.tLastRvcd = current_time
+    
+    # Using exponential moving average with a time constant of 3 seconds
+    #alpha = 1 - exp(-tDiff / 3)
+    alpha = 0.3
+    self.avgTimeDiff = min(10, max(0.005, alpha * tDiff + (1-alpha)*self.avgTimeDiff))
+    #print('msgCallback:',self.avgTimeDiff)
+    
+  def getStatus(self):
+    tDiffFailing = (1/self.failing)
+    tDiffFailed = (1/self.failed)
+    current_time = time.time()
+    tDiff = min(10, max(0.005, current_time-self.tLastRvcd))
+    
+    if tDiff > 3*tDiffFailed or self.avgTimeDiff >= tDiffFailed:
+      self.status = 1
+    elif tDiff < tDiffFailing and self.avgTimeDiff < tDiffFailing:
+      self.status = 3
+    else:
+      self.status = 2
+
+    return self.status
 
   def displayMore(self):
     a = 1

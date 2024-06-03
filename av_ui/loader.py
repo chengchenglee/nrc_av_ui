@@ -70,8 +70,8 @@ def read_subsystems(text, printDebug):
     
     if mode == 'Commands':
       if 'Depends' in line:
-        subsystems.append(current_subsystem)
-        current_subsystem = []
+        mode = 'Depends'
+        if printDebug: print("==== Search for dependencies ====")
     
       elif '- Name:' in line:
         name = line.split(': ')[1]
@@ -85,6 +85,18 @@ def read_subsystems(text, printDebug):
         launch_time = line.split(': ')[1]
         current_command.launchTime = launch_time
         current_subsystem.add_command(current_command, printDebug)
+    
+    if mode == 'Depends':
+      if 'Launch' in line:
+        print(line)
+        name = line.split(':')[1]
+        current_subsystem.add_launch_depend(name)
+        
+      elif 'Run' in line:
+        name = line.split(':')[1]
+        current_subsystem.add_run_depend(name)
+        subsystems.append(current_subsystem)
+        current_subsystem = []
 
   return subsystems
 

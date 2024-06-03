@@ -41,8 +41,8 @@ if True:
 
   while running:    
     # Wait for updates
-    
-    interface.update()
+    agent.pollMonitors()
+    interface.update(agent.subsystems)
     
     time.sleep(0.1)
             

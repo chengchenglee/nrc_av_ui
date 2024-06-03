@@ -20,6 +20,8 @@ Subsystem:
         Type: Software
         LaunchTime: 1
     Depends:
+      - Launch:
+        Run:
     
   WM:
     Type: Algorithm
@@ -52,5 +54,7 @@ Subsystem:
       Timeout: 30
       File: 
     Depends:
+      - Launch:
+        Run:
     
     

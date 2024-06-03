@@ -12,6 +12,8 @@ Subsystem:
         Type: Software
         LaunchTime: 5
     Depends:
+      - Launch:
+        Run:
 
   CAN:
     Type: Sensor
@@ -32,6 +34,8 @@ Subsystem:
       Timeout: 30
       File:
     Depends:
+      - Launch:
+        Run:
     
   ARD:
     Type: Sensor
@@ -51,6 +55,8 @@ Subsystem:
       Retry: 0
       Timeout: 30
     Depends:
+      - Launch:
+        Run:
 
   GPS_Raw:
     Type: Sensor
@@ -75,6 +81,8 @@ Subsystem:
       Retry: 5
       Timeout: 30
     Depends:
+      - Launch:
+        Run:
 
   Pose:
     Type: Algorithm
@@ -94,7 +102,9 @@ Subsystem:
       LED: 2
       Retry: 5
       Timeout: 30
-    Depends: GPS_Raw
+    Depends:
+      - Launch:
+        Run:
 
   Eyeq5:
     Type: Sensor
@@ -119,6 +129,8 @@ Subsystem:
       Retry: 5
       Timeout: 30
     Depends:
+      - Launch:
+        Run:
 
   Velodyne:
     Type: Sensor
@@ -139,6 +151,8 @@ Subsystem:
       Retry: 5
       Timeout: 30
     Depends:
+      - Launch:
+        Run:
 
   PCP:
     Type: Algorithm
@@ -167,6 +181,8 @@ Subsystem:
       Timeout: 30
       File: pcp_diag.py
     Depends:
+      - Launch:
+        Run:
     
     
   CAM:
@@ -187,6 +203,8 @@ Subsystem:
       Retry: 5
       Timeout: 5
     Depends:
+      - Launch:
+        Run:
 
   WM:
     Type: Algorithm
@@ -219,6 +237,8 @@ Subsystem:
       Timeout: 30
       File: 
     Depends:
+      - Launch:
+        Run:
      
 
   AutoGoals:
@@ -238,8 +258,9 @@ Subsystem:
       LED: 6
       Retry: 5
       Timeout: 30
-    # Diagnostic:
     Depends:
+      - Launch:
+        Run:
 
   Trajectory:
     Type: Algorithm
@@ -263,3 +284,5 @@ Subsystem:
       Retry: 5
       Timeout: 30
     Depends:
+      - Launch:
+        Run:

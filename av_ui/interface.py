@@ -300,7 +300,16 @@ class Interface:
     #failureModeRequestPub.publish(msg)
     return msg
   
-  def update(self):
+  def update(self,subsystems):
+    for s in subsystems:
+      for m in s.monitors:
+        if m.status == 1:
+          m.label.configure(bg="pink")
+        elif m.status == 2:
+          m.label.configure(bg="orange")
+        elif m.status == 3:
+          m.label.configure(bg="lightgreen") 
+    
     self.window.update_idletasks()
     self.window.update()
 

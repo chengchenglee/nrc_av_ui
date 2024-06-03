@@ -29,3 +29,7 @@ class AvAgent:
     
   def launchAll(self):
     Loader.launch_subsystems(self.subsystems)
+
+  def pollMonitors(self):
+    for s in self.subsystems:
+      s.updateStatus('Update')
