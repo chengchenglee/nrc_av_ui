@@ -17,7 +17,6 @@ else: # 3+
     import tkinter as Tkinter # 3.6
     import tkinter.ttk as ttk
     
-    
 class Interface:
   def __init__(self, name):
     self.name = name
@@ -59,7 +58,7 @@ class Interface:
       print ('New map name selected is ',self.selectedMap)
       #os.system("rosrun nrc_svcs paramsForMap.sh "+map_name)
   
-  def setupWindow(self, subsystems):
+  def setupWindow(self, agent):
     # Setup window dimensions and title
     self.window = Tkinter.Tk(className='ailsvwindow')
     windowTitle = self.name + " Interface"
@@ -110,25 +109,25 @@ class Interface:
     setConfigFrame = Tkinter.Frame(tab1, width=400, height=50)
     setConfigFrame.grid(row=setConfigSectionRow,columnspan=10, sticky=Tkinter.W)
     
-    lbl_comp = Tkinter.Label(tab1, text="Ping Status")
+    lbl_comp = Tkinter.Label(tab1, text="Subsystems")
     lbl_comp.grid(row=computerSectionTitleRow, sticky=Tkinter.W)
     compFrame = Tkinter.Frame(tab1, width=400, height=50)
     compFrame.grid(row=computerSectionRow,columnspan=10, sticky=Tkinter.W)
 
-    lbl_sens = Tkinter.Label(tab1, text="Sensor Status")
-    lbl_sens.grid(row=sensorsSectionTitleRow, sticky=Tkinter.W)
-    sensFrame = Tkinter.Frame(tab1, width=400, height=50)
-    sensFrame.grid(row=sensorsSectionRow,columnspan=10, sticky=Tkinter.W)
+    #lbl_sens = Tkinter.Label(tab1, text="Sensor Status")
+    #lbl_sens.grid(row=sensorsSectionTitleRow, sticky=Tkinter.W)
+    #sensFrame = Tkinter.Frame(tab1, width=400, height=50)
+    #sensFrame.grid(row=sensorsSectionRow,columnspan=10, sticky=Tkinter.W)
 
-    lbl_alg = Tkinter.Label(tab1, text="Algorithm Status")
-    lbl_alg.grid(row=percSectionTitleRow, sticky=Tkinter.W)
-    algFrame = Tkinter.Frame(tab1, width=400, height=50)
-    algFrame.grid(row=percSectionRow,columnspan=10, sticky=Tkinter.W)
+    #lbl_alg = Tkinter.Label(tab1, text="Algorithm Status")
+    #lbl_alg.grid(row=percSectionTitleRow, sticky=Tkinter.W)
+    #algFrame = Tkinter.Frame(tab1, width=400, height=50)
+    #algFrame.grid(row=percSectionRow,columnspan=10, sticky=Tkinter.W)
 
-    lbl_text = Tkinter.Label(tab1, text="Text Status")
-    lbl_text.grid(row=textSectionTitleRow, sticky=Tkinter.W)
-    textFrame = Tkinter.Frame(tab1, width=400, height=50)
-    textFrame.grid(row=textSectionRow,columnspan=10, sticky=Tkinter.W)
+    #lbl_text = Tkinter.Label(tab1, text="Text Status")
+    #lbl_text.grid(row=textSectionTitleRow, sticky=Tkinter.W)
+    #textFrame = Tkinter.Frame(tab1, width=400, height=50)
+    #textFrame.grid(row=textSectionRow,columnspan=10, sticky=Tkinter.W)
     
     #lbl_cmd = Tkinter.Label(tab2, text="Send Command")
     #lbl_cmd.grid(row=1, sticky=Tkinter.W)
@@ -160,6 +159,9 @@ class Interface:
     drvValFrame = Tkinter.Frame(tab3, width=400, height=50)
     drvValFrame.grid(row=drvValButtonsRow,columnspan=10, sticky=Tkinter.W)
 
+    button4 = Tkinter.Button(allLaunchFrame, text="Start All", width=buttonWidth*2, padx=1, relief="raised",command=agent.setLaunchAll)
+    button4.grid(column=4, row=2, sticky=Tkinter.W+Tkinter.E)
+
     # use global map_name - global mapsel controls the menu selection
     mapsel = Tkinter.StringVar(allLaunchFrame);
    
@@ -176,8 +178,7 @@ class Interface:
     m=Tkinter.OptionMenu(allLaunchFrame, mapsel, *map_options, command=self.updateMap)
     m.grid(column=3, row=2, sticky=Tkinter.W+Tkinter.E)
 
-    #button4 = Tkinter.Button(allLaunchFrame, text="Bye", width=buttonWidth*2, padx=1, relief="raised",command=bye)
-    #button4.grid(column=4, row=2, sticky=Tkinter.W+Tkinter.E)
+
     
     #button5 = Tkinter.Button(setConfigFrame, text="Demo", width=buttonWidth*2, padx=1, relief="raised",command=demoConfig)
     #button5.grid(column=1, row=1, sticky=Tkinter.W+Tkinter.E)
@@ -189,15 +190,15 @@ class Interface:
     stopWidth = 6
     msgWidth = 8
     objRow = 1
-    for s in subsystems:
-      s.label = Tkinter.Button(compFrame, text=s.name, width=commandWidth, padx=1, relief="raised", command=s.start)
-      s.label.grid(column=1, row=objRow, sticky=Tkinter.W+Tkinter.E)
-      s.label = Tkinter.Button(compFrame, text="stop", width=stopWidth, padx=1, relief="raised", command=s.stop)
-      s.label.grid(column=2, row=objRow, sticky=Tkinter.W+Tkinter.E)
+    for s in agent.subsystems:
+      s.startButton = Tkinter.Button(compFrame, text=s.name, width=commandWidth, padx=1, relief="raised", command=s.start)
+      s.startButton.grid(column=1, row=objRow, sticky=Tkinter.W+Tkinter.E)
+      s.stopButton = Tkinter.Button(compFrame, text="stop", width=stopWidth, padx=1, relief="raised", command=s.stop)
+      s.stopButton.grid(column=2, row=objRow, sticky=Tkinter.W+Tkinter.E)
       
       objCol = 3
       for m in s.monitors:
-        m.label = Tkinter.Button(compFrame, text=m.name, width=msgWidth, padx=1, relief="raised", bg="pink", command=m.displayMore)
+        m.label = Tkinter.Button(compFrame, text=m.name, width=msgWidth, padx=1, relief="raised", bg="#505050", command=m.displayMore)
         m.label.grid(column=objCol, row=objRow, sticky=Tkinter.W+Tkinter.E)
         objCol = objCol + 1
         
@@ -295,20 +296,24 @@ class Interface:
       
       print (printPATHSPDparams)
       
-    #global failureModeRequestPub
-    
-    #failureModeRequestPub.publish(msg)
     return msg
+  
+  def statusToColor(self,status):
+    if status == 3:
+      return "lightgreen"
+    elif status == 2:
+      return "orange"
+    elif status == 1:
+      return "pink"
+    else:
+      return "#D0D0D0"
   
   def update(self,subsystems):
     for s in subsystems:
       for m in s.monitors:
-        if m.status == 1:
-          m.label.configure(bg="pink")
-        elif m.status == 2:
-          m.label.configure(bg="orange")
-        elif m.status == 3:
-          m.label.configure(bg="lightgreen") 
+        m.label.configure(bg=self.statusToColor(m.status))
+        
+      s.startButton.configure(bg=self.statusToColor(s.status))
     
     self.window.update_idletasks()
     self.window.update()

@@ -11,10 +11,12 @@ class Subsystem:
     self.launchDepend = []
     self.runDepend = []
     
-    self.mode = 'Stopped'
+    self.startButton = []
+    self.stopButton = []
+    self.isStarted = 0
     self.status = 0
     self.timeStopped = 0
-    self.timeGood = 0
+    self.timeStarted = 0
 
   def add_command(self, command, printDebug):
     self.commands.append(command)
@@ -31,15 +33,15 @@ class Subsystem:
     self.runDepend.append(name)
     
   def start(self):
-    self.updateStatus('Starting')
+    self.updateStatus('Start')
     for c in self.commands:
-      print("Launch: ", c.name)
+      print("Start: ", c.name)
       c.start()
     
   def stop(self):
-    self.updateStatus('Stopping')
+    self.updateStatus('Stop')
     for c in self.commands:
-      print("Stopping: ", c.name)
+      print("Stop: ", c.name)
       c.stop()
   
   def stateToString(status):
@@ -53,30 +55,27 @@ class Subsystem:
       return 'Good'
   
   def updateStatus(self,source):
-    if source == 'Starting' or source == 'Stopping':
-      self.mode = source
-      self.status = 0
+    if source == 'Start' or source == 'Stop':
+      if source == 'Start':
+        self.isStarted = 1
+      else:
+        self.isStarted = 0
       self.statusTime = 0
     
     elif source == 'Update':
-      
       # Get status from monitors
-      minStatus = 3
+      self.status = 3
       for m in self.monitors:
-        mStatus = m.getStatus()
-        minStatus = min(minStatus, mStatus)
+        mStatus = m.updateStatus(self.isStarted)
+        self.status = min(self.status, mStatus)
 
-          
-      # Handle case when status is supposed to be grey
-      if self.mode == 'Stopping' and minStatus <= 1:
-        minStatus = 0  # Not ready
-        
       # Update subsystem timers
-      if minStatus <= 1:
+      if self.isStarted == 0:
+        self.status = 0
         self.timeStopped = self.timeStopped + 0.1
         self.timeGood = 0
       else:
-        self.timeGood = self.timeGood + 0.1
+        self.timeStarted = self.timeStarted + 0.1
         self.timeStopped = 0
       
       

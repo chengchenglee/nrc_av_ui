@@ -30,7 +30,7 @@ if True:
   roscore.run()
   time.sleep(0.5)
   
-  interface.setupWindow(agent.subsystems)
+  interface.setupWindow(agent)
 
   os.system("rosparam set /agent_name "+agent.name)
   os.system("rosrun nrc_svcs paramsForDriving.sh")

@@ -14,6 +14,7 @@ class Monitor:
     self.avgTimeDiff = 0
     self.tLastRvcd = time.time()
     self.status = 0
+    self.subsystemMode = 'Stopping'
     self.label = 0
 
   def setRates(self,rates):
@@ -26,22 +27,28 @@ class Monitor:
     
     # Using exponential moving average with a time constant of 3 seconds
     #alpha = 1 - exp(-tDiff / 3)
-    alpha = 0.3
+    alpha = 0.7
     self.avgTimeDiff = min(10, max(0.005, alpha * tDiff + (1-alpha)*self.avgTimeDiff))
     #print('msgCallback:',self.avgTimeDiff)
     
-  def getStatus(self):
-    tDiffFailing = (1/self.failing)
-    tDiffFailed = (1/self.failed)
+  def updateStatus(self,isStarted):
+    tDiffFailing = min(3, (1/self.failing))
+    tDiffFailed = min(5, 3*(1/self.failed))
     current_time = time.time()
     tDiff = min(10, max(0.005, current_time-self.tLastRvcd))
     
-    if tDiff > 3*tDiffFailed or self.avgTimeDiff >= tDiffFailed:
+    if tDiff > tDiffFailed or self.avgTimeDiff >= tDiffFailed:
       self.status = 1
     elif tDiff < tDiffFailing and self.avgTimeDiff < tDiffFailing:
       self.status = 3
     else:
       self.status = 2
+
+    if self.status <= 1:
+      if isStarted == 0:
+        self.status = 0  # Not ready
+      else:
+        self.status = 1  # Failed
 
     return self.status
 

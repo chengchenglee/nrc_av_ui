@@ -77,6 +77,10 @@ def read_subsystems(text, printDebug):
         name = line.split(': ')[1]
         current_command = Command(name)
         
+      elif 'NodeName:' in line:
+        name = line.split(': ')[1]
+        current_command.nodeName = name
+        
       elif 'Command:' in line:
         command = line.split(': ')[1]
         current_command.command = command
@@ -89,7 +93,7 @@ def read_subsystems(text, printDebug):
     if mode == 'Depends':
       if 'Launch' in line:
         print(line)
-        name = line.split(':')[1]
+        name = line.split(':')[1].lstrip(' ')
         current_subsystem.add_launch_depend(name)
         
       elif 'Run' in line:

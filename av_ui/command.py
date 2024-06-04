@@ -7,6 +7,7 @@ class Command:
   def __init__(self, name):
     self.name = name
     self.command = ""
+    self.nodeName = ""
     self.launchTime = 30
     self.started = False
     
@@ -23,7 +24,16 @@ class Command:
   def stop(self):
     if (self.started):
       if 'rosrun' in self.command:
-        a = 1
+        if self.nodeName != "":
+          command = "rosnode kill "+self.nodeName
+          os.system(command)
+          print(command)
+          self.started = False
+      elif  ("ntrip" in self.command) or ("Ntrip" in self.command):
+        # kill ntrip script by pkill -f
+        print ("Stopping ntrip script")
+        os.system("pkill -f ntrip")
+        self.started = False
       else:
         # Get nodes list from roslaunch file
         nodes = os.popen(self.command+" --nodes &").read()
