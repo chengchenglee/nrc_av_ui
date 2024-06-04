@@ -24,6 +24,9 @@ Subsystem:
         Command: roslaunch nrc_svcs leaf_tf_subsystem.launch sanborn:=true
         Type: Software
         LaunchTime: 1
+    Diagnostic:
+      Retry: 3
+      Timeout: 5
     Depends:
       - Launch:
         Run:
@@ -56,8 +59,8 @@ Subsystem:
     Diagnostic:
       LED: 5
       Retry: 3
-      Timeout: 30
-      File: 
+      Timeout: 5
+      File:
     Depends:
       - Launch: Sim
         Run:
@@ -77,8 +80,8 @@ Subsystem:
         LaunchTime: 3.0
     Diagnostic:
       LED: 6
-      Retry: 5
-      Timeout: 30
+      Retry: 3
+      Timeout: 5
     Depends:
       - Launch: WM
         Run:
@@ -102,8 +105,8 @@ Subsystem:
         LaunchTime: 3.0
     Diagnostic:
       LED: 7
-      Retry: 5
-      Timeout: 30
+      Retry: 3
+      Timeout: 5
     Depends:
       - Launch: Goals
         Run:

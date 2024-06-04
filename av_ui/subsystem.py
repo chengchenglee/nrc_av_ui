@@ -10,13 +10,24 @@ class Subsystem:
     self.monitors = []
     self.launchDepend = []
     self.runDepend = []
-    
-    self.startButton = []
-    self.stopButton = []
+        
+    # Status
     self.isStarted = 0
     self.status = 0
-    self.timeStopped = 0
-    self.timeStarted = 0
+    #self.timeStopped = 0
+    #self.timeStarted = 0
+    self.timeFailing = 0
+    
+    # Diagnostics
+    self.ledIdx = -1
+    self.numRetries = 0
+    self.timeout = 30
+    self.readyToMonitor = False
+    self.restartRequest = False
+    
+    # Interface
+    self.startButton = []
+    self.stopButton = []
 
   def add_command(self, command, printDebug):
     self.commands.append(command)
@@ -40,6 +51,7 @@ class Subsystem:
     
   def stop(self):
     self.updateStatus('Stop')
+    self.readyToMonitor = False
     for c in self.commands:
       print("Stop: ", c.name)
       c.stop()
@@ -72,10 +84,20 @@ class Subsystem:
       # Update subsystem timers
       if self.isStarted == 0:
         self.status = 0
-        self.timeStopped = self.timeStopped + 0.1
-        self.timeGood = 0
       else:
-        self.timeStarted = self.timeStarted + 0.1
-        self.timeStopped = 0
-      
+        # Check if subsystem needs restarting
+        if self.readyToMonitor == False:
+          if self.status >= 2:
+            self.readyToMonitor = True
+            print("Ready to monitor:",self.name)
+        else:
+          if self.status >= 2:
+            self.timeFailing = 0
+          else:
+            if self.timeFailing < self.timeout:
+              print("Subsystem failing:",self.name,self.timeFailing,self.timeout)
+              self.timeFailing = self.timeFailing + 0.1
+            else:
+              self.restartRequest = True
+              print("Restart request:",self.name)
       

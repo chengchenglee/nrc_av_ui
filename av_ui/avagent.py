@@ -31,21 +31,28 @@ class AvAgent:
     self.launchAll = True
 
   def pollMonitors(self):
-    if self.launchAll == True:
-      for s in self.subsystems:
-        if s.status == 0:
-          readyToLaunch = True
-          
-          for sDepend in s.launchDepend:
-            for sOther in self.subsystems:
-              if (sDepend != '') and (sDepend in sOther.name) and (sOther.status < 3):
-                #print("Launch depend:",s.name,sOther.name,sOther.status)
-                readyToLaunch = False
-          
-          #print("Launch:",s.name,readyToLaunch)
-          if readyToLaunch == True:
-            s.start()
+    # Check if subsystems need relaunching
+    for s in self.subsystems:
+      if s.restartRequest == True:
+        print('Restarting:',s.name)
+      
+      launchAll = self.launchAll == True and s.status == 0 and s.timeStopped > 1
+      restartS = s.restartRequest == True
+      launch = self.launchAll == True or s.restartRequest == True
+      if restartS or launchAll:
+        readyToLaunch = True
+        
+        for sDepend in s.launchDepend:
+          for sOther in self.subsystems:
+            if (sDepend != '') and (sDepend in sOther.name) and (sOther.status < 3):
+              #print("Launch depend:",s.name,sOther.name,sOther.status)
+              readyToLaunch = False
+        
+        #print("Launch:",s.name,readyToLaunch)
+        if readyToLaunch == True:
+          s.start()
+          s.restartRequest = False
     
-    
+    # Check if subsystems need restarting
     for s in self.subsystems:
       s.updateStatus('Update')

@@ -42,15 +42,25 @@ def read_subsystems(text, printDebug):
       current_monitor.good = -1
       if printDebug: print(" ")
       if printDebug: print("New Subsystem:",current_subsystem.name)
-      mode = 'Health Topics'
+    
+    if 'HealthTopics:' in line:
+      mode = 'HealthTopics'
       if printDebug: print("==== Search for health ====")
     
-    if mode == 'Health Topics':
-      if 'Commands:' in line:
-        mode = 'Commands'
-        if printDebug: print("==== Search for commands ====")
-        
-      elif '- HealthTopic:' in line:
+    elif 'Commands:' in line:
+      mode = 'Commands'
+      if printDebug: print("==== Search for commands ====")
+      
+    elif 'Diagnostic:' in line:
+      mode = 'Diagnostic'
+      if printDebug: print("==== Search for diagnostics ====")
+      
+    elif 'Depends:' in line:
+      mode = 'Depends'
+      if printDebug: print("==== Search for dependencies ====")
+    
+    if mode == 'HealthTopics':
+      if '- HealthTopic:' in line:
         topic = line.split(': ')[1]
         current_monitor = Monitor(topic)
         
@@ -60,7 +70,6 @@ def read_subsystems(text, printDebug):
         
       elif 'HealthTopicType:' in line:
         topicType = line.split(': ')[1]
-        if printDebug: print(topicType)
         current_monitor.topicType = get_class(topicType)
         
       elif 'NomWarnErrRate:' in line:
@@ -69,11 +78,7 @@ def read_subsystems(text, printDebug):
         current_subsystem.add_monitor(current_monitor, printDebug)
     
     if mode == 'Commands':
-      if 'Depends' in line:
-        mode = 'Depends'
-        if printDebug: print("==== Search for dependencies ====")
-    
-      elif '- Name:' in line:
+      if '- Name:' in line:
         name = line.split(': ')[1]
         current_command = Command(name)
         
@@ -87,12 +92,25 @@ def read_subsystems(text, printDebug):
 
       elif 'LaunchTime:' in line:
         launch_time = line.split(': ')[1]
-        current_command.launchTime = launch_time
+        current_command.launchTime = float(launch_time)
         current_subsystem.add_command(current_command, printDebug)
+    
+    if mode == 'Diagnostic':
+      if 'LED' in line:
+        idx = line.split(': ')[1]
+        current_subsystem.ledIdx = int(idx)
+        if printDebug: print('LED Index:',idx)
+      elif 'Retry' in line:
+        numRetries = line.split(': ')[1]
+        current_subsystem.numRetries = int(numRetries)
+        if printDebug: print('numRetries:',numRetries)
+      elif 'Timeout' in line:
+        timeout = line.split(': ')[1]
+        current_subsystem.timeout = float(timeout)
+        if printDebug: print('timeout:',timeout)
     
     if mode == 'Depends':
       if 'Launch' in line:
-        print(line)
         name = line.split(':')[1].lstrip(' ')
         current_subsystem.add_launch_depend(name)
         
