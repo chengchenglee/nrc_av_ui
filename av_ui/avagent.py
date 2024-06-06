@@ -12,47 +12,39 @@ class AvAgent:
     self.mapName = "Franklin.set"
     self.subsystems = []
     self.launchAll = False
-    
+
     # Load the agent configuration
-    
     with open(filename, 'r') as file:
       text = file.read()
-
     printDebug = False
     self.subsystems = Loader.read_subsystems(text, printDebug)
-  
-  def subscribe(self):
+
+  def pubSubSetup(self):
     rospy.init_node('listener', anonymous=True)  # AvAgent Node
     Loader.subscribe_health_msgs(self.subsystems)
     avStatusPub = rospy.Publisher("ailsv_av_status",InterventionRequest,queue_size=1)
-    
+
   def setLaunchAll(self):
-    print("Launch all!!")
     self.launchAll = True
 
   def pollMonitors(self):
-    # Check if subsystems need relaunching
+    # Check if subsystems need launching
     for s in self.subsystems:
-      if s.restartRequest == True:
-        print('Restarting:',s.name)
+      start = self.launchAll == True and s.status == 0 and s.timeStopped > 1
+
+      dependenciesMet = True
+      for sDepend in s.launchDepend:
+        for sOther in self.subsystems:
+          if (sDepend != '') and (sDepend in sOther.name) and (sOther.status < 3):
+            dependenciesMet = False
       
-      launchAll = self.launchAll == True and s.status == 0 and s.timeStopped > 1
-      restartS = s.restartRequest == True
-      launch = self.launchAll == True or s.restartRequest == True
-      if restartS or launchAll:
-        readyToLaunch = True
+      if dependenciesMet:
+        if s.restartRequest and s.isStarted == 1:
+          s.stop()
         
-        for sDepend in s.launchDepend:
-          for sOther in self.subsystems:
-            if (sDepend != '') and (sDepend in sOther.name) and (sOther.status < 3):
-              #print("Launch depend:",s.name,sOther.name,sOther.status)
-              readyToLaunch = False
-        
-        #print("Launch:",s.name,readyToLaunch)
-        if readyToLaunch == True:
-          s.start()
-          s.restartRequest = False
+        elif s.restartRequest or start:
+          s.start(s.restartRequest)
     
-    # Check if subsystems need restarting
+    # Update subsystem status
     for s in self.subsystems:
       s.updateStatus('Update')

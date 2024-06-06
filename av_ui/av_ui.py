@@ -28,7 +28,6 @@ interface = Interface(agent.name)
 if True:
   roscore = Roscore()
   roscore.run()
-  time.sleep(0.5)
   
   interface.setupWindow(agent)
 
@@ -36,18 +35,17 @@ if True:
   os.system("rosrun nrc_svcs paramsForDriving.sh")
   os.system("rosrun nrc_svcs paramsForMap.sh "+agent.mapName)
   
-  agent.subscribe()  
+  agent.pubSubSetup()  
     #agent.launchAll()
 
-  while running:    
+  while running:
     # Wait for updates
     agent.pollMonitors()
     interface.update(agent.subsystems)
-    
     time.sleep(0.1)
-            
+
   # End rospy
   print("Closing interface monitor")
   roscore.terminate()
   sys.exit(0)
-  
+

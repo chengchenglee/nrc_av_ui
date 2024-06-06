@@ -124,10 +124,10 @@ class Interface:
     #algFrame = Tkinter.Frame(tab1, width=400, height=50)
     #algFrame.grid(row=percSectionRow,columnspan=10, sticky=Tkinter.W)
 
-    #lbl_text = Tkinter.Label(tab1, text="Text Status")
-    #lbl_text.grid(row=textSectionTitleRow, sticky=Tkinter.W)
-    #textFrame = Tkinter.Frame(tab1, width=400, height=50)
-    #textFrame.grid(row=textSectionRow,columnspan=10, sticky=Tkinter.W)
+    lbl_text = Tkinter.Label(tab1, text="Text Status")
+    lbl_text.grid(row=textSectionTitleRow, sticky=Tkinter.W)
+    textFrame = Tkinter.Frame(tab1, width=400, height=50)
+    textFrame.grid(row=textSectionRow,columnspan=10, sticky=Tkinter.W)
     
     #lbl_cmd = Tkinter.Label(tab2, text="Send Command")
     #lbl_cmd.grid(row=1, sticky=Tkinter.W)
@@ -203,6 +203,9 @@ class Interface:
         objCol = objCol + 1
         
       objRow = objRow+1
+      
+    self.textBox = Tkinter.Message(textFrame, text="Init", padx=1, width=500, relief="raised", bg="white", anchor=Tkinter.W)
+    self.textBox.grid(column=0, row=0, columnspan=10)
       
     self.windowOpen = True
     
@@ -309,11 +312,19 @@ class Interface:
       return "#D0D0D0"
   
   def update(self,subsystems):
+    msgText = []
     for s in subsystems:
       for m in s.monitors:
         m.label.configure(bg=self.statusToColor(m.status))
-        
+        if m.displayText == 1 or m.autoText == 1:
+          msgText +=m.name+": "+m.msgText+'\n'
+
       s.startButton.configure(bg=self.statusToColor(s.status))
+    
+    if (msgText==[]):
+      msgText = "No status messages to display"
+    
+    self.textBox.configure(text=''.join(msgText))
     
     self.window.update_idletasks()
     self.window.update()

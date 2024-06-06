@@ -14,7 +14,7 @@ class Subsystem:
     # Status
     self.isStarted = 0
     self.status = 0
-    #self.timeStopped = 0
+    self.timeStopped = 0
     #self.timeStarted = 0
     self.timeFailing = 0
     
@@ -43,15 +43,23 @@ class Subsystem:
   def add_run_depend(self,name):
     self.runDepend.append(name)
     
-  def start(self):
-    self.updateStatus('Start')
-    for c in self.commands:
-      print("Start: ", c.name)
-      c.start()
+  def start(self,isRestart = False):
+    if isRestart == True:
+      print("Relaunch:",self.name)
+    else:
+      print("Launch:",self.name)
+    
+    if self.isStarted == 0:
+      for c in self.commands:
+        print("Start: ", c.name)
+        c.start()
+    
+      self.updateStatus('Start')
     
   def stop(self):
     self.updateStatus('Stop')
     self.readyToMonitor = False
+    self.isStarted = 0
     for c in self.commands:
       print("Stop: ", c.name)
       c.stop()
@@ -70,6 +78,7 @@ class Subsystem:
     if source == 'Start' or source == 'Stop':
       if source == 'Start':
         self.isStarted = 1
+        self.restartRequest = False
       else:
         self.isStarted = 0
       self.statusTime = 0
@@ -84,7 +93,9 @@ class Subsystem:
       # Update subsystem timers
       if self.isStarted == 0:
         self.status = 0
+        self.timeStopped = self.timeStopped + 0.1
       else:
+        
         # Check if subsystem needs restarting
         if self.readyToMonitor == False:
           if self.status >= 2:
@@ -98,6 +109,8 @@ class Subsystem:
               print("Subsystem failing:",self.name,self.timeFailing,self.timeout)
               self.timeFailing = self.timeFailing + 0.1
             else:
-              self.restartRequest = True
-              print("Restart request:",self.name)
+              if self.numRetries > 0:
+                self.restartRequest = True
+                self.numRetries = self.numRetries - 1
+                print("Restart request:",self.name)
       

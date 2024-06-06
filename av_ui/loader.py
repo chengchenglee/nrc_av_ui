@@ -19,7 +19,6 @@ def get_class( kls ):
   return globals()[kls]
 
 def read_subsystems(text, printDebug):
-  print("av_ui parse subsystems, printDebug = ", printDebug)
   subsystems = []
   lines = text.split('\n')
   current_subsystem = []

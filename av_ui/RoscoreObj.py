@@ -6,6 +6,7 @@ import shlex
 import sys
 import signal
 import psutil
+import time
 
 def kill_child_processes(parent_pid, sig=signal.SIGTERM):
   try:
@@ -32,14 +33,16 @@ class Roscore(object):
     if Roscore.__initialized:
       raise Exception("You can't create more than 1 instance of Roscore.")
     Roscore.__initialized = True
+
   def run(self):
     try:
       self.roscore_process = subprocess.Popen(['roscore'])
       self.roscore_pid = self.roscore_process.pid
+      time.sleep(0.5)
     except OSError as e:
       sys.stderr.write('roscore could not be run')
       raise e
-  
+
   def listPids(self):
     print("List pids.")
     try:
