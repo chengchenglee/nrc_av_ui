@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import time
+import numpy as np
 
 class Monitor:
   def __init__(self, topic):
@@ -21,6 +22,7 @@ class Monitor:
     self.msgText = "Default"
     self.msgCounter = 0
     self.statusText = ""
+    self.data = np.zeros((5,1))
 
   def setRates(self,rates):
     self.good, self.failing, self.failed = rates
@@ -31,12 +33,13 @@ class Monitor:
     self.tLastRvcd = current_time
     self.msgCounter = self.msgCounter + 1
     if self.msgCounter > 999: self.msgCounter = 0
-    
-    # Using exponential moving average with a time constant of 3 seconds
-    #alpha = 1 - exp(-tDiff / 3)
+
+    # Update avgTimeDiff
     alpha = 0.7
     self.avgTimeDiff = min(10, max(0.005, alpha * tDiff + (1-alpha)*self.avgTimeDiff))
-    #print('msgCallback:',self.avgTimeDiff)
+
+    if self.name == "ARD":
+      self.data[0,0] = data.data
     
   def updateStatus(self,isStarted):
     tDiffFailing = min(3, (1/self.failing))

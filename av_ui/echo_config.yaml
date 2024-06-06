@@ -1,0 +1,278 @@
+Configuration:
+  Name: Echo
+  Map: Franklin.set
+
+Subsystem:
+  CAR:
+    Type: Sensor
+    Description: Vehicle CAN
+    Trigger:
+      - Source: Startup
+    HealthTopics:
+      - HealthTopic: /CtrlStateFLG
+        HealthName: CAR
+        HealthTopicType: CtrlStateFLG
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /driver_marker_button
+        HealthName: ARD
+        HealthTopicType: Int16
+        NomWarnErrRate: 10, 8, 1
+    Commands:
+      - Name: CanZe1SvConsumer
+        Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=4 CanZe1SvConsumer:=true CanZe1SvWriter:=true Eyeq3Prod:=true Eyeq3ProdCh:=1
+        Type: Software
+        LaunchTime: 5.0
+      - Name: ARD
+        Command: roslaunch nrc_hw_svcs leaf_interface_arduino_ros.launch arduino_machine:=node04
+        Type: Software
+        LaunchTime: 1.0
+    Diagnostic:
+      LED: 1
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:
+
+  Pose:
+    Type: Sensor
+    Description: Raw GPS
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /gps_state/dynamic_global_pose_oxts
+        HealthName: RAW
+        HealthTopicType: DynamicPoseWithCovar
+        NomWarnErrRate: 100, 80, 60
+      - HealthTopic: /dynamic_global_pose
+        HealthName: DGP
+        HealthTopicType: DynamicPoseWithCovar
+        NomWarnErrRate: 100, 80, 60
+    Commands:
+      - Name: GPS_Raw
+        Command: roslaunch nrc_hw_svcs gps_leaf.launch
+        Type: Software
+        LaunchTime: 1.0
+      - Name: TF_Sys
+        Command: roslaunch nrc_svcs leaf_tf_subsystem.launch sanborn:=true
+        Type: Software
+        LaunchTime: 1.0
+      - Name: MapMatch
+        Command: rosrun nrc_wm2_svcs map_match name:=MapMatch_node _useOxts:=true
+        NodeName: MapMatch_node
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 2
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:
+
+  EYEQ5:
+    Type: Sensor
+    Description: Mobileye Camera
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /ME5/health
+        HealthName: NOD
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /ME5_ObjData
+        HealthName: CAN
+        HealthTopicType: Mobileye5ObjectArray
+        NomWarnErrRate: 30, 20, 10
+    Commands:
+      - Name: Can_Com_Eyeq5
+        Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=2 Eyeq5DevCh0:=true Eyeq5DevCh0Ch:=0 Eyeq5DevWrite:=true Eyeq5DevWriteCh:=0 Eyeq5DevCh1:=true Eyeq5DevCh1Ch:=1 nodeName:=eyeq5_node machine:=node04
+        Type: Software
+        LaunchTime: 2.0
+      - Name: Me2Yolo
+        Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch
+        Type: Software
+        LaunchTime: 1.0
+    Diagnostic:
+      LED: 3
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:
+
+  LU-CAM:
+    Type: Sensor
+    Description: Lucid Cams
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /lucid_cam_front/health_status
+        HealthName: LCF
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /lucid_cam_front_left/health_status
+        HealthName: LCL
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /lucid_cam_front_right/health_status
+        HealthName: LCR
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: LucidCamDriver
+        Command: roslaunch nrc_hw_svcs lucid_gige_cameras.launch
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 4
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:
+
+  LUMPCP:
+    Type: Algorithm
+    Description: Pointcloud_Processing
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /luminar_front/status
+        HealthName: LUF
+        HealthTopicType: DiagnosticStatus
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /luminar_back/status
+        HealthName: LUB
+        HealthTopicType: DiagnosticStatus
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /luminar_left/status
+        HealthName: LUL
+        HealthTopicType: DiagnosticStatus
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /luminar_right/status
+        HealthName: LUR
+        HealthTopicType: DiagnosticStatus
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /pc_processor/multi_object_tracker/tracked_object_set
+        HealthName: TOS
+        HealthTopicType: TrackedObjectSet
+        NomWarnErrRate: 10, 7, 3
+      - HealthTopic: /drivable_area_boundary_points
+        HealthName: DA
+        HealthTopicType: PointCloud2
+        NomWarnErrRate: 10, 7, 3
+    Commands:
+      - Name: LuminarDriver
+        Command: roslaunch luminar_ros luminar_lidars.launch
+        Type: Software
+        LaunchTime: 1.0
+      - Name: PCP
+        Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Echo:=true Leaf_Foxtrot:=false dynamic_global_pose_topic_name:=/dynamic_global_pose do_curb_detection:=false do_curb_points_accumulation:=false include_curb_points_for_drivable_area:=false include_lateral_curb_points_for_drivable_area:=false include_accumulated_curb_points_for_drivable_area:=false srcgs/cluster_height_threshold:=0.3
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 5
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch: EYEQ5
+        Run:
+
+  WM:
+    Type: Algorithm
+    Description: World Model
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /object_tracker/health
+        HealthName: FUS
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /traffic_light/detection/health
+        HealthName: TLR
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 1, 0.5, 0.2
+      - HealthTopic: /ailsv_virtual_objects
+        HealthName: VRT
+        HealthTopicType: TrackedObjectSet
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /master_filter/health
+        HealthName: WOS
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: WM
+        Command: roslaunch nrc_wm2_svcs leaf_pred.launch
+        Type: Software
+        LaunchTime: 1.0
+    Diagnostic:
+      LED: 6
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch: LUMPCP
+        Run:
+
+  PLAN:
+    Type: Algorithm
+    Description: AutoGoals
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /autoGoals/health
+        HealthName: ALG
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /drive_plan
+        HealthName: PLN
+        HealthTopicType: DriveGoalList
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /lane_planner_state
+        HealthName: TRP
+        HealthTopicType: LanePlannerState
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /lane_follower_state
+        HealthName: TRC
+        HealthTopicType: TrajectoryControllerState
+        NomWarnErrRate: 100, 60, 10
+    Commands:
+      - Name: AutoGoals
+        Command: rosrun nrc_wm2_svcs auto_goals2 __name:=AutoGoals_node
+        NodeName: AutoGoals_node
+        Type: Software
+        LaunchTime: 3.0
+      - Name: Trajectory Planner
+        Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=LeafFS
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 7
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch: WM
+        Run:
+
+  BAG:
+    Type: Algorithm
+    Description: Record bagfiles
+    Trigger:
+      - Source: ARD3
+    HealthTopics:
+    Commands:
+      - Name: BAG
+        Command: roslaunch nrc_svcs record_separately.launch record_machine:=node02
+        Type: Software
+        LaunchTime: 3.0
+      - Name: SNAP
+        Command: rosrun nrc_av_ui Snapshot_Trigger.py name:=trigger_node
+        NodeName: trigger_node
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 7
+      Retry: 0
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:

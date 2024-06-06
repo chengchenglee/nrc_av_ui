@@ -18,6 +18,14 @@ def leadingSpaces(text_line):
 def get_class( kls ):
   return globals()[kls]
 
+def getMapName(text):
+  mapName = 'Franklin.set'
+  lines = text.split('\n')
+  for line in lines:
+    if 'Map' in line:
+      mapName = line.split(': ')[1]
+      return mapName
+
 def read_subsystems(text, printDebug):
   subsystems = []
   lines = text.split('\n')
@@ -29,8 +37,7 @@ def read_subsystems(text, printDebug):
   foundSubsystem = False
   mode = 'Init'
   for line in lines:
-    #print(line)
-    
+
     if mode == 'Init':
       if 'Subsystem:' in line:
         foundSubsystem = True
@@ -41,6 +48,10 @@ def read_subsystems(text, printDebug):
       current_monitor.good = -1
       if printDebug: print(" ")
       if printDebug: print("New Subsystem:",current_subsystem.name)
+    
+    if 'Trigger:' in line:
+      mode = 'Trigger'
+      if printDebug: print("==== Search for trigger ====")
     
     if 'HealthTopics:' in line:
       mode = 'HealthTopics'
@@ -57,6 +68,23 @@ def read_subsystems(text, printDebug):
     elif 'Depends:' in line:
       mode = 'Depends'
       if printDebug: print("==== Search for dependencies ====")
+    
+    if mode == 'Trigger':
+      if '- Source:' in line:
+        source = line.split(': ')[1]
+        if 'Startup' in source:
+          current_subsystem.trigger = 'Startup'
+          current_subsystem.shouldBeStarted = 1
+        elif 'StartRequest' in source:
+          current_subsystem.trigger = 'StartRequest'
+        elif 'PMU' in source:
+          current_subsystem.trigger = 'PMU'
+          triggerBit = source.split('PMU')[1].rstrip(' ')
+          current_subsystem.triggerBit = int(triggerBit)
+        elif 'ARD' in source:
+          current_subsystem.trigger = 'ARD'
+          triggerBit = source.split('ARD')[1].rstrip(' ')
+          current_subsystem.triggerBit = int(triggerBit)
     
     if mode == 'HealthTopics':
       if '- HealthTopic:' in line:
@@ -100,9 +128,10 @@ def read_subsystems(text, printDebug):
         current_subsystem.ledIdx = int(idx)
         if printDebug: print('LED Index:',idx)
       elif 'Retry' in line:
-        numRetries = line.split(': ')[1]
-        current_subsystem.numRetries = int(numRetries)
-        if printDebug: print('numRetries:',numRetries)
+        maxRetries = int(line.split(': ')[1])
+        current_subsystem.maxRetries = maxRetries
+        current_subsystem.startsRemaining = 1 + maxRetries
+        if printDebug: print('maxRetries:',maxRetries)
       elif 'Timeout' in line:
         timeout = line.split(': ')[1]
         current_subsystem.timeout = float(timeout)

@@ -2,6 +2,7 @@
 
 from monitor import Monitor
 from command import Command
+import numpy as np
 
 class Subsystem:
   def __init__(self, name):
@@ -12,15 +13,20 @@ class Subsystem:
     self.runDepend = []
         
     # Status
-    self.isStarted = 0
+    self.trigger = 'StartRequest'
+    self.triggerBit = -1
+    self.monitorBitField = np.zeros((8,0))
+    self.shouldBeStarted = 0
+    self.isStarted = False
     self.status = 0
+    self.timeGood = 0
     self.timeStopped = 0
-    #self.timeStarted = 0
     self.timeFailing = 0
     
     # Diagnostics
     self.ledIdx = -1
-    self.numRetries = 0
+    self.maxRetries = 0
+    self.startsRemaining = 1
     self.timeout = 30
     self.readyToMonitor = False
     self.restartRequest = False
@@ -42,6 +48,13 @@ class Subsystem:
 
   def add_run_depend(self,name):
     self.runDepend.append(name)
+  
+  def reqStart(self):
+    self.shouldBeStarted = 2
+    self.startsRemaining = 1+self.maxRetries
+    
+  def reqStop(self):
+    self.shouldBeStarted = 0
     
   def start(self,isRestart = False):
     if isRestart == True:
@@ -49,7 +62,8 @@ class Subsystem:
     else:
       print("Launch:",self.name)
     
-    if self.isStarted == 0:
+    if self.isStarted == False:
+      self.startsRemaining = self.startsRemaining - 1
       for c in self.commands:
         print("Start: ", c.name)
         c.start()
@@ -59,7 +73,7 @@ class Subsystem:
   def stop(self):
     self.updateStatus('Stop')
     self.readyToMonitor = False
-    self.isStarted = 0
+    self.isStarted = False
     for c in self.commands:
       print("Stop: ", c.name)
       c.stop()
@@ -73,8 +87,20 @@ class Subsystem:
       return 'Failing'
     elif status == 3:
       return 'Good'
+    
+  def getBitField(self,data):
+    value = max(0,min(255,data))
+    bitField = np.zeros(8)
+    for bit in range(7,0,-1):
+      bitValue = 2**(bit)
+      if value >= bitValue:
+        bitField[bit] = 1
+        value -= bitValue
+      
+    return bitField
   
   def updateStatus(self,source):
+    ledStatus = np.zeros((8,0))
     if source == 'Start' or source == 'Stop':
       if source == 'Start':
         self.isStarted = 1
@@ -89,28 +115,47 @@ class Subsystem:
       for m in self.monitors:
         mStatus = m.updateStatus(self.isStarted)
         self.status = min(self.status, mStatus)
+        
+        if m.name == 'ARD' or m.name == 'PMU':
+          self.monitorBitField = getBitField(m.data)
+          
+        if self.triggerBit != -1 and self.trigger == 'ARD' or self.trigger == 'PMU':
+          self.shouldBeStarted = self.monitorBitField(self.triggerBit)
+          
+        if m.name == 'PMU':
+          if self.monitorBitField(6):
+            self.shouldBeStarted = max(1, self.shouldBeStarted)
 
       # Update subsystem timers
       if self.isStarted == 0:
         self.status = 0
+        self.timeGood = 0
         self.timeStopped = self.timeStopped + 0.1
+
       else:
-        
         # Check if subsystem needs restarting
         if self.readyToMonitor == False:
           if self.status >= 2:
-            self.readyToMonitor = True
-            print("Ready to monitor:",self.name)
+            if self.timeGood < 2:
+              self.timeGood = self.timeGood + 0.1
+            else:
+              self.readyToMonitor = True
+              print("Ready to monitor:",self.name)
+
         else:
           if self.status >= 2:
             self.timeFailing = 0
+            self.restartRequest = False
           else:
             if self.timeFailing < self.timeout:
               print("Subsystem failing:",self.name,self.timeFailing,self.timeout)
               self.timeFailing = self.timeFailing + 0.1
             else:
-              if self.numRetries > 0:
+              if self.startsRemaining > 0:
                 self.restartRequest = True
-                self.numRetries = self.numRetries - 1
                 print("Restart request:",self.name)
       
+      if self.ledIdx != -1:
+        ledStatus(self.ledIdx) = self.status
+        
+      return ledStatus

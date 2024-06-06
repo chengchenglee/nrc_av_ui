@@ -18,13 +18,13 @@ else: # 3+
     import tkinter.ttk as ttk
     
 class Interface:
-  def __init__(self, name):
+  def __init__(self, name, mapName):
     self.name = name
     self.window = []
     self.windowOpen = False
     self.launchAllReq = False
     
-    self.selectedMap = 'Franklin.set'
+    self.selectedMap = mapName
     self.mapsel = []
     self.stack_active = False
     
@@ -191,9 +191,9 @@ class Interface:
     msgWidth = 8
     objRow = 1
     for s in agent.subsystems:
-      s.startButton = Tkinter.Button(compFrame, text=s.name, width=commandWidth, padx=1, relief="raised", command=s.start)
+      s.startButton = Tkinter.Button(compFrame, text=s.name, width=commandWidth, padx=1, relief="raised", command=s.reqStart)
       s.startButton.grid(column=1, row=objRow, sticky=Tkinter.W+Tkinter.E)
-      s.stopButton = Tkinter.Button(compFrame, text="stop", width=stopWidth, padx=1, relief="raised", command=s.stop)
+      s.stopButton = Tkinter.Button(compFrame, text="stop", width=stopWidth, padx=1, relief="raised", command=s.reqStop)
       s.stopButton.grid(column=2, row=objRow, sticky=Tkinter.W+Tkinter.E)
       
       objCol = 3
