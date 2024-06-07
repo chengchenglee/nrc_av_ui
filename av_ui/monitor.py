@@ -2,6 +2,7 @@
 
 import time
 import numpy as np
+import glob
 
 class Monitor:
   def __init__(self, topic):
@@ -22,7 +23,7 @@ class Monitor:
     self.msgText = "Default"
     self.msgCounter = 0
     self.statusText = ""
-    self.data = np.zeros((5,1))
+    self.data = np.zeros(5)
 
   def setRates(self,rates):
     self.good, self.failing, self.failed = rates
@@ -38,8 +39,8 @@ class Monitor:
     alpha = 0.7
     self.avgTimeDiff = min(10, max(0.005, alpha * tDiff + (1-alpha)*self.avgTimeDiff))
 
-    if self.name == "ARD":
-      self.data[0,0] = data.data
+    if self.name == "ARD" or self.name == "PMU":
+      self.data = data.data
     
   def updateStatus(self,isStarted):
     tDiffFailing = min(3, (1/self.failing))
@@ -68,6 +69,16 @@ class Monitor:
     else:
       self.autoText = 1
 
+    return self.status
+
+  def updateBagStatus(self):
+    todaysDate = ''.join(time.strftime("%Y_%m_%d"))
+    pathToBags = "/opt/data/rosbag/"+todaysDate+"/"
+    
+    activeFiles = glob.glob(pathToBags+"*.active")
+    #print("Bagfile location:",pathToBags)
+    #print("Files:",activeFiles)
+    self.status = 1
     return self.status
 
   def displayMore(self):
