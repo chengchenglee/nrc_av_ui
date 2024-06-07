@@ -7,6 +7,7 @@ import loader as Loader
 from nrc_msgs.msg import InterventionRequest
 from std_msgs.msg import Int16MultiArray
 import numpy as np
+import time
 
 class AvAgent:
   def __init__(self, agent_type, agent_name):
@@ -17,6 +18,9 @@ class AvAgent:
     self.subsystems = []
     self.avStatusPub = []
     self.avLedStatusPub = []
+    self.pmuAvIdx = 3
+    self.pmuState = [0,0,0,0,0,0,0,0]
+    self.ardState = [0,0,0,0,0,0,0,0]
 
     # Load the agent configuration
     with open(self.filename, 'r') as file:
@@ -60,15 +64,21 @@ class AvAgent:
           s.stop()
 
     # Update subsystem status
-    ledStatus = [0,0,0,0,0,0,0,0] 
+    ledVec = [0,0,0,0,0,0,0,0]
     for s in self.subsystems:
-      sStatus = s.updateStatus('Update')
+      sLedVec = s.updateStatus('Update')
+      if s.name == 'CAR':
+        if s.pmuData[self.pmuAvIdx] == 2 and self.pmuState[self.pmuAvIdx] == 1:
+          print('PMU Start Request!')
+          self.setLaunchAll()
+          
+        self.pmuState = s.pmuData
+        self.ardState = s.ardData
       
-    for i in range(0:7):
-      sStatus[i] = max(sStatus[i], ledStatus)
+      for i in range(0,7,1):
+        ledVec[i] = max(sLedVec[i], ledVec[i])
       
     avStatusLedMsg = Int16MultiArray()
     avStatusLedMsg.layout.data_offset = 8
-    avStatusLedMsg.data = ledStatus
-      
-      
+    avStatusLedMsg.data = ledVec
+    self.avLedStatusPub.publish(avStatusLedMsg)

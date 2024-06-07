@@ -15,7 +15,9 @@ class Subsystem:
     # Status
     self.trigger = 'StartRequest'
     self.triggerBit = -1
-    self.monitorBitField = np.zeros((8,0))
+    self.PMU_AD_ON_BIT = 3
+    self.ardData = []
+    self.pmuData = []
     self.shouldBeStarted = 0
     self.isStarted = False
     self.status = 0
@@ -89,7 +91,7 @@ class Subsystem:
       return 'Good'
     
   def getBitField(self,data):
-    value = max(0,min(255,data))
+    value = max(0,min(255,data[0]))
     bitField = np.zeros(8)
     for bit in range(7,0,-1):
       bitValue = 2**(bit)
@@ -100,7 +102,7 @@ class Subsystem:
     return bitField
   
   def updateStatus(self,source):
-    ledStatus = np.zeros((8,0))
+    ledStatus = [0,0,0,0,0,0,0,0]
     if source == 'Start' or source == 'Stop':
       if source == 'Start':
         self.isStarted = 1
@@ -109,22 +111,23 @@ class Subsystem:
         self.isStarted = 0
       self.statusTime = 0
     
-    elif source == 'Update':
+    elif source == 'Update' and self.name == 'BAG':
+      self.status = 3
+      for m in self.monitors:
+        mStatus = m.updateBagStatus()
+        self.status = min(self.status, mStatus)
+        
+    elif source == 'Update' and self.name != 'BAG':
       # Get status from monitors
       self.status = 3
       for m in self.monitors:
         mStatus = m.updateStatus(self.isStarted)
         self.status = min(self.status, mStatus)
         
-        if m.name == 'ARD' or m.name == 'PMU':
-          self.monitorBitField = getBitField(m.data)
-          
-        if self.triggerBit != -1 and self.trigger == 'ARD' or self.trigger == 'PMU':
-          self.shouldBeStarted = self.monitorBitField(self.triggerBit)
-          
-        if m.name == 'PMU':
-          if self.monitorBitField(6):
-            self.shouldBeStarted = max(1, self.shouldBeStarted)
+        if m.name == 'ARD':
+          self.ardData = m.data
+        elif m.name == 'PMU':
+          self.pmuData = m.data
 
       # Update subsystem timers
       if self.isStarted == 0:
@@ -154,8 +157,12 @@ class Subsystem:
               if self.startsRemaining > 0:
                 self.restartRequest = True
                 print("Restart request:",self.name)
-      
-      if self.ledIdx != -1:
-        ledStatus(self.ledIdx) = self.status
+                
+    # LED_COLORS {Red=0, Yellow=1, Green=2, Black=3, Blue=4, Purple=5};
+    if self.ledIdx != -1 and self.ledIdx < 8:
+      if self.status == 0:
+        ledStatus[self.ledIdx] = 3
+      else:
+        ledStatus[self.ledIdx] = self.status-1
         
-      return ledStatus
+    return ledStatus

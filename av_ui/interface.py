@@ -186,9 +186,9 @@ class Interface:
     #button6 = Tkinter.Button(setConfigFrame, text="Experimental", width=buttonWidth*2, padx=1, relief="raised",command=expConfig)
     #button6.grid(column=2, row=1, sticky=Tkinter.W+Tkinter.E)
     
-    commandWidth = 6
+    commandWidth = 7
     stopWidth = 6
-    msgWidth = 8
+    msgWidth = 7
     objRow = 1
     for s in agent.subsystems:
       s.startButton = Tkinter.Button(compFrame, text=s.name, width=commandWidth, padx=1, relief="raised", command=s.reqStart)

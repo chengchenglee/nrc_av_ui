@@ -13,9 +13,13 @@ Subsystem:
         HealthName: CAR
         HealthTopicType: CtrlStateFLG
         NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /driver_marker_button
+      - HealthTopic: /ard_state
         HealthName: ARD
-        HealthTopicType: Int16
+        HealthTopicType: Int16MultiArray
+        NomWarnErrRate: 10, 8, 1
+      - HealthTopic: /pmu_state
+        HealthName: PMU
+        HealthTopicType: Int16MultiArray
         NomWarnErrRate: 10, 8, 1
     Commands:
       - Name: CanZe1SvConsumer
@@ -23,11 +27,11 @@ Subsystem:
         Type: Software
         LaunchTime: 5.0
       - Name: ARD
-        Command: roslaunch nrc_hw_svcs leaf_interface_arduino_ros.launch arduino_machine:=node04
+        Command: roslaunch nrc_hw_svcs leaf_interface_arduino.launch arduino_machine:=node04
         Type: Software
         LaunchTime: 1.0
     Diagnostic:
-      LED: 1
+      LED: 0
       Retry: 3
       Timeout: 5
     Depends:
@@ -63,7 +67,7 @@ Subsystem:
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
-      LED: 2
+      LED: 1
       Retry: 3
       Timeout: 5
     Depends:
@@ -94,7 +98,7 @@ Subsystem:
         Type: Software
         LaunchTime: 1.0
     Diagnostic:
-      LED: 3
+      LED: 2
       Retry: 3
       Timeout: 5
     Depends:
@@ -125,7 +129,7 @@ Subsystem:
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
-      LED: 4
+      LED: 3
       Retry: 3
       Timeout: 5
     Depends:
@@ -139,19 +143,19 @@ Subsystem:
       - Source: StartRequest
     HealthTopics:
       - HealthTopic: /luminar_front/status
-        HealthName: LUF
+        HealthName: FRNT
         HealthTopicType: DiagnosticStatus
         NomWarnErrRate: 10, 6, 3
       - HealthTopic: /luminar_back/status
-        HealthName: LUB
+        HealthName: BACK
         HealthTopicType: DiagnosticStatus
         NomWarnErrRate: 10, 6, 3
       - HealthTopic: /luminar_left/status
-        HealthName: LUL
+        HealthName: LFT
         HealthTopicType: DiagnosticStatus
         NomWarnErrRate: 10, 6, 3
       - HealthTopic: /luminar_right/status
-        HealthName: LUR
+        HealthName: RGT
         HealthTopicType: DiagnosticStatus
         NomWarnErrRate: 10, 6, 3
       - HealthTopic: /pc_processor/multi_object_tracker/tracked_object_set
@@ -172,7 +176,7 @@ Subsystem:
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
-      LED: 5
+      LED: 4
       Retry: 3
       Timeout: 5
     Depends:
@@ -207,7 +211,7 @@ Subsystem:
         Type: Software
         LaunchTime: 1.0
     Diagnostic:
-      LED: 6
+      LED: 5
       Retry: 3
       Timeout: 5
     Depends:
@@ -221,12 +225,12 @@ Subsystem:
       - Source: StartRequest
     HealthTopics:
       - HealthTopic: /autoGoals/health
-        HealthName: ALG
+        HealthName: GOALS
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /drive_plan
-        HealthName: PLN
-        HealthTopicType: DriveGoalList
+      - HealthTopic: /prm/risk_field/health
+        HealthName: RSKFLD
+        HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
       - HealthTopic: /lane_planner_state
         HealthName: TRP
@@ -247,7 +251,7 @@ Subsystem:
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
-      LED: 7
+      LED: 6
       Retry: 3
       Timeout: 5
     Depends:
@@ -260,6 +264,10 @@ Subsystem:
     Trigger:
       - Source: ARD3
     HealthTopics:
+      - HealthTopic: /begin_write
+        HealthName: BAG
+        HealthTopicType: String
+        NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: BAG
         Command: roslaunch nrc_svcs record_separately.launch record_machine:=node02
