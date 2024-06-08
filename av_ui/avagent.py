@@ -77,13 +77,11 @@ class AvAgent:
         if s.pmuData[self.pmuAvIdx] == 2 and self.pmuState[self.pmuAvIdx] == 1:
           print('PMU Start Request!')
           self.pmuAvReqHist = 'Started'
-          self.pmuState[self.pmuAvIdx] = 2
           self.setLaunchAll()
           
         if s.pmuData[self.pmuAvIdx] == 1 and self.pmuState[self.pmuAvIdx] == 2 and self.pmuAvReqHist == 'Started':
           print('PMU Stop Request!')
           self.pmuAvReqHist = 'None'
-          self.pmuState[self.pmuAvIdx] = 1
           self.setStopRequested()
           
         self.pmuState = s.pmuData[:]
