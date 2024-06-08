@@ -12,6 +12,7 @@ class Monitor:
     self.good = -1
     self.failing = -1
     self.failed = -1
+    self.customLedValue = -1
     self.average_message_rate = 0
     self.avgTimeDiff = 0.005
     self.tLastRvcd = time.time()
@@ -40,7 +41,15 @@ class Monitor:
     self.avgTimeDiff = min(10, max(0.005, alpha * tDiff + (1-alpha)*self.avgTimeDiff))
 
     if self.name == "ARD" or self.name == "PMU":
-      self.data = data.data
+      self.data = data.data[:]
+    elif self.name == "DGP":
+      if 'INIT' in data.status_message or 'LOCKING' in data.status_message:
+        self.customLedValue = 5  # Purple, init or locking
+      elif 'RAW' in data.status_message:
+        self.customLedValue = 4  # Blue, no signal yet
+      else:
+        self.customLedValue = -1
+      
     
   def updateStatus(self,isStarted):
     tDiffFailing = min(3, (1/self.failing))
@@ -69,16 +78,6 @@ class Monitor:
     else:
       self.autoText = 1
 
-    return self.status
-
-  def updateBagStatus(self):
-    todaysDate = ''.join(time.strftime("%Y_%m_%d"))
-    pathToBags = "/opt/data/rosbag/"+todaysDate+"/"
-    
-    activeFiles = glob.glob(pathToBags+"*.active")
-    #print("Bagfile location:",pathToBags)
-    #print("Files:",activeFiles)
-    self.status = 1
     return self.status
 
   def displayMore(self):

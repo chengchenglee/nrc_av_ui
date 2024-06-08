@@ -21,6 +21,7 @@ class Subsystem:
     self.shouldBeStarted = 0
     self.isStarted = False
     self.status = 0
+    self.customDiagLed = -1
     self.timeGood = 0
     self.timeStopped = 0
     self.timeFailing = 0
@@ -103,6 +104,7 @@ class Subsystem:
   
   def updateStatus(self,source):
     ledStatus = [0,0,0,0,0,0,0,0]
+    customLedValue = -1
     if source == 'Start' or source == 'Stop':
       if source == 'Start':
         self.isStarted = 1
@@ -110,14 +112,8 @@ class Subsystem:
       else:
         self.isStarted = 0
       self.statusTime = 0
-    
-    elif source == 'Update' and self.name == 'BAG':
-      self.status = 3
-      for m in self.monitors:
-        mStatus = m.updateBagStatus()
-        self.status = min(self.status, mStatus)
         
-    elif source == 'Update' and self.name != 'BAG':
+    elif source == 'Update':
       # Get status from monitors
       self.status = 3
       for m in self.monitors:
@@ -125,9 +121,16 @@ class Subsystem:
         self.status = min(self.status, mStatus)
         
         if m.name == 'ARD':
-          self.ardData = m.data
+          self.ardData = []
+          for val in m.data:
+            self.ardData.append(val)
         elif m.name == 'PMU':
-          self.pmuData = m.data
+          self.pmuData = []
+          for val in m.data:
+            self.pmuData.append(val)
+        
+        if m.customLedValue != -1:
+          customLedValue = m.customLedValue
 
       # Update subsystem timers
       if self.isStarted == 0:
@@ -163,6 +166,9 @@ class Subsystem:
       if self.status == 0:
         ledStatus[self.ledIdx] = 3
       else:
-        ledStatus[self.ledIdx] = self.status-1
+        if customLedValue != -1:
+          ledStatus[self.ledIdx] = customLedValue
+        else:
+          ledStatus[self.ledIdx] = self.status-1
         
     return ledStatus

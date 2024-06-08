@@ -30,7 +30,6 @@ class Command:
           print(command)
           self.started = False
       elif  ("ntrip" in self.command) or ("Ntrip" in self.command):
-        # kill ntrip script by pkill -f
         print ("Stopping ntrip script")
         os.system("pkill -f ntrip")
         self.started = False

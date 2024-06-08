@@ -53,8 +53,12 @@ Subsystem:
         HealthTopicType: DynamicPoseWithCovar
         NomWarnErrRate: 100, 80, 60
     Commands:
+      - Name: NTRIP
+        Command: rosrun nrc_hw_svcs ntripCommand-leaf2.sh
+        Type: Software
+        LaunchTime: 1.0
       - Name: GPS_Raw
-        Command: roslaunch nrc_hw_svcs gps_leaf.launch
+        Command: roslaunch nrc_hw_svcs gps_leaf.launch sanborn:=true
         Type: Software
         LaunchTime: 1.0
       - Name: TF_Sys
@@ -62,7 +66,7 @@ Subsystem:
         Type: Software
         LaunchTime: 1.0
       - Name: MapMatch
-        Command: rosrun nrc_wm2_svcs map_match name:=MapMatch_node _useOxts:=true
+        Command: rosrun nrc_wm2_svcs map_match name:=MapMatch_node _useOxts:=true _useLaneMap:=true
         NodeName: MapMatch_node
         Type: Software
         LaunchTime: 3.0
@@ -262,20 +266,24 @@ Subsystem:
     Type: Algorithm
     Description: Record bagfiles
     Trigger:
-      - Source: ARD3
+      - Source: ARD2
     HealthTopics:
-      - HealthTopic: /begin_write
+      - HealthTopic: /BagfileHealth
         HealthName: BAG
-        HealthTopicType: String
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /SnapshotHealth
+        HealthName: SNP
+        HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: BAG
-        Command: roslaunch nrc_svcs record_separately.launch record_machine:=node02
+        Command: roslaunch nrc_av_ui record_separately.launch record_machine:=node02
         Type: Software
         LaunchTime: 3.0
       - Name: SNAP
-        Command: rosrun nrc_av_ui Snapshot_Trigger.py name:=trigger_node
-        NodeName: trigger_node
+        Command: roslaunch nrc_av_ui snapshotPipeline.launch
+        Type: Software
         LaunchTime: 3.0
     Diagnostic:
       LED: 7

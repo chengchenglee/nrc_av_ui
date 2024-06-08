@@ -1,22 +1,25 @@
 #! /bin/bash
-if [ -z ${NRCSV_BAG_DIR+x} ]; then
-  NRC_BAG_DIR=${HOME}/projects/disengagementData/;
-fi
-d=`date +%Y%m%d`
-b="/bags"
-cd ${NRC_BAG_DIR}
-echo `date +%Y%m%d`
-NRC_BAG_DIR+=$d
+#if [ -z ${NRCSV_BAG_DIR+x} ]; then
+#  NRC_BAG_DIR=${HOME}/projects/disengagementData/;
+#fi
 
-if [ -d ${NRC_BAG_DIR} ] 
+# Setup root recording directory
+NRC_BAG_DIR="${HOME}/projects/disengagementData/bags/"
+if [ -d ${NRC_BAG_DIR} ]
 then
-    echo "Date directory ${NRC_BAG_DIR} exists." 
+  echo "Root snapshot directory $NRC_BAG_DIR exists."
 else
-    echo "Creating directory ${NRC_BAG_DIR}"
-    mkdir -p ${NRC_BAG_DIR}
+  echo "Creating directory $NRC_BAG_DIR"
 fi
+cd $NRC_BAG_DIR
 
-NRC_BAG_DIR+=$b
+# Setup todays recording directory
+#year=`date +%Y`
+#month=`date +%m`
+#day=`date +%d`
+#d=$year"-"$month"-"$day
+d=`date +%Y-%m-%d`
+NRC_BAG_DIR+=$d
 
 if [ -d ${NRC_BAG_DIR} ] 
 then
@@ -29,6 +32,6 @@ fi
 cd ${NRC_BAG_DIR}
 echo "Disengagement/override to directory: " $PWD
 topics=$(echo $@ | sed 's/|//g')
-rosrun rosbag_snapshot snapshot --topic ${topics} -d 20 #Change 20s for something else for longer/shorter bag files
+rosrun rosbag_snapshot snapshot --topic ${topics} -d 30 #Change 20s for something else for longer/shorter bag files
 
 #echo ${topics}

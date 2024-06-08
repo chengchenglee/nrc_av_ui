@@ -5,6 +5,7 @@ from std_msgs.msg import Empty
 from std_msgs.msg import String
 from std_msgs.msg import Int32MultiArray
 from std_msgs.msg import Int16
+from std_msgs.msg import Int16MultiArray
 from diagnostic_msgs.msg import DiagnosticArray
 import numpy as np
 from nrc_msgs.msg import CtrlStateFLG
@@ -25,7 +26,7 @@ import progressbar
 #from RosMsgMonitorForAVinterface import *
 
 class CsvWriterAVinterface:
-    def __init__(self):
+    def __init__(self, uploadToAws):
         self.csvFileName = 'trigger_node_default.csv'
         self.timerInterval = 0.1        # Interval at which the timer callback will run.
         
@@ -54,13 +55,19 @@ class CsvWriterAVinterface:
         self.prefixList = []
         self.snapshotUpdated = False
         self.filename = ''
+        self.csvDir = os.path.join(os.path.expanduser("~"), 'projects/disengagementData/bags/', time.strftime("%Y-%m-%d"))
+        print("csvDir:",self.csvDir)
+        dirExists = os.path.isdir(self.csvDir)
         
         # AWS variables
-        self.session = boto3.Session(profile_name='foxtrot')
-        self.s3 = self.session.resource('s3')
-        self.s3Client = self.session.client('s3')
-        self.csvDir = os.path.join(os.path.expanduser("~"), 'projects/disengagementData/', time.strftime("%Y%m%d"),'bags')
+        self.session = []
+        self.s3 = []
+        self.s3Client = []
         self.rospyUp = False
+        if uploadToAws:
+          self.session = boto3.Session(profile_name='foxtrot')
+          self.s3 = self.session.resource('s3')
+          self.s3Client = self.session.client('s3')
 
         #Vehicle health publisher
         #self.pub = rospy.Publisher('health_status', DiagnosticArray, queue_size=10)
@@ -82,7 +89,8 @@ class CsvWriterAVinterface:
             self.prefixList.append('accOverride')
             self.ACC_OverrideTimer += self.timerInterval
         
-        if self.avEngaged and self.snapButton == 8:
+        if self.avEngaged and self.snapButton == 2:
+            print('Snapshot triggered by button press.')
             self.writeSnapshot = True
             self.prefixList.append('snapButton')
             self.snapButtonTimer += self.timerInterval
@@ -187,7 +195,8 @@ class CsvWriterAVinterface:
         to trigger recording a snapshot. The snapbutton has multiple usage, so 
         other values will be for other purposes.
         '''
-        self.snapButton = data.data
+        if len(data.data) > 1:
+          self.snapButton = data.data[1]
         #if self.snapButton > 0:
             #print('\n\n snapbutton value: {} \n\n'.format(self.snapButton))
         
@@ -260,14 +269,16 @@ class CsvWriterAVinterface:
         rospy.Subscriber('/snapshot_event_trigger', String, self.EventTriggerCallback)
         
         rospy.Subscriber('/CtrlStateFLG', CtrlStateFLG, self.CtrlStateFLGcallback)
-        rospy.Subscriber('/driver_marker_button', Int16, self.DriverMarkerButtonCallback)
+        rospy.Subscriber('/ard_state', Int16MultiArray, self.DriverMarkerButtonCallback)
         #rospy.Subscriber('/CtrlStateFLGDummy', Int32MultiArray, self.dummyCallback)
         
         #Start aws thread
         self.rospyUp = True
-        thread = Thread(target = self.awsSessionStart, args = (self, ))
-        thread.daemon = True
-        thread.start()
+        thread = []
+        if uploadToAws:
+          thread = Thread(target = self.awsSessionStart, args = (self, ))
+          thread.daemon = True
+          thread.start()
 
         while not rospy.is_shutdown():
             
@@ -278,11 +289,13 @@ class CsvWriterAVinterface:
         
         #Join aws thread
         self.rospyUp = False
-        thread.join()
+        if uploadToAws:
+          thread.join()
         
 if __name__ == '__main__':
     print ('Running')
-    clsObj = CsvWriterAVinterface()
+    uploadToAws = False
+    clsObj = CsvWriterAVinterface(uploadToAws)
     clsObj.listener()
 
 

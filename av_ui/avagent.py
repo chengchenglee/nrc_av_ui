@@ -19,6 +19,7 @@ class AvAgent:
     self.avStatusPub = []
     self.avLedStatusPub = []
     self.pmuAvIdx = 3
+    self.pmuAvReqHist = 'None'
     self.pmuState = [0,0,0,0,0,0,0,0]
     self.ardState = [0,0,0,0,0,0,0,0]
 
@@ -39,6 +40,11 @@ class AvAgent:
     for s in self.subsystems:
       if s.trigger == 'Startup' or s.trigger == 'StartRequest' or s.trigger == 'PMU':
         s.shouldBeStarted = max(1, s.shouldBeStarted)
+        
+  def setStopRequested(self):
+    for s in self.subsystems:
+      if s.trigger == 'StartRequest' or s.trigger == 'PMU' or s.trigger == 'ARD':
+        s.shouldBeStarted = 0
 
   def pollMonitors(self):
     # Check if subsystems need launching
@@ -70,12 +76,27 @@ class AvAgent:
       if s.name == 'CAR':
         if s.pmuData[self.pmuAvIdx] == 2 and self.pmuState[self.pmuAvIdx] == 1:
           print('PMU Start Request!')
+          self.pmuAvReqHist = 'Started'
+          self.pmuState[self.pmuAvIdx] = 2
           self.setLaunchAll()
           
-        self.pmuState = s.pmuData
-        self.ardState = s.ardData
+        if s.pmuData[self.pmuAvIdx] == 1 and self.pmuState[self.pmuAvIdx] == 2 and self.pmuAvReqHist == 'Started':
+          print('PMU Stop Request!')
+          self.pmuAvReqHist = 'None'
+          self.pmuState[self.pmuAvIdx] = 1
+          self.setStopRequested()
+          
+        self.pmuState = s.pmuData[:]
+        self.ardState = s.ardData[:]
       
-      for i in range(0,7,1):
+      if s.trigger == 'ARD' and s.triggerBit != -1 and s.triggerBit < len(self.ardState):
+          #print("check trigger",s.triggerBit,self.ardState, len(self.ardState))
+          if s.isStarted == 0 and self.ardState[s.triggerBit] > 0:
+            s.reqStart()
+          elif s.isStarted == 1 and self.ardState[s.triggerBit] == 0:
+            s.reqStop()
+      
+      for i in range(0,8,1):
         ledVec[i] = max(sLedVec[i], ledVec[i])
       
     avStatusLedMsg = Int16MultiArray()

@@ -2,11 +2,9 @@
 
   <machine name="local" address="localhost"/>
   <machine name="node02" address="node02" env-loader="$(find nrc_svcs)/launch/env.sh" />
-  <arg name="record_machine" default="local" />
+  <arg name="snapshot_machine" default="local" />
   <arg name="suffix" default="" />
 
-  <arg name="record_disengagement_snapshots" default="true"/> <!-- turn this on for snapshot rosbags during disengagement/override-->
-  
   <arg name="prefix" default="autonomy_log" />
   <arg name="compression" default="false" /> <!--bz2 compression -->
 
@@ -14,9 +12,6 @@
   <arg name="snapshot_system_main_topics"
   default="|/CAN_V_reader
   |/CtrlStateFLG
-  |/ME3_LKA_left
-  |/ME3_LKA_right
-  |/ME3_ObjData
   |/ME5_Construction_Objects
   |/ME5_Lanes
   |/ME5_Lanes_rviz
@@ -31,15 +26,12 @@
   |/ME5_Semantic_Marks
   |/ME5_TFL_rviz
   |/ME5_TrafficLight
-  |/Mobileye5_CANData
   |/Pose_gps
   |/ailsv_av_status
+  |/ard_state
+  |/pmu_state
   |/controller_state
   |/driver_input
-  |/dynamic_global_pose
-  |/dynamic_global_pose_conv
-  |/dynamic_global_pose_odo
-  |/dynamic_global_pose_odoGps
   |/gps_state/dynamic_global_pose_f9r
   |/gps_state/gps_state_f9r
   |/gps_state/dynamic_global_pose_oxts
@@ -96,10 +88,14 @@
   |/autoGoals_debug"/>
   
   <!--Run snapshot buffer shell script-->
-  <node if="$(arg record_disengagement_snapshots)" pkg="nrc_svcs" type="rosbagSnapshot.sh" name="rosbag_snapshot" output="screen"
-  args="$(arg snapshot_system_front_tower_cameras_topics) $(arg snapshot_system_main_topics) $(arg snapshot_pc_processor_all_topics) $(arg snapshot_wm_all_topics) $(arg snapshot_ralp_all_topics)"/>
+  <group if="True">
+    <node pkg="nrc_av_ui" type="rosbagSnapshot.sh" name="rosbag_snapshot" output="screen"
+    args="$(arg snapshot_system_front_tower_cameras_topics) $(arg snapshot_system_main_topics) $(arg snapshot_pc_processor_all_topics) $(arg snapshot_wm_all_topics) $(arg snapshot_ralp_all_topics)"/>
 
-  <!--Run snapshot node-->
-  <node pkg="nrc_av_ui" type="Snapshot_Trigger.py" name="trigger_node" output="screen"/>
+    <!--Run snapshot node-->
+    <node pkg="nrc_av_ui" type="Snapshot_Trigger.py" name="snapshot_trigger_node" output="screen"/>
+  </group>
+  
+  <node pkg="nrc_av_ui" type="rosbagRecordMonitor.py" name="snapshot_monitor" args="-d ~/projects/disengagementData/bags/ -t SnapshotHealth -n SnapshotMonitor" machine="$(arg snapshot_machine)" output="screen"/>
 
 </launch>

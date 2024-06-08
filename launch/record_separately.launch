@@ -313,8 +313,8 @@
     <arg name="record_inputAndOutput" value="$(arg record_tlr_outputs)" machine="$(arg record_machine)"/>
   </include>
   
-  <!-- Run snapshot shell script-->
-  <node if="$(arg record_disengagement_snapshots)" pkg="nrc_svcs" type="rosbagSnapshot.sh" name="rosbag_snapshot_all" output="screen"
-  args="$(arg system_front_tower_cameras_topics) $(arg system_lidar_topics) $(arg snapshot_system_main_topics) $(arg pc_processor_all_topics) $(arg wm_all_topics) $(arg ralp_all_topics)"/>
+  <node pkg="nrc_av_ui" type="rosbagRecordMonitor.py" name="RosbagMonitor" args="-d ~/opt/data/rosbag -t RosbagHealth" machine="$(arg record_machine)"/>
+  
+  <node pkg="nrc_av_ui" type="rosbagRecordMonitor.py" name="BagfileMonitor" args="-d ~/projects/disengagementData -t BagfileHealth -n BagfileMonitor" machine="$(arg record_machine)" output="screen"/>
 
 </launch>

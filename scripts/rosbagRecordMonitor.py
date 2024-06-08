@@ -11,8 +11,9 @@ if __name__ == '__main__':
     # Parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--directory', default='/opt/data/rosbag/')
-    parser.add_argument('-t', '--pub_topic_name', default='rosbagRecordMonitor')
-    args = parser.parse_args()
+    parser.add_argument('-t', '--pub_topic_name', default='RosbagHealth')
+    parser.add_argument('-n', '--name', default='RosbagRecordMonitor')
+    args, uargs = parser.parse_known_args()
     
     # Get path to where bags will be recorded
     todaysDate = ''.join(time.strftime("%Y-%m-%d"))
@@ -20,7 +21,7 @@ if __name__ == '__main__':
     print("Rosbag monitor pointing at:",pathToBags)
 
     # Init ros stuff
-    rospy.init_node('RosbagRecordMonitorNode')
+    rospy.init_node(args.name)
     healthPub = rospy.Publisher(args.pub_topic_name,DiagnosticArray,queue_size=1)
 
     print ('Running')
@@ -36,14 +37,16 @@ if __name__ == '__main__':
       diagMsg = DiagnosticArray()
       diagMsg.header.stamp = rospy.Time.now()
       diagMsg.status.append(DiagnosticStatus())
+      sleepTime = 0.5
       if currentMaxFileSize > prevMaxFilesize:
-        diagMsg.status[0].level = 2
+        diagMsg.status[0].level = 3
+        sleepTime = 0.1
       elif currentMaxFileSize > 0:
-        diagMsg.status[0].level = 1
+        diagMsg.status[0].level = 2
       healthPub.publish(diagMsg)
       
       prevMaxFilesize = currentMaxFileSize
-      time.sleep(0.1)
+      time.sleep(sleepTime)
 
     print("Closing rosbag monitor")
     
