@@ -28,16 +28,19 @@ class MonitoredSubsystem:
     self.selected = False
   
   def update(self,newMonitors):
-    foundMonitor = False
+    minStatus = 10
     for mNew in newMonitors:
+      foundMonitor = False
       for m in self.monitors:
         if mNew.name == m.name:
           m.status = mNew.status
+          minStatus = min(minStatus,m.status)
           foundMonitor = True
           break
     
       if not foundMonitor:
         self.monitors.append(mNew)
+    return minStatus
   
   def select(self):
     if self.selected:
@@ -54,20 +57,28 @@ class MonitoredSubsystem:
 class MonitoredAgent:
   def __init__(self):
     self.name = []
+    self.cmdsMode = 'Sync'
     self.cmdTopic = []
     self.cmdData = {}
     self.subsystems = []
     self.drawn = False
     self.expanded = False
     self.button = []
+    self.cmdsEnabledButton = []
     self.selected = False
   
   def update(self,latestSubsystems):
     foundSubsystem = False
     for sNew in latestSubsystems:
+      minStatus = 10
       for s in self.subsystems:
         if sNew.name == s.name:
-          s.update(sNew.monitors)
+          minStatus = s.update(sNew.monitors)
+          if self.cmdsMode == 'Sync':
+            if 0 < minStatus and minStatus < 10:
+              s.isRunning = 1
+            else:
+              s.isRunning = 0
           foundSubsystem = True
           break
     
@@ -79,7 +90,14 @@ class MonitoredAgent:
       self.selected = False
     else:
       self.selected = True
+      self.cmdsMode = 'Sync'
     print("Agent selection:",self.selected)
+    
+  def setCmds(self):
+    if self.cmdsMode == 'Sync':
+      self.cmdsMode = 'Ctrl'
+    else:
+      self.cmdsMode = 'Sync'
     
   def printStatus(self):
     print("Agent:",self.name)
@@ -91,7 +109,8 @@ class MonitoredAgent:
   def getCmdData(self):
     data = OrderedDict()
     for s in self.subsystems:
-      data[s.name] = s.isRunning
+      if self.cmdsMode == 'Ctrl':
+        data[s.name] = s.isRunning
     return data
   
   def parseMsgPayload(self,payload):

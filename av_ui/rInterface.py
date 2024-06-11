@@ -81,10 +81,14 @@ class Interface:
     for a in monitoredAgents:
       if (not a.drawn):
         a.button = Tkinter.Button(self.tab1_frame1, text=a.name, width=buttonWidth*2, padx=1, relief="raised",command=a.select)
+        a.cmdsEnabledButton = Tkinter.Button(self.tab1_frame1, text=a.name, width=buttonWidth, padx=1, relief="raised",command=a.setCmds)
       a.button.grid(column=1, row=rowIdx, sticky=Tkinter.W+Tkinter.E)
-      
-      colIdx = 2
-      if a.selected:
+      a.cmdsEnabledButton.grid(column=3, row=rowIdx, sticky=Tkinter.W+Tkinter.E)
+      a.cmdsEnabledButton.configure(text=a.cmdsMode)
+        
+      if not a.selected:
+        a.cmdsEnabledButton.grid_forget()
+      else:
         colIdx = 2
         rowIdx = rowIdx + 1
         
@@ -98,10 +102,13 @@ class Interface:
         if (not a.drawn):
           s.stopButton = Tkinter.Button(self.tab1_frame1, text="Stop", width=5, padx=1, relief="raised",command=s.stop)
         
-        if s.isRunning:
-          s.stopButton.configure(text="Stop")
+        if a.cmdsMode == 'Sync':
+          s.stopButton.configure(text="----")
         else:
-          s.stopButton.configure(text="Start")
+          if s.isRunning:
+            s.stopButton.configure(text="Stop")
+          else:
+            s.stopButton.configure(text="Start")
         
         if a.selected:
           s.stopButton.grid(column=colIdx, row=rowIdx, sticky=Tkinter.W+Tkinter.E)
