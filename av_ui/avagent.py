@@ -8,6 +8,9 @@ from nrc_msgs.msg import InterventionRequest
 from std_msgs.msg import Int16MultiArray
 import numpy as np
 import time
+from cloud_connection import CloudConnection
+import json, ast
+from collections import OrderedDict
 
 class AvAgent:
   def __init__(self, agent_type, agent_name):
@@ -29,12 +32,49 @@ class AvAgent:
     printDebug = False
     self.subsystems = Loader.read_subsystems(text, printDebug)
     self.mapName = Loader.getMapName(text)
+    
+    self.cloud = CloudConnection(self.name,self.name)
 
   def pubSubSetup(self):
     rospy.init_node('listener', anonymous=True)  # AvAgent Node
     Loader.subscribe_health_msgs(self.subsystems)
     self.avStatusPub = rospy.Publisher("ailsv_av_status",InterventionRequest,queue_size=1)
     self.avLedStatusPub = rospy.Publisher("ailsv_av_led",Int16MultiArray,queue_size=1)
+    
+    self.cloud.init()
+    self.cloud.subscribe(['cmd/'+self.name+'/remote'])
+    
+  def sendStatus(self):
+    data = OrderedDict()
+    data["agent"] = self.name
+    sData = OrderedDict()
+    for s in self.subsystems:
+      mData = {}
+      for m in s.monitors:
+        mData[m.name] = m.status
+      sData[s.name] = mData
+    data["subs"] = sData
+    
+    topic = "dt/"+self.name+"/status"
+    self.cloud.publish(topic,data)
+    
+    # Publish heartbeat
+    heartbeat = { "agent": self.name }
+    topic = "dt/agents/heartbeat"
+    self.cloud.publish(topic,heartbeat)
+    
+  def getCmds(self):
+    msgs = self.cloud.getMail()
+    for m in msgs:
+      msgJson = json.loads(m.payload,object_pairs_hook=OrderedDict)
+      subsList = list(msgJson.keys())
+      for sCmd in subsList:
+        cmd = msgJson[sCmd]
+        for s in self.subsystems:
+          if s.name == sCmd and (cmd == 0 or cmd == 1):
+            if s.shouldBeStarted != cmd:
+              print("Remote cmd:",s.name, msgJson[sCmd])
+              s.shouldBeStarted = cmd
 
   def setLaunchAll(self):
     for s in self.subsystems:

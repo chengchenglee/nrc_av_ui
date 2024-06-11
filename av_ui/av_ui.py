@@ -21,32 +21,34 @@ signal.signal(signal.SIGINT, signal_handler)
 
 text = []
 
+inclGui = True
 agent_name = os.environ['AGENT_NAME']
 agent_type = os.environ['AGENT_CONFIG']
 
 filename = 'sim_config.yaml'
 agent = AvAgent(agent_type, agent_name)
-interface = Interface(agent.name, agent.mapName)
+if (inclGui): interface = Interface(agent.name, agent.mapName)
 
 # Start roscore
 if True:
   roscore = Roscore()
   roscore.run()
   
-  interface.setupWindow(agent)
+  if (inclGui): interface.setupWindow(agent)
 
   os.system("rosparam set /agent_name "+agent.name)
   os.system("rosrun nrc_svcs paramsForDriving.sh")
   os.system("rosrun nrc_svcs paramsForMap.sh "+agent.mapName)
   
-  agent.pubSubSetup()  
-    #agent.launchAll()
+  agent.pubSubSetup()
 
   while running:
     # Wait for updates
     agent.pollMonitors()
-    interface.update(agent.subsystems)
-    time.sleep(0.1)
+    if (inclGui): interface.update(agent.subsystems)
+    agent.sendStatus()
+    agent.getCmds()
+    time.sleep(0.25)
 
   # End rospy
   print("Closing interface monitor")
