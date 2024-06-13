@@ -8,7 +8,7 @@ Subsystem:
     Type: Sensor
     Description: command to start innovusion node
     Trigger:
-      - Source: Startup
+      - Source: StartRequest
     HealthTopics:
       - HealthTopic: /iv_points
         HealthName: IV PTS
@@ -16,7 +16,7 @@ Subsystem:
         NomWarnErrRate: 10, 7, 1
     Commands:
       - Name: Innovusion
-        Command: ./$HOME/projects/fvla-infrapod/nrc_ws/src/nrc_svcs/scripts/runInnovusionInfraPod.sh
+        Command: bash $HOME/projects/fvla-infrapod/nrc_ws/src/nrc_svcs/scripts/runInnovusionInfraPod.sh
         NodeName: innovusion_nodelet_manager
         Type: Software
         LaunchTime: 1
@@ -31,7 +31,7 @@ Subsystem:
     Type: Algorithm
     Description: command to start point cloud processor
     Trigger:
-      - Source: Startup
+      - Source: StartRequest
     HealthTopics:
       - HealthTopic: /drivable_area_boundary_points_car_frame
         HealthName: DA
@@ -79,9 +79,10 @@ Subsystem:
       - Source: Startup
     Commands:
       - Name: TrackedObjectSinglePoint
-        Command: ./${HOME}/projects/fvla-infrapod/calibration_scripts/trackedobjsinglepoint.py
+        Command: cd ${HOME}/projects/fvla-infrapod/calibration_scripts/ && python trackedobjsinglepoint.py
         Type: Algorithm
         LaunchTime: 3.0
+    HealthTopics:
       - HealthTopic: /pc_processor/multi_object_tracker/tracked_object_set
         HealthName: TOS_TF
         HealthTopicType: TrackedObjectSet
@@ -100,9 +101,10 @@ Subsystem:
       - Source: Startup
     Commands:
       - Name: DrivableArea
-        Command: ./${HOME}/projects/fvla-infrapod/calibration_scripts/get_drivable_points.py
+        Command: python ${HOME}/projects/fvla-infrapod/calibration_scripts/get_drivable_points.py
         Type: Algorithm
         LaunchTime: 3.0
+    HealthTopics:
       - HealthTopic: /drivable_area_boundary_points_map_frame
         HealthName: DA_TF
         HealthTopicType: PointCloud2
@@ -126,7 +128,7 @@ Subsystem:
         NomWarnErrRate: 5, 2, 1
     Commands:
       - Name: F9R
-        Command: ./${HOME}/projects/fvla-infrapod/start_gps.sh 36
+        Command: cd ${HOME}/projects/fvla-infrapod/ && ./start_gps.sh 36
         NodeName: ublox_gps_F9R
         Type: Software
         LaunchTime: 3
@@ -144,7 +146,7 @@ Subsystem:
       - Source: Startup
     Commands:
       - Name: Start Camera
-        Command: ./${HOME}/projects/fvla-infrapod/start_camera.sh 
+        Command: bash ${HOME}/projects/fvla-infrapod/start_camera.sh 
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -161,7 +163,7 @@ Subsystem:
       - Source: Startup
     Commands:
       - Name: MQTT Telemetry
-        Command: ./${HOME}/projects/fvla-infrapod/start_telemetry.sh 
+        Command: bash ${HOME}/projects/fvla-infrapod/start_telemetry.sh 
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
