@@ -23,7 +23,8 @@ def parseMsgs(messages):
   global monitoredAgents, newSubscriptions
   for msg in messages:
     if "heartbeat" in msg.topic:
-      msgDict = ast.literal_eval(msg.payload)
+      msgDict = json.loads(msg.payload)
+      msgDict = ast.literal_eval(msgDict)
       agentName = msgDict["agent"]
       newAgent = True
       for t in subscribedTopics:
@@ -55,7 +56,7 @@ if True:
       for ts in subscribedTopics:
         if t == ts: alreadySubscribed = True
       if not alreadySubscribed:
-        print "New subscription:",t
+        print("New subscription:",t)
         cloud.subscribe([t])
         subscribedTopics.append(t)
     
