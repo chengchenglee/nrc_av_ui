@@ -116,6 +116,9 @@ class Subsystem:
     elif source == 'Update':
       # Get status from monitors
       self.status = 3
+      for c in self.commands:
+        c.updateStatus()
+      
       for m in self.monitors:
         mStatus = m.updateStatus(self.isStarted)
         self.status = min(self.status, mStatus)
