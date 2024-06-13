@@ -17,7 +17,7 @@ class AvAgent:
   def __init__(self, agent_type, agent_name):
     self.name = agent_name
     home = expanduser("~")
-    self.filename = rospkg.get_path('nrc_av_ui')+'/config/'+agent_type
+    self.filename = rospkg.RosPack().get_path('nrc_av_ui')+'/config/'+agent_type
     #self.filename = home+"/projects/fvla-infrapod/nrc_ws/src/nrc_av_ui/av_ui/"+agent_type
     self.mapName = "Franklin.set"
     self.subsystems = []
@@ -63,9 +63,13 @@ class AvAgent:
     self.cloud.publish(topic,data)
     
     # Publish heartbeat
-    heartbeat = { "agent": self.name }
+    heartbeat = {}
+    heartbeat['agent']=self.name
+    msg_payload = json.dumps(heartbeat)
+#    my_dist = json.loads(msg_payload)
+#    print("________________________________________________",type(my_dist))
     topic = "dt/agents/heartbeat"
-    self.cloud.publish(topic,heartbeat)
+    self.cloud.publish(topic,msg_payload)
     
   def getCmds(self):
     msgs = self.cloud.getMail()
