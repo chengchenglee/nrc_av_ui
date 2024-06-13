@@ -17,7 +17,7 @@ class CloudConnection:
   def __init__(self,clientId):
     self.name = clientId
     self.clientId = self.name+time.strftime("%Y-%m-%d-%H-%M-%S")
-    print "Create mqtt connection:",self.clientId 
+    print ("Create mqtt connection:",self.clientId) 
 
     # MQTT Broker details
     self.configInfo = {
@@ -84,7 +84,7 @@ class CloudConnection:
 
   def publish(self,topic,data):
     if len(data) > 0:
-      msg = json.dumps(data,encoding="utf8", ensure_ascii=False)
+      msg = json.dumps(data)
       result = self.client.publish(topic, msg)
       status = result[0]
       if status != 0:

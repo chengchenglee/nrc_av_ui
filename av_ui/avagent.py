@@ -16,7 +16,7 @@ class AvAgent:
   def __init__(self, agent_type, agent_name):
     self.name = agent_name
     home = expanduser("~")
-    self.filename = home+"/projects/nrc_ws/src/nrc_av_ui/av_ui/"+agent_type
+    self.filename = home+"/projects/fvla-infrapod/nrc_ws/src/nrc_av_ui/av_ui/"+agent_type
     self.mapName = "Franklin.set"
     self.subsystems = []
     self.avStatusPub = []
@@ -33,7 +33,7 @@ class AvAgent:
     self.subsystems = Loader.read_subsystems(text, printDebug)
     self.mapName = Loader.getField(text,'mapName','Franklin.set')
     self.useGui  = Loader.getField(text,'useGui',1)
-    print "useGui: "+self.useGui
+    print ("useGui: "+self.useGui)
     self.cloud = CloudConnection(self.name)
     self.cloud.updateConfig(text)
 

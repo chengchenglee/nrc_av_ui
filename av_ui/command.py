@@ -23,7 +23,7 @@ class Command:
       time.sleep(0.5)
       self.pid = proc.pid
 
-      print self.nodeName +": "+str(self.pid)
+      print(self.nodeName +": "+str(self.pid))
       self.started = True
 
   def stop(self):

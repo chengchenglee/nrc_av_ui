@@ -1,4 +1,4 @@
-#!/usr/bin/python
+28#!/usr/bin/python
 
 import rospy
 import sys
@@ -26,7 +26,7 @@ def getField(text,field,default):
     if field in line:
       value = line.split(': ')[1]
   
-  print "getField: "+field+" ==> "+value
+  print ("getField: "+field+" ==> "+value)
   return value
 
 def getCloudConfig(text):
