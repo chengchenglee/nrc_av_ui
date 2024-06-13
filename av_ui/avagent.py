@@ -11,12 +11,14 @@ import time
 from cloud_connection import CloudConnection
 import json, ast
 from collections import OrderedDict
+import rospkg
 
 class AvAgent:
   def __init__(self, agent_type, agent_name):
     self.name = agent_name
     home = expanduser("~")
-    self.filename = home+"/projects/fvla-infrapod/nrc_ws/src/nrc_av_ui/av_ui/"+agent_type
+    self.filename = rospkg.get_path('nrc_av_ui')+'/config/'+agent_type
+    #self.filename = home+"/projects/fvla-infrapod/nrc_ws/src/nrc_av_ui/av_ui/"+agent_type
     self.mapName = "Franklin.set"
     self.subsystems = []
     self.avStatusPub = []
