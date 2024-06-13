@@ -13,7 +13,7 @@ import time
 
 running = True
 gui = Interface()
-cloud = CloudConnection("Remote Monitor","rm1")
+cloud = CloudConnection("RemoteMonitor")
 
 monitoredAgents = []
 newSubscriptions = ['dt/agents/heartbeat']
@@ -55,7 +55,7 @@ if True:
       for ts in subscribedTopics:
         if t == ts: alreadySubscribed = True
       if not alreadySubscribed:
-        print("New subscription:",t)
+        print "New subscription:",t
         cloud.subscribe([t])
         subscribedTopics.append(t)
     

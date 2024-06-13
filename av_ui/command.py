@@ -2,6 +2,7 @@
 
 import os
 import time
+import subprocess, psutil
 
 class Command:
   def __init__(self, name):
@@ -10,38 +11,38 @@ class Command:
     self.nodeName = ""
     self.launchTime = 30
     self.started = False
+    self.pid = []
+    self.childPids = []
     
   def start(self):
     print(self.command)
     if not self.started:
-      currentDir = os.getcwd()
-      nrcWsPath = os.path.join(os.path.expanduser("~"), 'projects/nrc_ws')
-      os.chdir(nrcWsPath)
-      os.system(self.command+" &")
-      os.chdir(currentDir)
+      self.pid = []
+      proc = subprocess.Popen([self.command],
+                              shell=True)
+      time.sleep(0.5)
+      self.pid = proc.pid
+
+      print self.nodeName +": "+str(self.pid)
       self.started = True
 
   def stop(self):
     if (self.started):
-      if 'rosrun' in self.command:
-        if self.nodeName != "":
-          command = "rosnode kill "+self.nodeName
-          os.system(command)
-          print(command)
-          self.started = False
-      elif  ("ntrip" in self.command) or ("Ntrip" in self.command):
-        print ("Stopping ntrip script")
-        os.system("pkill -f ntrip")
-        self.started = False
-      else:
-        # Get nodes list from roslaunch file
-        nodes = os.popen(self.command+" --nodes &").read()
-        command = "rosnode kill"
-        for row in nodes.split('\n'):
-          node = row.rstrip('\n')
-          command = command + " " + node[1:]
+      command = "pkill -TERM -P"+str(self.pid)
+      os.system(command)
+      self.started = False
+      time.sleep(0.25)
+      return
         
-        print (command)
-        os.system(command)
-        time.sleep(1.0)
-        self.started = False
+  def updateStatus(self):
+    if self.pid:
+      self.childPids = []
+      try:
+        parent = psutil.Process(self.pid)
+      except psutil.NoSuchProcess:
+        return
+
+      children = parent.children(recursive=True)
+      for child in children:
+        self.childPids.append(child.pid)
+      #print(self.pid,self.childPids)

@@ -31,9 +31,11 @@ class AvAgent:
       text = file.read()
     printDebug = False
     self.subsystems = Loader.read_subsystems(text, printDebug)
-    self.mapName = Loader.getMapName(text)
-    
-    self.cloud = CloudConnection(self.name,self.name)
+    self.mapName = Loader.getField(text,'mapName','Franklin.set')
+    self.useGui  = Loader.getField(text,'useGui',1)
+    print "useGui: "+self.useGui
+    self.cloud = CloudConnection(self.name)
+    self.cloud.updateConfig(text)
 
   def pubSubSetup(self):
     rospy.init_node('listener', anonymous=True)  # AvAgent Node

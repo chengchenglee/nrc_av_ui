@@ -1,5 +1,6 @@
 #!/usr/bin python
 
+import time
 import os
 import ssl
 import json
@@ -13,22 +14,30 @@ from nrc_msgs.msg import GpsState
 subscribeTopics = ["dt/tfc/vehicle/telemetry"]
 
 class CloudConnection:
-  def __init__(self,agent_name,clientId):
-    self.name = agent_name
-    self.clientId = clientId
-    self.g_device_id = '' # need to be passed as argument
+  def __init__(self,clientId):
+    self.name = clientId
+    self.clientId = self.name+time.strftime("%Y-%m-%d-%H-%M-%S")
+    print "Create mqtt connection:",self.clientId 
 
     # MQTT Broker details
-    self.BROKER_ADDRESS = os.getenv('MQTT_SERVER', 'mqtt-broker-ncal.nrcsv.com')
-    self.BROKER_PORT = int(os.getenv('MQTT_PORT', 8883))
-    self.BROKER_USERNAME = os.getenv('MQTT_USER', 'sam-teleop')
-    self.BROKER_PASSWORD = os.getenv('MQTT_PASSWORD', 'yg#eo5cbAksD82qt')
-    self.TLS_protocol_version = ssl.PROTOCOL_TLSv1_2
-    self.PUB_TOPIC_STATUS = "dt/tfc/vehicle/telemetry"
-    self.PUB_RATE = 5 # Hz
+    self.configInfo = {
+      'MQTT_SERVER': 'mqtt-broker-ncal.nrcsv.com',
+      'MQTT_PORT': 8883,
+      'MQTT_USER': 'sam-teleop',
+      'MQTT_PASSWORD': 'yg#eo5cbAksD82qt',
+      'PROTOCOL': ssl.PROTOCOL_TLSv1_2,
+    }
     self.client = []
-    
     self.mailbox = []
+    
+  def updateConfig(self,text):
+    keys = self.configInfo.keys()
+    lines = text.split('\n')
+    for line in lines:
+      for key in keys:
+        if key in line:
+          value = line.split(': ')[1]
+          self.configInfo[key] = value
     
   def init(self):
     self.client = self.connect_mqtt()
@@ -54,17 +63,17 @@ class CloudConnection:
       
       client_id = 'natcsv-mqtt-client.'+self.clientId
       client = mqtt_client.Client(client_id)
-      client.username_pw_set(self.BROKER_USERNAME, self.BROKER_PASSWORD)
+      client.username_pw_set(self.configInfo['MQTT_USER'], self.configInfo['MQTT_PASSWORD'])
       
-      if self.BROKER_PORT == 8883:
+      if self.configInfo['MQTT_PORT'] == 8883:
           # enable SSL
-          context = ssl.SSLContext(self.TLS_protocol_version)
+          context = ssl.SSLContext(self.configInfo['PROTOCOL'])
           # do not check the cert hostname
           context.check_hostname = False
           client.tls_set_context(context)
 
       client.on_connect = on_connect
-      client.connect(self.BROKER_ADDRESS, self.BROKER_PORT)
+      client.connect(self.configInfo['MQTT_SERVER'], self.configInfo['MQTT_PORT'])
       client.on_subscribe = on_mqtt_subscribe
       client.on_message = on_mqtt_message
       return client

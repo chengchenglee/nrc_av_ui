@@ -18,13 +18,34 @@ def leadingSpaces(text_line):
 def get_class( kls ):
   return globals()[kls]
 
-def getMapName(text):
-  mapName = 'Franklin.set'
+def getField(text,field,default):
+
+  value = default
   lines = text.split('\n')
   for line in lines:
-    if 'Map' in line:
-      mapName = line.split(': ')[1]
-      return mapName
+    if field in line:
+      value = line.split(': ')[1]
+  
+  print "getField: "+field+" ==> "+value
+  return value
+
+def getCloudConfig(text):
+  configInfo = {
+    'MQTT_SERVER': 'mqtt-broker-ncal.nrcsv.com',
+    'MQTT_PORT': 8883,
+    'MQTT_USER': 'sam-teleop',
+    'MQTT_PASSWORD': 'yg#eo5cbAksD82qt',
+    'PROTOCOL': ssl.PROTOCOL_TLSv1_2,
+  }
+  keys = configInfo.keys()
+  lines = text.split('\n')
+  for line in lines:
+    for key in keys:
+      if key in line:
+        value = line.split(': ')[1]
+        configInfo[key] = value
+  
+  return configInfo
 
 def read_subsystems(text, printDebug):
   subsystems = []

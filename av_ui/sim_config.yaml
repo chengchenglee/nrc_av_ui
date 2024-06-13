@@ -1,6 +1,7 @@
 Configuration:
   Name: sim
-  Map: Franklin.set
+  mapName: Franklin.set
+  useGui: 0
 
 Subsystem:
   Sim:
