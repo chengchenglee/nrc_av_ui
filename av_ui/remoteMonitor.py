@@ -22,18 +22,25 @@ subscribedTopics = []
 def parseMsgs(messages):
   global monitoredAgents, newSubscriptions
   for msg in messages:
+    #if "ipod" in msg.payload: continue
+    #print(msg.topic)
+    payload = msg.payload.strip('\"')
+    payload = payload.replace('\\n', '\n')
+    #print(payload)
     if "heartbeat" in msg.topic:
-      msgDict = ast.literal_eval(msg.payload)
-      agentName = msgDict["agent"]
+      value = payload.split(',')[1]
+      agentName = value
       newAgent = True
       for t in subscribedTopics:
         if agentName in t:
           newAgent = False
       if newAgent:
-        newSubscriptions.append('dt/'+agentName+'/status')
+        topic = 'dt/'+agentName+'/status'
+        print("New Subscription:",topic)
+        newSubscriptions.append(topic)
     elif "status" in msg.topic:
       agentData = MonitoredAgent()
-      agentData.parseMsgPayload(msg.payload)
+      agentData.parseMsgPayloadCsv(payload)
   
       found = False
       for a in monitoredAgents:

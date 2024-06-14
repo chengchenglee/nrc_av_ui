@@ -19,7 +19,7 @@ class MonitoredProcess:
 
 class MonitoredSubsystem:
   def __init__(self):
-    self.name = []
+    self.name = ""
     self.drawn = False
     self.monitors = []
     self.button = []
@@ -112,6 +112,29 @@ class MonitoredAgent:
       if self.cmdsMode == 'Ctrl':
         data[s.name] = s.isRunning
     return data
+  
+  def parseMsgPayloadCsv(self,payload):
+    payload = payload.strip('\"')
+    lines = payload.split('\n')
+    subsystem = MonitoredSubsystem()
+    for line in lines:
+      #print(line)
+      code = line.split(',')[0]
+      if code == 'a':
+        self.name = line.split(',')[1]
+        self.cmdTopic = 'cmd/'+self.name+'/remote'
+      elif code == 's':
+        if subsystem.name != "": self.subsystems.append(subsystem)
+        subsystem = MonitoredSubsystem()
+        subsystem.name = line.split(',')[1]
+        subsystem.monitors = []
+      elif code == 'm':
+        mon = MonitoredProcess()
+        mon.name = line.split(',')[1]
+        mon.status = int(line.split(',')[2])
+        subsystem.monitors.append(mon)
+    self.subsystems.append(subsystem)
+    #self.printStatus()
   
   def parseMsgPayload(self,payload):
     #msgJson = ast.literal_eval(msg.payload)

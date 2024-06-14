@@ -34,8 +34,8 @@ class AvAgent:
     printDebug = False
     self.subsystems = Loader.read_subsystems(text, printDebug)
     self.mapName = Loader.getField(text,'mapName','Franklin.set')
-    self.useGui  = Loader.getField(text,'useGui',1)
-    print ("useGui: "+self.useGui)
+    self.useGui  = int(Loader.getField(text,'useGui',1))
+    print ("useGui: "+str(self.useGui))
     self.cloud = CloudConnection(self.name)
     self.cloud.updateConfig(text)
 
@@ -47,6 +47,25 @@ class AvAgent:
     
     self.cloud.init()
     self.cloud.subscribe(['cmd/'+self.name+'/remote'])
+    
+  def sentStatusCsv(self):
+    topic = "dt/agents/heartbeat"
+    data = ""
+    data +="a,"+self.name
+    self.cloud.publish(topic,data)
+    #print(topic)
+    #print(data)
+    
+    topic = "dt/"+self.name+"/status"
+    data = ""
+    data = 'a,'+self.name+'\n'
+    for s in self.subsystems:
+      data += "s,"+s.name+'\n'
+      for m in s.monitors:
+        data += "m,"+m.name+","+str(m.status)+'\n'
+    self.cloud.publish(topic,data)
+    #print(topic)
+    #print(data)
     
   def sendStatus(self):
     data = OrderedDict()
@@ -66,8 +85,6 @@ class AvAgent:
     heartbeat = {}
     heartbeat['agent']=self.name
     msg_payload = json.dumps(heartbeat)
-#    my_dist = json.loads(msg_payload)
-#    print("________________________________________________",type(my_dist))
     topic = "dt/agents/heartbeat"
     self.cloud.publish(topic,msg_payload)
     

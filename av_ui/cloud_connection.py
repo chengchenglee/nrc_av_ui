@@ -82,6 +82,13 @@ class CloudConnection:
     for topic in topics:
       self.client.subscribe(topic,2)
 
+  def publishCsv(self,topic,data):
+    if len(data) > 0:
+      result = self.client.publish(topic, data)
+      status = result[0]
+      if status != 0:
+          print("Failed to send msg to broker.")
+    
   def publish(self,topic,data):
     if len(data) > 0:
       msg = json.dumps(data)

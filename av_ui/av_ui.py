@@ -46,7 +46,8 @@ if True:
     # Wait for updates
     agent.pollMonitors()
     if (agent.useGui == 1): interface.update(agent.subsystems)
-    agent.sendStatus()
+    #agent.sendStatus()
+    agent.sentStatusCsv()
     agent.getCmds()
     time.sleep(0.25)
 
