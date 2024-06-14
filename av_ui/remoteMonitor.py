@@ -62,7 +62,7 @@ if True:
       for ts in subscribedTopics:
         if t == ts: alreadySubscribed = True
       if not alreadySubscribed:
-        print "New subscription:",t
+        print("New subscription:",t)
         cloud.subscribe([t])
         subscribedTopics.append(t)
     

@@ -143,7 +143,7 @@ class MonitoredAgent:
     
     keys = list(msgJson.keys())
     if "agent" in keys:
-      self.name = msgJson["agent"].decode('unicode-escape')
+      self.name = msgJson["agent"]
       self.cmdTopic = 'cmd/'+self.name+'/remote'
     
     if "subs" in keys:
