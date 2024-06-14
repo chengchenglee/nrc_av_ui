@@ -39,6 +39,7 @@ if __name__ == '__main__':
       diagMsg.status.append(DiagnosticStatus())
       sleepTime = 0.5
       if currentMaxFileSize > prevMaxFilesize:
+        print(currentMaxFileSize)
         diagMsg.status[0].level = 3
         sleepTime = 0.1
       elif currentMaxFileSize > 0:

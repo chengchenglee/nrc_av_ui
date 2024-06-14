@@ -115,7 +115,7 @@ class Subsystem:
         
     elif source == 'Update':
       # Get status from monitors
-      self.status = 3
+      self.status = 10
       for c in self.commands:
         c.updateStatus()
       
@@ -166,8 +166,8 @@ class Subsystem:
                 
     # LED_COLORS {Red=0, Yellow=1, Green=2, Black=3, Blue=4, Purple=5};
     if self.ledIdx != -1 and self.ledIdx < 8:
-      if self.status == 0:
-        ledStatus[self.ledIdx] = 3
+      if self.status == 0 or self.status == 10:
+        ledStatus[self.ledIdx] = 3 # Black
       else:
         if customLedValue != -1:
           ledStatus[self.ledIdx] = customLedValue

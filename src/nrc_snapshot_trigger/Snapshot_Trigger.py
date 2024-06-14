@@ -6,7 +6,7 @@ from std_msgs.msg import String
 from std_msgs.msg import Int32MultiArray
 from std_msgs.msg import Int16
 from std_msgs.msg import Int16MultiArray
-from diagnostic_msgs.msg import DiagnosticArray
+from diagnostic_msgs.msg import *
 import numpy as np
 from nrc_msgs.msg import CtrlStateFLG
 #from nrc_msgs.msg import SnapShotTrigger
@@ -70,7 +70,7 @@ class CsvWriterAVinterface:
           self.s3Client = self.session.client('s3')
 
         #Vehicle health publisher
-        #self.pub = rospy.Publisher('health_status', DiagnosticArray, queue_size=10)
+        self.healthPub = rospy.Publisher('/snapshotTrigger/health_status', DiagnosticArray, queue_size=10)
         
         rospy.init_node('trigger_node')
         
@@ -89,7 +89,7 @@ class CsvWriterAVinterface:
             self.prefixList.append('accOverride')
             self.ACC_OverrideTimer += self.timerInterval
         
-        if self.avEngaged and self.snapButton == 2:
+        if self.snapButton == 2: #and self.avEngaged:
             print('Snapshot triggered by button press.')
             self.writeSnapshot = True
             self.prefixList.append('snapButton')
@@ -118,6 +118,16 @@ class CsvWriterAVinterface:
         if self.writeSnapshot:
             self.writeTime += self.timerInterval
             
+        # Create and publish health message
+        diagMsg = DiagnosticArray()
+        diagMsg.header.stamp = rospy.Time.now()
+        diagMsg.status.append(DiagnosticStatus())
+        sleepTime = 0.5
+        if self.writeSnapshot:
+            diagMsg.status[0].level = 5
+        else:
+            diagMsg.status[0].level = 3
+        self.healthPub.publish(diagMsg)
         
         if self.writeSnapshot and self.writeTime > self.writeTimeDuration:
             dirExists = os.path.isdir(self.csvDir)

@@ -272,8 +272,12 @@ Subsystem:
         HealthName: BAG
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /snapshotTrigger/health_status
+        HealthName: TRIG
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
       - HealthTopic: /SnapshotHealth
-        HealthName: SNP
+        HealthName: SBAG
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
     Commands:

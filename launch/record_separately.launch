@@ -313,8 +313,6 @@
     <arg name="record_inputAndOutput" value="$(arg record_tlr_outputs)" machine="$(arg record_machine)"/>
   </include>
   
-  <node pkg="nrc_av_ui" type="rosbagRecordMonitor.py" name="RosbagMonitor" args="-d ~/opt/data/rosbag -t RosbagHealth" machine="$(arg record_machine)"/>
-  
-  <node pkg="nrc_av_ui" type="rosbagRecordMonitor.py" name="BagfileMonitor" args="-d ~/projects/disengagementData -t BagfileHealth -n BagfileMonitor" machine="$(arg record_machine)" output="screen"/>
+  <node pkg="nrc_av_ui" type="rosbagRecordMonitor.py" name="RosbagMonitor" args="-d /opt/data/rosbag/ -t BagfileHealth" machine="$(arg record_machine)" output="screen"/>
 
 </launch>

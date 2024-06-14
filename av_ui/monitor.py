@@ -49,7 +49,11 @@ class Monitor:
         self.customLedValue = 4  # Blue, no signal yet
       else:
         self.customLedValue = -1
-      
+    elif "health" in self.topic:
+      self.customLedValue = -1
+      for diagStatus in data.status:
+        if diagStatus.level == 4 or diagStatus.level == 5:
+          self.customLedValue = max(self.customLedValue, diagStatus.level)
     
   def updateStatus(self,isStarted):
     tDiffFailing = min(3, (1/self.failing))
