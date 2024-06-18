@@ -2,6 +2,7 @@
 
 import json, ast
 from collections import OrderedDict
+import time
 
 class MonitoredProcess:
   def __init__(self):
@@ -66,6 +67,7 @@ class MonitoredAgent:
     self.button = []
     self.cmdsEnabledButton = []
     self.selected = False
+    self.tLastMsg = time.time()
   
   def update(self,latestSubsystems):
     foundSubsystem = False

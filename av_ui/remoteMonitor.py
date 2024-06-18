@@ -38,6 +38,11 @@ def parseMsgs(messages):
         topic = 'dt/'+agentName+'/status'
         print("New Subscription:",topic)
         newSubscriptions.append(topic)
+      else:
+        for a in monitoredAgents:
+          if agentName in a.name:
+            a.tLastMsg = time.time()
+            
     elif "status" in msg.topic:
       agentData = MonitoredAgent()
       agentData.parseMsgPayloadCsv(payload)
@@ -66,7 +71,7 @@ if True:
         cloud.subscribe([t])
         subscribedTopics.append(t)
     
-    # Wait for updates
+    # Parse updates
     parseMsgs(cloud.getMail())
     gui.update(monitoredAgents)
     for ma in monitoredAgents:

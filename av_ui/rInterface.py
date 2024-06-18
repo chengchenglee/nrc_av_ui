@@ -2,6 +2,7 @@
 
 import sys
 from subsystem import Subsystem
+import time
 
 # Gui
 if sys.version_info[0] < 3:
@@ -78,67 +79,91 @@ class Interface:
     rowIdx = 2
     colIdx = 2
     buttonWidth = 7
+    hideInactive = False
     for a in monitoredAgents:
-      if (not a.drawn):
-        a.button = Tkinter.Button(self.tab1_frame1, text=a.name, width=buttonWidth*2, padx=1, relief="raised",command=a.select)
-        a.cmdsEnabledButton = Tkinter.Button(self.tab1_frame1, text=a.name, width=buttonWidth, padx=1, relief="raised",command=a.setCmds)
-      a.button.grid(column=1, row=rowIdx, sticky=Tkinter.W+Tkinter.E)
-      a.cmdsEnabledButton.grid(column=3, row=rowIdx, sticky=Tkinter.W+Tkinter.E)
-      a.cmdsEnabledButton.configure(text=a.cmdsMode)
-        
-      if not a.selected:
-        a.cmdsEnabledButton.grid_forget()
-      else:
-        colIdx = 2
-        rowIdx = rowIdx + 1
-        
-      for s in a.subsystems:
-        if (not a.drawn):
-          s.button = Tkinter.Button(self.tab1_frame1, text=s.name, width=buttonWidth, padx=1, relief="raised",command=s.select)
-        s.button.grid(column=colIdx, row=rowIdx, sticky=Tkinter.W+Tkinter.E)
-        colIdx = colIdx + 1
-        
-        
-        if (not a.drawn):
-          s.stopButton = Tkinter.Button(self.tab1_frame1, text="Stop", width=5, padx=1, relief="raised",command=s.stop)
-        
-        if a.cmdsMode == 'Sync':
-          s.stopButton.configure(text="----")
+      dt = time.time() - a.tLastMsg
+      if 2 < dt and dt < 5: print("Agent heartbeat latency:",a.name,dt)
+      if dt > 5. and a.drawn:  # Agent no longer active, but should be
+        if hideInactive:
+          a.button.grid_forget()
+          a.cmdsEnabledButton.grid_forget()
+          for s in a.subsystems:
+            s.button.grid_forget()
+            s.stopButton.grid_forget()
+            for m in s.monitors:
+              m.button.grid_forget()
         else:
-          if s.isRunning:
-            s.stopButton.configure(text="Stop")
-          else:
-            s.stopButton.configure(text="Start")
-        
-        if a.selected:
-          s.stopButton.grid(column=colIdx, row=rowIdx, sticky=Tkinter.W+Tkinter.E)
-          colIdx = colIdx + 1
-        else:
-          s.stopButton.grid_forget()
-        
-        minStatus = 3
-        for m in s.monitors:
-          if (not a.drawn):
-            m.button = Tkinter.Button(self.tab1_frame1, text=m.name, width=buttonWidth, padx=1, relief="raised",command=m.select)
-          
-          if a.selected:
-            m.button.grid(column=colIdx, row=rowIdx, sticky=Tkinter.W+Tkinter.E)
-            m.button.configure(bg=self.statusToColor(m.status))
+          a.button.configure(bg=self.statusToColor(1))
+          a.cmdsEnabledButton.grid_forget()
+          for s in a.subsystems:
+            s.button.grid(column=colIdx, row=rowIdx, sticky=Tkinter.W+Tkinter.E)
             colIdx = colIdx + 1
-          else:
-            m.button.grid_forget()
-
-          minStatus = min(minStatus, m.status)
-        
-        if a.selected:
+            s.button.configure(bg=self.statusToColor(0))
+            s.stopButton.grid_forget()
+            for m in s.monitors:
+              m.button.grid_forget()
+          rowIdx = rowIdx +1
+      else:  # Active agent
+        if (not a.drawn):
+          a.button = Tkinter.Button(self.tab1_frame1, text=a.name, width=buttonWidth*2, padx=1, relief="raised",command=a.select)
+          a.cmdsEnabledButton = Tkinter.Button(self.tab1_frame1, text=a.name, width=buttonWidth, padx=1, relief="raised",command=a.setCmds)
+        a.button.grid(column=1, row=rowIdx, sticky=Tkinter.W+Tkinter.E)
+        a.button.configure(bg=self.statusToColor(0))
+        a.cmdsEnabledButton.grid(column=3, row=rowIdx, sticky=Tkinter.W+Tkinter.E)
+        a.cmdsEnabledButton.configure(text=a.cmdsMode)
+          
+        if not a.selected:
+          a.cmdsEnabledButton.grid_forget()
+        else:
           colIdx = 2
           rowIdx = rowIdx + 1
-          s.button.configure(bg=self.statusToColor(0))
-        else:
-          s.button.configure(bg=self.statusToColor(minStatus))
           
+        for s in a.subsystems:
+          if (not a.drawn):
+            s.button = Tkinter.Button(self.tab1_frame1, text=s.name, width=buttonWidth, padx=1, relief="raised",command=s.select)
+          s.button.grid(column=colIdx, row=rowIdx, sticky=Tkinter.W+Tkinter.E)
+          colIdx = colIdx + 1
+          
+          if (not a.drawn):
+            s.stopButton = Tkinter.Button(self.tab1_frame1, text="Stop", width=5, padx=1, relief="raised",command=s.stop)
+          
+          if a.cmdsMode == 'Sync':
+            s.stopButton.configure(text="----")
+          else:
+            if s.isRunning:
+              s.stopButton.configure(text="Stop")
+            else:
+              s.stopButton.configure(text="Start")
+          
+          if a.selected:
+            s.stopButton.grid(column=colIdx, row=rowIdx, sticky=Tkinter.W+Tkinter.E)
+            colIdx = colIdx + 1
+          else:
+            s.stopButton.grid_forget()
+          
+          minStatus = 3
+          for m in s.monitors:
+            if (not a.drawn):
+              m.button = Tkinter.Button(self.tab1_frame1, text=m.name, width=buttonWidth, padx=1, relief="raised",command=m.select)
+            
+            if a.selected:
+              m.button.grid(column=colIdx, row=rowIdx, sticky=Tkinter.W+Tkinter.E)
+              m.button.configure(bg=self.statusToColor(m.status))
+              colIdx = colIdx + 1
+            else:
+              m.button.grid_forget()
 
-      a.drawn = True
+            minStatus = min(minStatus, m.status)
+          
+          if a.selected:
+            colIdx = 2
+            rowIdx = rowIdx + 1
+            s.button.configure(bg=self.statusToColor(0))
+          else:
+            s.button.configure(bg=self.statusToColor(minStatus))
+            
+
+        a.drawn = True
     
     self.window.update_idletasks()
     self.window.update()

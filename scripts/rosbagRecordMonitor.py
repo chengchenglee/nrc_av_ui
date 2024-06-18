@@ -13,6 +13,7 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--directory', default='/opt/data/rosbag/')
     parser.add_argument('-t', '--pub_topic_name', default='RosbagHealth')
     parser.add_argument('-n', '--name', default='RosbagRecordMonitor')
+    parser.add_argument('-m', '--mode', default='Always')
     args, uargs = parser.parse_known_args()
     
     # Get path to where bags will be recorded
@@ -37,13 +38,23 @@ if __name__ == '__main__':
       diagMsg = DiagnosticArray()
       diagMsg.header.stamp = rospy.Time.now()
       diagMsg.status.append(DiagnosticStatus())
-      sleepTime = 0.5
-      if currentMaxFileSize > prevMaxFilesize:
-        print(currentMaxFileSize)
-        diagMsg.status[0].level = 3
+      if args.mode == 'Trigger':
         sleepTime = 0.1
-      elif currentMaxFileSize > 0:
-        diagMsg.status[0].level = 2
+        if currentMaxFileSize > prevMaxFilesize:
+          print(currentMaxFileSize)
+          diagMsg.status[0].level = 5
+          sleepTime = 0.1
+        else:
+          diagMsg.status[0].level = 2
+      else:
+        sleepTime = 0.5
+        if currentMaxFileSize > prevMaxFilesize:
+          print(currentMaxFileSize)
+          diagMsg.status[0].level = 3
+          sleepTime = 0.1
+        elif currentMaxFileSize > 0:
+          diagMsg.status[0].level = 2
+
       healthPub.publish(diagMsg)
       
       prevMaxFilesize = currentMaxFileSize
