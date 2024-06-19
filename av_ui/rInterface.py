@@ -22,11 +22,18 @@ class Interface:
     self.window = []
     self.windowOpen = False
     self.launchAllReq = False
+    self.windowWidth  = 550
+    self.windowHeight = 700
     
     self.tab1 = []
     self.tab2 = []
     self.tab1_frame1 = []
     self.tab2_frame1 = []
+    
+    self.canvasDrawn = False
+    self.tab2_canvas = []
+    self.canvasTime = 0
+    self.canvasIncr = 10
     
     self.buttonWidth = 7
   
@@ -73,8 +80,28 @@ class Interface:
       return "pink"
     else:
       return "#D0D0D0"
+    
+  def updateCanvas(self):
+    if not self.canvasDrawn:
+      self.tab2_canvas = Tkinter.Canvas(self.tab2, bg="blue", height=400, width=self.windowWidth)
+      self.tab2_canvas.grid(column=0, row=1)
+    
+    #print('Update canvas:',str(time.time()))
+    points = [100, 140, 110, 110, 140, 100, 110, 90, 100, 60, 90, 90, 60, 100, 90, 110]
+    for i in range(len(points)):
+      points[i] += self.canvasTime
+    self.tab2_canvas.create_polygon(points, outline='green', fill='yellow', width=3)
+    #self.tab2_canvas.pack()
+    
+    
+    self.canvasTime += self.canvasIncr
+    if self.canvasTime >= 200 or self.canvasTime < 0:
+      self.canvasIncr *= -1
+      
+    self.window.update_idletasks()
+    self.window.update()
   
-  def update(self,monitoredAgents):
+  def update(self,monitoredAgents):    
     msgText = []
     rowIdx = 2
     colIdx = 2

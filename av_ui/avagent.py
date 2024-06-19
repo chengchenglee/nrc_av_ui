@@ -3,9 +3,11 @@
 from os.path import expanduser
 import rospy
 from subsystem import Subsystem
+from wmStatus import WmStatus
 import loader as Loader
 from nrc_msgs.msg import InterventionRequest
 from std_msgs.msg import Int16MultiArray
+from nrc_msgs.msg import TrackedObjectSet
 import numpy as np
 import time
 from cloud_connection import CloudConnection
@@ -18,7 +20,6 @@ class AvAgent:
     self.name = agent_name
     home = expanduser("~")
     self.filename = rospkg.RosPack().get_path('nrc_av_ui')+'/config/'+agent_type
-    #self.filename = home+"/projects/fvla-infrapod/nrc_ws/src/nrc_av_ui/av_ui/"+agent_type
     self.mapName = "Franklin.set"
     self.subsystems = []
     self.avStatusPub = []
@@ -27,6 +28,7 @@ class AvAgent:
     self.pmuAvReqHist = 'None'
     self.pmuState = [0,0,0,0,0,0,0,0]
     self.ardState = [0,0,0,0,0,0,0,0]
+    self.wmStatus = WmStatus()
 
     # Load the agent configuration
     with open(self.filename, 'r') as file:
@@ -35,7 +37,9 @@ class AvAgent:
     self.subsystems = Loader.read_subsystems(text, printDebug)
     self.mapName = Loader.getField(text,'mapName','Franklin.set')
     self.useGui  = int(Loader.getField(text,'useGui',1))
+    self.sendWm  = int(Loader.getField(text,'sendWm',0))
     print ("useGui: "+str(self.useGui))
+    print ("sendWm: "+str(self.sendWm))
     self.cloud = CloudConnection(self.name)
     self.cloud.updateConfig(text)
 
@@ -44,62 +48,48 @@ class AvAgent:
     Loader.subscribe_health_msgs(self.subsystems)
     self.avStatusPub = rospy.Publisher("ailsv_av_status",InterventionRequest,queue_size=1)
     self.avLedStatusPub = rospy.Publisher("ailsv_av_led",Int16MultiArray,queue_size=1)
+    if self.sendWm == 1: 
+      self.wmStatusSub = rospy.Subscriber("ailsv_tracked_objects", TrackedObjectSet, self.wmStatus.updateObjs, queue_size = 1)
     
     self.cloud.init()
     self.cloud.subscribe(['cmd/'+self.name+'/remote'])
     
   def sentStatusCsv(self):
     topic = "dt/agents/heartbeat"
-    data = ""
-    data +="a,"+self.name
-    self.cloud.publish(topic,data)
-    #print(topic)
-    #print(data)
+    data = ''
+    data +='a,'+self.name
+    self.cloud.publishCsv(topic,data)
     
     topic = "dt/"+self.name+"/status"
-    data = ""
+    data = ''
     data = 'a,'+self.name+'\n'
     for s in self.subsystems:
-      data += "s,"+s.name+'\n'
+      data += 's,'+s.name+'\n'
       for m in s.monitors:
-        data += "m,"+m.name+","+str(m.status)+'\n'
-    self.cloud.publish(topic,data)
-    #print(topic)
-    #print(data)
-    
-  def sendStatus(self):
-    data = OrderedDict()
-    data["agent"] = self.name
-    sData = OrderedDict()
-    for s in self.subsystems:
-      mData = {}
-      for m in s.monitors:
-        mData[m.name] = m.status
-      sData[s.name] = mData
-    data["subs"] = sData
-    
-    topic = "dt/"+self.name+"/status"
-    self.cloud.publish(topic,data)
-    
-    # Publish heartbeat
-    heartbeat = {}
-    heartbeat['agent']=self.name
-    msg_payload = json.dumps(heartbeat)
-    topic = "dt/agents/heartbeat"
-    self.cloud.publish(topic,msg_payload)
+        data += 'm,'+m.name+','+str(m.status)+'\n'
+    self.cloud.publishCsv(topic,data)
+  
+  def sendWmStatus(self):
+    topic = 'dt/'+self.name+'/wm'
+    payload = ''
+    payload += self.wmStatus.getWmStr()
+    print(payload)
     
   def getCmds(self):
     msgs = self.cloud.getMail()
     for m in msgs:
-      msgJson = json.loads(m.payload,object_pairs_hook=OrderedDict)
-      subsList = list(msgJson.keys())
-      for sCmd in subsList:
-        cmd = msgJson[sCmd]
-        for s in self.subsystems:
-          if s.name == sCmd and (cmd == 0 or cmd == 1):
-            if s.shouldBeStarted != cmd:
-              print("Remote cmd:",s.name, msgJson[sCmd])
-              s.shouldBeStarted = cmd
+      payloadCsv = m.payload.decode('utf-8')
+      lines = payloadCsv.split('\n')
+      for line in lines:
+        lineData = line.split(',')
+        if lineData[0] == 's':
+          for s in self.subsystems:
+            cmd = lineData[2]
+            if s.name == lineData[1]:
+              if cmd == '0' or cmd == '1':
+                if s.shouldBeStarted != int(cmd):
+                  print("Remote cmd:",s.name, int(cmd))
+                  s.shouldBeStarted = int(cmd)
 
   def setLaunchAll(self):
     for s in self.subsystems:
@@ -152,8 +142,11 @@ class AvAgent:
         self.pmuState = s.pmuData[:]
         self.ardState = s.ardData[:]
       
+      if len(s.dgpData) > 0:
+        self.dgpState = s.dgpData[:]
+        self.wmStatus.setDgp(self.dgpState)
+      
       if s.trigger == 'ARD' and s.triggerBit != -1 and s.triggerBit < len(self.ardState):
-          #print("check trigger",s.triggerBit,self.ardState, len(self.ardState))
           if s.isStarted == 0 and self.ardState[s.triggerBit] > 0:
             s.reqStart()
           elif s.isStarted == 1 and self.ardState[s.triggerBit] == 0:

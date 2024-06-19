@@ -109,10 +109,10 @@ class MonitoredAgent:
         print("    Process:",m.name,m.status)
   
   def getCmdData(self):
-    data = OrderedDict()
-    for s in self.subsystems:
-      if self.cmdsMode == 'Ctrl':
-        data[s.name] = s.isRunning
+    data = ''
+    if self.cmdsMode == 'Ctrl':
+      for s in self.subsystems:
+        data += 's,'+s.name+','+str(s.isRunning)+'\n'
     return data
   
   def parseMsgPayloadCsv(self,payload):

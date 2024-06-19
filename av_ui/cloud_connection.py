@@ -89,10 +89,10 @@ class CloudConnection:
       if status != 0:
           print("Failed to send msg to broker.")
     
-  def publish(self,topic,data):
-    if len(data) > 0:
-      msg = json.dumps(data)
-      result = self.client.publish(topic, msg)
-      status = result[0]
-      if status != 0:
-          print("Failed to send msg to broker.")
+  #def publish(self,topic,data):
+    #if len(data) > 0:
+      #msg = json.dumps(data)
+      #result = self.client.publish(topic, msg)
+      #status = result[0]
+      #if status != 0:
+          #print("Failed to send msg to broker.")

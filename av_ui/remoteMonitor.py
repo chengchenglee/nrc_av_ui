@@ -22,13 +22,9 @@ subscribedTopics = []
 def parseMsgs(messages):
   global monitoredAgents, newSubscriptions
   for msg in messages:
-    #if "ipod" in msg.payload: continue
-    #print(msg.topic)
-    payload = msg.payload.strip('\"')
-    payload = payload.replace('\\n', '\n')
-    #print(payload)
+    payloadStr = msg.payload.decode('utf-8')
     if "heartbeat" in msg.topic:
-      value = payload.split(',')[1]
+      value = payloadStr.split(',')[1]
       agentName = value
       newAgent = True
       for t in subscribedTopics:
@@ -45,7 +41,7 @@ def parseMsgs(messages):
             
     elif "status" in msg.topic:
       agentData = MonitoredAgent()
-      agentData.parseMsgPayloadCsv(payload)
+      agentData.parseMsgPayloadCsv(payloadStr)
   
       found = False
       for a in monitoredAgents:
@@ -60,23 +56,30 @@ if True:
   gui.setupWindow()
   cloud.init()
   
+  nextUpdate = 0
+  
   while running:
     # Check for new agents
-    for t in newSubscriptions:
-      alreadySubscribed = False
-      for ts in subscribedTopics:
-        if t == ts: alreadySubscribed = True
-      if not alreadySubscribed:
-        print("New subscription:",t)
-        cloud.subscribe([t])
-        subscribedTopics.append(t)
-    
-    # Parse updates
-    parseMsgs(cloud.getMail())
-    gui.update(monitoredAgents)
-    for ma in monitoredAgents:
-      cloud.publish(ma.cmdTopic, ma.getCmdData())
-    time.sleep(0.2)
+    if time.time() > nextUpdate:
+      nextUpdate = time.time()+0.2
+      for t in newSubscriptions:
+        alreadySubscribed = False
+        for ts in subscribedTopics:
+          if t == ts: alreadySubscribed = True
+        if not alreadySubscribed:
+          print("New subscription:",t)
+          cloud.subscribe([t])
+          subscribedTopics.append(t)
+      
+      # Parse updates
+      parseMsgs(cloud.getMail())
+      gui.update(monitoredAgents)
+      
+      for ma in monitoredAgents:
+        cloud.publishCsv(ma.cmdTopic, ma.getCmdData())
+
+    gui.updateCanvas()
+    time.sleep(0.05)
 
   # Close
   print("Closing Remote Monitor")

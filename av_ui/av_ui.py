@@ -42,14 +42,26 @@ if True:
   
   agent.pubSubSetup()
 
+  nextPollTime = 0
+  nextStSend = 0
+  nextWmSend = 0
   while running:
     # Wait for updates
-    agent.pollMonitors()
-    if (agent.useGui == 1): interface.update(agent.subsystems)
-    #agent.sendStatus()
-    agent.sentStatusCsv()
-    agent.getCmds()
-    time.sleep(0.25)
+    if time.time() > nextPollTime:
+      nextPollTime = time.time()+0.1
+      agent.pollMonitors()
+      agent.getCmds()
+      if (agent.useGui == 1): interface.update(agent.subsystems)
+
+    if time.time() > nextStSend:
+      nextStSend = time.time()+0.25
+      agent.sentStatusCsv()
+    
+    if time.time() > nextWmSend:
+      nextWmSend = time.time()+0.1
+      if (agent.sendWm): agent.sendWmStatus()
+      
+    time.sleep(0.01)
 
   # End rospy
   print("Closing interface monitor")
