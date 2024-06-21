@@ -69,8 +69,8 @@ class CloudConnection:
         
         # Parse csv data
         payloadCsv = message.payload
-        if type(payloadCsv) == 'bytes':
-          payloadCsv = message.payload.decode('utf-8')
+        #if type(payloadCsv) == 'bytes':
+        payloadCsv = message.payload.decode('utf-8')
         
         data = []
         lines = payloadCsv.split('\n')
