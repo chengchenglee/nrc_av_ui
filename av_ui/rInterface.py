@@ -27,6 +27,8 @@ class Interface:
     self.launchAllReq = False
     self.windowWidth  = 550
     self.windowHeight = 700
+    self.canvasWidth = 550
+    self.canvasHeight = 400
     
     self.tab1 = []
     self.tab2 = []
@@ -92,12 +94,12 @@ class Interface:
     self.selectedAgentVal.set(newVal)
   
   def initCanvas(self):
-    agent_options = ['None','Sim_Agent']
+    self.agent_options = ['None']
     self.selectedAgentVal = Tkinter.StringVar(self.tab2);
-    self.tab2_agentSel = Tkinter.OptionMenu(self.tab2, self.selectedAgentVal, *agent_options, command=self.updateSelectedAgent)
+    self.tab2_agentSel = Tkinter.OptionMenu(self.tab2, self.selectedAgentVal, *self.agent_options, command=self.updateSelectedAgent)
     self.tab2_agentSel.grid(column=0, row=1, sticky=Tkinter.W+Tkinter.E)
     
-    self.tab2_canvas = Tkinter.Canvas(self.tab2, bg="white", height=400, width=self.windowWidth)
+    self.tab2_canvas = Tkinter.Canvas(self.tab2, bg="white", height=self.canvasHeight, width=self.canvasWidth)
     self.tab2_canvas.grid(column=0, row=2)
   
   def rpyToRot(self,ypr):
@@ -122,9 +124,6 @@ class Interface:
     rotMtx = np.dot(rotY, np.dot(rotX,rotZ))
     return rotMtx
   
-  #def getCamMtx(self,pitch,height):
-    
-  
   def drawBox(self,wmObj,frame):
     corners = wmObj.cornersInFrame(frame)
     corners2d,_ = cv2.projectPoints(corners,
@@ -132,12 +131,74 @@ class Interface:
                                   self.cMtx,
                                   None)
     bottom = []
+    inRange = True
     for i in range(0,4):
-      bottom.append([self.windowWidth-corners2d[i,0,0]])
+      u = self.canvasWidth-corners2d[i,0,0]
+      if u < 0 or u > self.canvasWidth or corners2d[i,0,1] < 0 or corners2d[i,0,1] > self.canvasHeight:
+        inRange = False
+        break
+      bottom.append([u])
       bottom.append([corners2d[i,0,1]])
     
-    ship_id = self.tab2_canvas.create_polygon(bottom,  fill='red')
+    if inRange:
+      ship_id = self.tab2_canvas.create_polygon(bottom,  fill='red')
+  
+  def drawGrid1(self):
+    behind = -10
+    ahead = 50
+    beside = 10
+    x_range = np.linspace(behind,ahead,num=ahead-behind)
+    y_range = np.linspace(-beside,beside,num=2*beside-1)
+    for x in x_range:
+      for y in y_range:
+        point = np.array([[[x,y,0]]], np.float32)
+        point2d,_ = cv2.projectPoints(point,
+                                      self.rvec,self.tvec.reshape(-1,1),
+                                      self.cMtx,
+                                      None)
+        r = 2
+        self.tab2_canvas.create_oval(point2d[0,0,0]-r,point2d[0,0,1]-r,point2d[0,0,0]+r,point2d[0,0,1]+r)
+
+  
+  def drawGrid(self,frame):
+    xOffset = frame.centerPose[0,2] - round(frame.centerPose[0,2]/10)*10
+    yOffset = frame.centerPose[1,2] - round(frame.centerPose[1,2]/10)*10
     
+    gridRange = np.linspace(-80,80,15)
+    numPoints = len(gridRange)*len(gridRange)
+    gridVec = np.empty((numPoints,3))
+    
+    blkVal = 0
+    whtVal = 255
+    blkDist = 60
+    whtDist = 80
+    
+    m = (blkVal-whtVal)/(blkDist-whtDist)
+    b = blkVal-blkDist*m
+    
+    points3d   = np.empty((numPoints,3))
+    pointAlpha = np.empty((numPoints))
+    k=0
+    for i in range(len(gridRange)):
+      for j in range(len(gridRange)):
+        points3d[k,0] = gridRange[i] - xOffset
+        points3d[k,1] = gridRange[j] - yOffset
+        points3d[k,2] = 0
+        d = gridRange[i]*gridRange[i] + gridRange[j]*gridRange[j]
+        pointAlpha[k] = min(whtVal, max(blkVal, m*np.sqrt(d)+b))
+        k += 1
+    
+    points2d,_ = cv2.projectPoints(points3d,
+                                   self.rvec,self.tvec.reshape(-1,1),
+                                   self.cMtx,
+                                   None)
+    r=2
+    for i in range(len(pointAlpha)):
+      intVal = int(pointAlpha[i])
+      colorval = "#%02x%02x%02x" % (intVal, intVal, intVal)
+      x = self.windowWidth-points2d[i,0,0]
+      y = points2d[i,0,1]
+      self.tab2_canvas.create_oval(x-r,y-r,x+r,y+r,outline=colorval)
   
   def updateCanvas(self,wmStatus):
     self.tab2_canvas.delete("all")
@@ -145,8 +206,8 @@ class Interface:
     # Define camera matrix
     fx = 800
     fy = 800
-    cx = self.windowWidth
-    cy = 400
+    cx = self.canvasWidth
+    cy = self.canvasHeight
     self.cMtx = np.array([[fx, 0, cx/2],
                           [0, fy, cy/2],
                           [1,  0, 1]], np.float32)
@@ -171,48 +232,39 @@ class Interface:
     self.rvec = rvec
     self.tvec = tvec
     
-    # Grid
-    if False:
-      u_range = np.linspace(-10,10)
-      v_range = np.linspace(-10,10)
-      numPoints = len(u_range)
-      u,v = np.meshgrid(u_range,v_range)
-      x = u
-      y = v
-      z = 0*u
-      points3d = np.stack([x,y,z],axis=-1).reshape(-1,3)
-      points2d, _ = cv2.projectPoints(points3d,
-                                      self.rvec,self.tvec.reshape(-1,1),
-                                      self.cMtx,
-                                      None)
-      dotSize = np.ones(numPoints)
-      for i in range(numPoints):
-        r = 2
-        self.tab2_canvas.create_oval(points2d[i,0,0]-r,points2d[i,0,1]-r,points2d[i,0,0]+r,points2d[i,0,1]+r)
-    else:
-      behind = -10
-      ahead = 50
-      beside = 10
-      x_range = np.linspace(behind,ahead,num=ahead-behind)
-      y_range = np.linspace(-beside,beside,num=2*beside-1)
-      for x in x_range:
-        for y in y_range:
-          point = np.array([[[x,y,0]]], np.float32)
-          point2d,_ = cv2.projectPoints(point,
-                                        self.rvec,self.tvec.reshape(-1,1),
-                                        self.cMtx,
-                                        None)
-          r = 2
-          self.tab2_canvas.create_oval(point2d[0,0,0]-r,point2d[0,0,1]-r,point2d[0,0,0]+r,point2d[0,0,1]+r)
+    # Draw grid
+    #self.drawGrid1()
+    self.drawGrid(wmStatus.dgp)
     
+    # Draw objects
     for obj in wmStatus.objs:
       self.drawBox(obj,wmStatus.dgp)
       
+    # Draw ego
     self.drawBox(wmStatus.dgp,wmStatus.dgp)
+    
+    # Update window
     self.window.update_idletasks()
     self.window.update()
   
-  def update(self,monitoredAgents):    
+  def update(self,monitoredAgents):
+    
+    # Update teleop selections
+    # for option in self.agent_options:
+      # m.delete(option)
+    
+    for a in monitoredAgents:
+      found = False
+      for l in self.agent_options:
+        if a.name == l:
+          found = True
+      
+      if not found:
+        m = self.tab2_agentSel.children['menu']
+        self.agent_options.append(a.name)        
+        m.add_command(label=a.name,command=Tkinter._setit(self.selectedAgentVal, a.name, self.updateSelectedAgent))      
+
+    
     msgText = []
     rowIdx = 2
     colIdx = 2

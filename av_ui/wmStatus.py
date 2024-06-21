@@ -115,7 +115,9 @@ class WmStatus:
     self.objs = []
     
     # Parse new payload
-    payloadCsv = payload.decode('utf-8')
+    payloadCsv = payload
+    if type(payload) == 'bytes':
+      payloadCsv = payload.decode('utf-8')
     lines = payloadCsv.split('\n')
     for line in lines:
       lineData = line.split(',')
