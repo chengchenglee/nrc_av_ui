@@ -4,7 +4,7 @@ Configuration:
   useGui: 0
 
 Subsystem:
-  Innovusion:
+  IV:
     Type: Sensor
     Description: command to start innovusion node
     Trigger:
@@ -16,7 +16,7 @@ Subsystem:
         NomWarnErrRate: 10, 7, 1
     Commands:
       - Name: Innovusion
-        Command: bash $HOME/projects/fvla-infrapod/nrc_ws/src/nrc_svcs/scripts/runInnovusionInfraPod.sh
+        Command: bash $HOME/projects/fvla-infrapod/nrc_ws/src/nrc_svcs/scripts/runInnovusionInfraPod.sh > /dev/null
         NodeName: innovusion_nodelet_manager
         Type: Software
         LaunchTime: 1
@@ -43,7 +43,7 @@ Subsystem:
         NomWarnErrRate: 10, 7, 1
     Commands:
       - Name: PCP
-        Command: roslaunch nrc_pcp_svcs pc_processor.launch
+        Command: roslaunch nrc_pcp_svcs pc_processor.launch > /dev/null
         NodeName: pc_processor_ros_node
         Type: Algorithm
         LaunchTime: 1
@@ -54,7 +54,7 @@ Subsystem:
       - Launch: Innovusion
         Run:    
 
-  ROS-MQTT:
+  Bridge:
     Type: Software
     Description: ROS traffic over MQTT
     Trigger:
@@ -72,7 +72,7 @@ Subsystem:
       - Launch:
         Run:
   
-  TOSTransform:
+  TOS-TF:
     Type: Algorithm
     Description: Transform TOS to map frame
     Trigger:
@@ -83,7 +83,7 @@ Subsystem:
         Type: Algorithm
         LaunchTime: 3.0
     HealthTopics:
-      - HealthTopic: /pc_processor/multi_object_tracker/tracked_object_set
+      - HealthTopic: /pc_processor/multi_object_tracker/tracked_object_set_calibrated
         HealthName: TOS_TF
         HealthTopicType: TrackedObjectSet
         NomWarnErrRate: 10, 7, 1
@@ -91,10 +91,10 @@ Subsystem:
       Retry: 3
       Timeout: 3
       Depends:
-      - Launch: PCP
+      - Launch:
         Run: 
 
-  DATransform:
+  DA-TF:
     Type: Algorithm
     Description: Transform drivable area to map frame
     Trigger:
@@ -113,7 +113,7 @@ Subsystem:
       Retry: 3
       Timeout: 3
       Depends:
-      - Launch: PCP
+      - Launch:
         Run:  
 
   GPS:
@@ -146,7 +146,7 @@ Subsystem:
       - Source: Startup
     Commands:
       - Name: Start Camera
-        Command: bash ${HOME}/projects/fvla-infrapod/start_camera.sh 
+        Command: cd ${HOME}/projects/fvla-infrapod/ && ./start_camera.sh 
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -163,7 +163,7 @@ Subsystem:
       - Source: Startup
     Commands:
       - Name: MQTT Telemetry
-        Command: bash ${HOME}/projects/fvla-infrapod/start_telemetry.sh 
+        Command: cd ${HOME}/projects/fvla-infrapod/ && ./start_telemetry.sh 
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
