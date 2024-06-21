@@ -59,7 +59,8 @@ class CloudConnection:
         self.mailbox.append(message)
 
       def on_mqtt_subscribe(client, userdata, mid, granted_qos):  # subscribe to mqtt broker
-          print("Subscribed to mqtt messages.")
+          a = 1
+          #print("Subscribed to mqtt messages.")
       
       client_id = 'natcsv-mqtt-client.'+self.clientId
       client = mqtt_client.Client(client_id)
@@ -80,7 +81,13 @@ class CloudConnection:
 
   def subscribe(self,topics):
     for topic in topics:
+      print('Mqtt subscribe to topic:',topic)
       self.client.subscribe(topic,2)
+      
+  def unsubscribe(self,topics):
+    for topic in topics:
+      print('Mqtt unsubscribe to topic:',topic)
+      self.client.unsubscribe(topic)
 
   def publishCsv(self,topic,data):
     if len(data) > 0:

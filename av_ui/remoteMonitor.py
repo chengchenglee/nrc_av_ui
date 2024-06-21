@@ -32,7 +32,6 @@ def parseMsgs(messages):
           newAgent = False
       if newAgent:
         topic = 'dt/'+agentName+'/status'
-        print("New Subscription:",topic)
         newSubscriptions.append(topic)
       else:
         for a in monitoredAgents:
@@ -51,9 +50,44 @@ def parseMsgs(messages):
       
       if not found:
         monitoredAgents.append(agentData)
+        
+    elif "wmState" in msg.topic:
+      for a in monitoredAgents:
+        if a.name in msg.topic:
+          a.wmStatus.updateFromMqtt(payloadStr)
+          break
+
+def updateTeleopSubs():
+  global gui, subscribedTopics
+  
+  newSubscribedTopics = []
+  if gui.selectedAgent == 'None':
+    for topic in subscribedTopics:
+      if 'wmState' in topic:
+        cloud.unsubscribe([topic])
+      else:
+        newSubscribedTopics.append(topic)
+  else:
+    foundSub = False
+    for topic in subscribedTopics:
+      if 'wmState' in topic:
+        if gui.selectedAgent in topic:
+          foundSub = True
+        else:
+          cloud.unsubscribe([topic])
+      else:
+        newSubscribedTopics.append(topic)
+    
+    topic = 'dt/'+gui.selectedAgent+'/wmState'
+    if not foundSub:
+      cloud.subscribe([topic])
+    newSubscribedTopics.append(topic)
+  
+  subscribedTopics = newSubscribedTopics[:]
 
 if True:
   gui.setupWindow()
+  gui.initCanvas()
   cloud.init()
   
   nextUpdate = 0
@@ -62,12 +96,15 @@ if True:
     # Check for new agents
     if time.time() > nextUpdate:
       nextUpdate = time.time()+0.2
+      
+      # Update cloud subscriptions for teleop frame
+      updateTeleopSubs()
+      
       for t in newSubscriptions:
         alreadySubscribed = False
         for ts in subscribedTopics:
           if t == ts: alreadySubscribed = True
         if not alreadySubscribed:
-          print("New subscription:",t)
           cloud.subscribe([t])
           subscribedTopics.append(t)
       
@@ -78,7 +115,11 @@ if True:
       for ma in monitoredAgents:
         cloud.publishCsv(ma.cmdTopic, ma.getCmdData())
 
-    gui.updateCanvas()
+    if not gui.selectedAgent == 'None':
+      for a in monitoredAgents:
+        if a.name == gui.selectedAgent:
+          gui.updateCanvas(a.wmStatus)
+    
     time.sleep(0.05)
 
   # Close

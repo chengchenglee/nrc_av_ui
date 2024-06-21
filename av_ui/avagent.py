@@ -70,10 +70,10 @@ class AvAgent:
     self.cloud.publishCsv(topic,data)
   
   def sendWmStatus(self):
-    topic = 'dt/'+self.name+'/wm'
+    topic = 'dt/'+self.name+'/wmState'
     payload = ''
-    payload += self.wmStatus.getWmStr()
-    print(payload)
+    payload += self.wmStatus.getWmStr()+'\n'
+    self.cloud.publishCsv(topic,payload)
     
   def getCmds(self):
     msgs = self.cloud.getMail()

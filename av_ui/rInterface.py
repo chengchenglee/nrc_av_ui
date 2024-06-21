@@ -5,7 +5,7 @@ from subsystem import Subsystem
 import time
 import numpy as np
 import cv2
-from scipy.spatial.transform import Rotation
+#from scipy.spatial.transform import Rotation
 
 # Gui
 if sys.version_info[0] < 3:
@@ -33,7 +33,8 @@ class Interface:
     self.tab1_frame1 = []
     self.tab2_frame1 = []
     
-    self.canvasDrawn = False
+    self.selectedAgent = 'None'
+    #self.canvasDrawn = False
     self.tab2_canvas = []
     self.canvasTime = 0
     self.canvasIncr = 1
@@ -85,36 +86,21 @@ class Interface:
       return "pink"
     else:
       return "#D0D0D0"
+  
+  def updateSelectedAgent(self, newVal):
+    self.selectedAgent = newVal
+    self.selectedAgentVal.set(newVal)
+  
+  def initCanvas(self):
+    agent_options = ['None','Sim_Agent']
+    self.selectedAgentVal = Tkinter.StringVar(self.tab2);
+    self.tab2_agentSel = Tkinter.OptionMenu(self.tab2, self.selectedAgentVal, *agent_options, command=self.updateSelectedAgent)
+    self.tab2_agentSel.grid(column=0, row=1, sticky=Tkinter.W+Tkinter.E)
     
-  def updateCanvas(self):
-    if not self.canvasDrawn:
-      self.tab2_canvas = Tkinter.Canvas(self.tab2, bg="white", height=400, width=self.windowWidth)
-      self.tab2_canvas.grid(column=0, row=1)
-    
-    # Define camera matrix
-    fx = 800
-    fy = 800
-    cx = self.windowWidth
-    cy = 400
-    cMtx = np.array([[fx, 0, cx/2],
-                     [0, fy, cy/2],
-                     [1,  0, 1]], np.float32)
-    
-    # Define camera extrinsics
-    pitch = self.canvasTime
-    pitch = -0*3.14159/180
-    cp,sp = np.cos(pitch),np.sin(pitch)
-    rotMtx = np.identity(3)
-    
-    height = self.camPctTop*20  + (1-self.camPctTop)*7
-    pitch  = self.camPctTop*-75 + (1-self.camPctTop)*-85
-    self.camPctTop += self.camPctIncr
-    if self.camPctTop < 0:
-      self.camPctIncr =  0.01
-    elif self.camPctTop > 1:
-      self.camPctIncr = -0.01
-    
-    ypr = [270,0,pitch]
+    self.tab2_canvas = Tkinter.Canvas(self.tab2, bg="white", height=400, width=self.windowWidth)
+    self.tab2_canvas.grid(column=0, row=2)
+  
+  def rpyToRot(self,ypr):
     rotZ = np.identity(3)
     rotZ[0,0] = np.cos(ypr[0]*3.14159/180)
     rotZ[0,1] =-np.sin(ypr[0]*3.14159/180)
@@ -134,10 +120,56 @@ class Interface:
     rotY[2,2] = np.cos(ypr[1]*3.14159/180)
     
     rotMtx = np.dot(rotY, np.dot(rotX,rotZ))
+    return rotMtx
+  
+  #def getCamMtx(self,pitch,height):
     
-    (rvec,jacobian) = cv2.Rodrigues(rotMtx)
+  
+  def drawBox(self,wmObj,frame):
+    corners = wmObj.cornersInFrame(frame)
+    corners2d,_ = cv2.projectPoints(corners,
+                                  self.rvec,self.tvec.reshape(-1,1),
+                                  self.cMtx,
+                                  None)
+    bottom = []
+    for i in range(0,4):
+      bottom.append([self.windowWidth-corners2d[i,0,0]])
+      bottom.append([corners2d[i,0,1]])
+    
+    ship_id = self.tab2_canvas.create_polygon(bottom,  fill='red')
+    
+  
+  def updateCanvas(self,wmStatus):
+    self.tab2_canvas.delete("all")
+    
+    # Define camera matrix
+    fx = 800
+    fy = 800
+    cx = self.windowWidth
+    cy = 400
+    self.cMtx = np.array([[fx, 0, cx/2],
+                          [0, fy, cy/2],
+                          [1,  0, 1]], np.float32)
+    
+    
+    #height = self.camPctTop*20  + (1-self.camPctTop)*7
+    #pitch  = self.camPctTop*-75 + (1-self.camPctTop)*-85
+    #self.camPctTop += self.camPctIncr
+    #if self.camPctTop < 0:
+      #self.camPctIncr =  0.01
+    #elif self.camPctTop > 1:
+      #self.camPctIncr = -0.01
+      
+    # Define camera extrinsics
+    height =  35
+    pitch  = -70
+    ypr = [270,0,pitch]
+    rotMtx = self.rpyToRot(ypr)
 
+    (rvec,jacobian) = cv2.Rodrigues(rotMtx)
     tvec = np.array([0,0,height],dtype=np.float32)
+    self.rvec = rvec
+    self.tvec = tvec
     
     # Grid
     if False:
@@ -149,11 +181,9 @@ class Interface:
       y = v
       z = 0*u
       points3d = np.stack([x,y,z],axis=-1).reshape(-1,3)
-      
-      
       points2d, _ = cv2.projectPoints(points3d,
-                                      rvec,tvec.reshape(-1,1),
-                                      cMtx,
+                                      self.rvec,self.tvec.reshape(-1,1),
+                                      self.cMtx,
                                       None)
       dotSize = np.ones(numPoints)
       for i in range(numPoints):
@@ -161,36 +191,24 @@ class Interface:
         self.tab2_canvas.create_oval(points2d[i,0,0]-r,points2d[i,0,1]-r,points2d[i,0,0]+r,points2d[i,0,1]+r)
     else:
       behind = -10
-      ahead = 80
-      beside = 5
-      x_range = np.linspace(-10,80,num=ahead-behind)
+      ahead = 50
+      beside = 10
+      x_range = np.linspace(behind,ahead,num=ahead-behind)
       y_range = np.linspace(-beside,beside,num=2*beside-1)
       for x in x_range:
         for y in y_range:
           point = np.array([[[x,y,0]]], np.float32)
           point2d,_ = cv2.projectPoints(point,
-                                        rvec,tvec.reshape(-1,1),
-                                        cMtx,
+                                        self.rvec,self.tvec.reshape(-1,1),
+                                        self.cMtx,
                                         None)
           r = 2
-          #print(point2d[0,0,0], point2d[0,0,1])
           self.tab2_canvas.create_oval(point2d[0,0,0]-r,point2d[0,0,1]-r,point2d[0,0,0]+r,point2d[0,0,1]+r)
-       
-        
-          #print(point,point2d)
-      
-      
-    #print('Update canvas:',str(time.time()))
-    #points = [100, 140, 110, 110, 140, 100, 110, 90, 100, 60, 90, 90, 60, 100, 90, 110]
-    #for i in range(len(points)):
-    #  points[i] += self.canvasTime
-    #self.tab2_canvas.create_polygon(points, outline='green', fill='yellow', width=3)
-    #self.tab2_canvas.pack()
     
-    #self.canvasTime += self.canvasIncr
-    #if self.canvasTime >= 200 or self.canvasTime < 0:
-    #  self.canvasIncr *= -1
+    for obj in wmStatus.objs:
+      self.drawBox(obj,wmStatus.dgp)
       
+    self.drawBox(wmStatus.dgp,wmStatus.dgp)
     self.window.update_idletasks()
     self.window.update()
   

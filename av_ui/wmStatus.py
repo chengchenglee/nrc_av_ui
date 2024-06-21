@@ -4,6 +4,7 @@ import rospy
 from nrc_msgs.msg import TrackedObjectSet
 from nrc_msgs.msg import TrackedObject
 import numpy as np
+from numpy.linalg import inv
 
 # Rounding floats to ints
 dataRounder = []
@@ -13,6 +14,16 @@ dataRounder.append(10000) # th
 dataRounder.append(100)   # len
 dataRounder.append(100)   # width
 dataRounder.append(100)   # speed
+
+xIdx  = 0
+yIdx  = 1
+thIdx = 2
+wIdx  = 3
+lIdx  = 4
+vIdx  = 5
+objDataLen = 6
+
+cornerOrder = [[-1,-1],[-1,1],[1,1],[1,-1]]
 
 def dataToStr(object_id,data):
   global dataRounder
@@ -24,61 +35,113 @@ def dataToStr(object_id,data):
   return dataStr
 
 class WmObject:
-  def __init__(self,trackedObject):
-    self.object_id = trackedObject.object_id
-    self.x = trackedObject.pose.pose.position.x
-    self.y = trackedObject.pose.pose.position.y
-    q = trackedObject.pose.pose.orientation
-    self.th = np.arctan2(2.0 * (q.w*q.z + q.x*q.y),
-                         1.0 - 2.0 * (q.y*q.y + q.z*q.z))
+  def __init__(self,objId,data):
+    global xIdx,yIdx,thIdx,wIdx,lIdx,vIdx
+    self.object_id = objId
+    self.data = data[:]
+    self.update(self.data)
     
-    c,s = np.cos(self.th), np.sin(self.th)
+  @classmethod
+  def from_trackedObject(cls, trObj):
+    global xIdx,yIdx,thIdx,wIdx,lIdx,vIdx
     
-    self.centerPose = np.array(((c, -s, self.x),
-                                (s, c,  self.y),
+    data = np.zeros(6)
+    data[xIdx] = trObj.pose.pose.position.x
+    data[yIdx] = trObj.pose.pose.position.y
+    
+    q = trObj.pose.pose.orientation
+    data[thIdx] = np.arctan2(2.0 * (q.w*q.z + q.x*q.y),1.0 - 2.0 * (q.y*q.y + q.z*q.z))
+    data[lIdx] = trObj.shape_parameters.x
+    data[wIdx] = trObj.shape_parameters.y
+    data[vIdx] = 0 # Speed
+    
+    return cls(trObj.object_id,data)
+  
+  def update(self,data):
+    global xIdx,yIdx,thIdx,wIdx,lIdx,vIdx
+    c,s = np.cos(data[thIdx]), np.sin(data[thIdx])
+    
+    self.data = data
+    self.centerPose = np.array(((c, -s, data[xIdx]),
+                                (s, c,  data[yIdx]),
                                 (0, 0,  1)))
-    
-    self.width = trackedObject.shape_parameters.x
-    self.length = trackedObject.shape_parameters.y
-    self.height = trackedObject.shape_parameters.z
-    
-    self.backLeftVec  = np.array(((-self.width/2.),
-                                  ( self.length/2.),
-                                  (1.0)))
-    self.backRightPnt = np.dot(self.centerPose,self.backLeftVec)
-    
-    # Summary Data
-    self.data = []
-    self.data.append(self.backRightPnt[0])
-    self.data.append(self.backRightPnt[1])
-    self.data.append(self.th)
-    self.data.append(self.length)
-    self.data.append(self.width)
-    
+    self.poseInv = inv(self.centerPose)
+  
   def toStr(self):
     return dataToStr(self.object_id,self.data)
+  
+  def cornersInFrame(self,frame):
+    pose = np.dot(frame.poseInv,self.centerPose)
+    
+    cornerVec = np.empty((8,3))
+    i=0
+    for dz in range(0,2):
+      for coord in cornerOrder:
+      #for dx in range(-1,2,2):
+        #for dy in range(1,2,2):
+        pt = np.dot(pose,[coord[0]*self.data[lIdx]/2,coord[1]*self.data[wIdx]/2,1])
+        cornerVec[i,:] = pt
+        cornerVec[i,2] = dz*2.0
+        i += 1
+    return cornerVec
 
 class WmStatus:
   def __init__(self):
-    self.dgp = []
+    global objDataLen
+    data = np.zeros(objDataLen)
+    self.dgp = WmObject(-1,data)
     self.objs = []
   
   def setDgp(self,data):
-    self.dgp = data[:]
+    global lIdx, wIdx
+    data[lIdx] = 3.7
+    data[wIdx] = 1.5
+    self.dgp.update(data)
     
   def getWmStr(self):
     dataStr = ''
-    dataStr += 'a,'+dataToStr(-1,self.dgp)
+    dataStr += 'a,'+dataToStr(-1,self.dgp.data)
     for obj in self.objs:
       dataStr += '\no,'+obj.toStr()
     return dataStr
     
   def updateObj(self,oldObs,newObs):
-    return WmObject(newObs)
+    return WmObject.from_trackedObject(newObs)
+  
+  def updateFromMqtt(self,payload):
+    global xIdx,yIdx,thIdx,wIdx,lIdx,vIdx
+    
+    # Clear object list
+    self.objs = []
+    
+    # Parse new payload
+    payloadCsv = payload.decode('utf-8')
+    lines = payloadCsv.split('\n')
+    for line in lines:
+      lineData = line.split(',')
+      #print(lineData)
+      # Line relates to agent status
+      if lineData[0] == 'a':
+        objDataCsv = lineData[2:]
+        dgpData = np.zeros(objDataLen)
+        for i in range(len(objDataCsv)):
+          dgpData[i] = float(objDataCsv[i])/dataRounder[i]
+        
+        dgpData[wIdx] = 1.5
+        dgpData[lIdx] = 3.7
+        self.dgp = WmObject(-1,dgpData)
+        
+      # Line relates to observed road users
+      if lineData[0] == 'o':
+        objId = int(lineData[1])
+        objData = np.zeros(objDataLen)
+        objDataCsv = lineData[2:]
+        for i in range(len(objDataCsv)):
+          objData[i] = float(objDataCsv[i])/dataRounder[i]
+        self.objs.append(WmObject(objId,objData))
   
   def updateObjs(self,tosMsg):
-    
-    if True:
+    if False:
       newObj = TrackedObject()
       newObj.object_id = 1
       newObj.pose.pose.position.x = 5046.137126332932
@@ -106,6 +169,6 @@ class WmStatus:
           break
       
       if not matchedObj:
-        newObjs.append(WmObject(newObs))
+        newObjs.append(WmObject.from_trackedObject(newObs))
       
     self.objs = newObjs

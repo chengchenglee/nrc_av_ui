@@ -3,6 +3,7 @@
 import json, ast
 from collections import OrderedDict
 import time
+from wmStatus import WmStatus
 
 class MonitoredProcess:
   def __init__(self):
@@ -68,6 +69,7 @@ class MonitoredAgent:
     self.cmdsEnabledButton = []
     self.selected = False
     self.tLastMsg = time.time()
+    self.wmStatus = WmStatus()
   
   def update(self,latestSubsystems):
     foundSubsystem = False
@@ -138,27 +140,27 @@ class MonitoredAgent:
     self.subsystems.append(subsystem)
     #self.printStatus()
   
-  def parseMsgPayload(self,payload):
-    #msgJson = ast.literal_eval(msg.payload)
-    msgJson = json.loads(payload,object_pairs_hook=OrderedDict)
-    #print(msgJson)
+  #def parseMsgPayload(self,payload):
+    ##msgJson = ast.literal_eval(msg.payload)
+    #msgJson = json.loads(payload,object_pairs_hook=OrderedDict)
+    ##print(msgJson)
     
-    keys = list(msgJson.keys())
-    if "agent" in keys:
-      self.name = msgJson["agent"]
-      self.cmdTopic = 'cmd/'+self.name+'/remote'
+    #keys = list(msgJson.keys())
+    #if "agent" in keys:
+      #self.name = msgJson["agent"]
+      #self.cmdTopic = 'cmd/'+self.name+'/remote'
     
-    if "subs" in keys:
-      subDict = msgJson["subs"]
-      subsList = list(subDict.keys())
-      for s in subsList:
-        subsystem = MonitoredSubsystem()
-        subsystem.name = s
-        monDict = subDict[s]
-        monsList = list(monDict.keys())
-        for m in monsList:
-          mon = MonitoredProcess()
-          mon.name = m
-          mon.status = monDict[m]
-          subsystem.monitors.append(mon)
-        self.subsystems.append(subsystem)
+    #if "subs" in keys:
+      #subDict = msgJson["subs"]
+      #subsList = list(subDict.keys())
+      #for s in subsList:
+        #subsystem = MonitoredSubsystem()
+        #subsystem.name = s
+        #monDict = subDict[s]
+        #monsList = list(monDict.keys())
+        #for m in monsList:
+          #mon = MonitoredProcess()
+          #mon.name = m
+          #mon.status = monDict[m]
+          #subsystem.monitors.append(mon)
+        #self.subsystems.append(subsystem)
