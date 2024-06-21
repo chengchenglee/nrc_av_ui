@@ -58,7 +58,7 @@ class AvAgent:
     self.avStatusPub = rospy.Publisher("ailsv_av_status",InterventionRequest,queue_size=1)
     self.avLedStatusPub = rospy.Publisher("ailsv_av_led",Int16MultiArray,queue_size=1)
     if self.sendWm == 1: 
-      self.wmStatusSub = rospy.Subscriber("ailsv_tracked_objects", TrackedObjectSet, self.wmStatus.updateObjs, queue_size = 1)
+      self.wmStatusSub = rospy.Subscriber("pc_processor/multi_object_tracker/tracked_object_set", TrackedObjectSet, self.wmStatus.updateObjs, queue_size = 1)
     
     self.cloud.init()
     self.cloud.subscribe(['cmd/'+self.name+'/remote'])
