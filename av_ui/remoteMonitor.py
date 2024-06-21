@@ -30,10 +30,10 @@ def parseMsgs(messages):
       newAgent = True
       for t in subscribedTopics:
         if agentName in t:
-          newAgent = False
-          
+          newAgent = False  
+          break  
       # If new agent, subscribe.  If not, update time stamp
-      if newAgent:
+      if newAgent == True:
         topic = 'dt/'+agentName+'/status'
         newSubscriptions.append(topic)
       else:

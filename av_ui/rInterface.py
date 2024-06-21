@@ -269,8 +269,8 @@ class Interface:
     rowIdx = 2
     colIdx = 2
     buttonWidth = 7
-    hideInactive = False
     for a in monitoredAgents:
+      hideInactive = False
       dt = time.time() - a.tLastMsg
       if 2 < dt and dt < 5: print("Agent heartbeat latency:",a.name,dt)
       if dt > 5. and a.drawn:  # Agent no longer active, but should be
@@ -351,10 +351,10 @@ class Interface:
             s.button.configure(bg=self.statusToColor(0))
           else:
             s.button.configure(bg=self.statusToColor(minStatus))
-            
 
-        a.drawn = True
-    
+      a.drawn = True
+      rowIdx += 1
+      colIdx = 2
     self.window.update_idletasks()
     self.window.update()
 
