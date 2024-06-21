@@ -45,6 +45,7 @@ if True:
   nextPollTime = 0
   nextStSend = 0
   nextWmSend = 0
+  nextSnapSend = time.time()+3
   while running:
     # Wait for updates
     if time.time() > nextPollTime:
@@ -60,6 +61,10 @@ if True:
     if time.time() > nextWmSend:
       nextWmSend = time.time()+0.1
       if (agent.sendWm): agent.sendWmStatus()
+    
+    if time.time() > nextSnapSend:
+      nextSnapSend = time.time()+0.1
+      if (agent.sendSnapshots): agent.sendSnapshot()
       
     time.sleep(0.01)
 

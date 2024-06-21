@@ -2,6 +2,7 @@ Configuration:
   Name: fvla-infrapod
   Map: Franklin.set
   useGui: 0
+  sendWm: 1
 
 Subsystem:
   Innovusion:

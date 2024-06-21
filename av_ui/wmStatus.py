@@ -108,21 +108,14 @@ class WmStatus:
   def updateObj(self,oldObs,newObs):
     return WmObject.from_trackedObject(newObs)
   
-  def updateFromMqtt(self,payload):
+  def updateFromMqtt(self,data):
     global xIdx,yIdx,thIdx,wIdx,lIdx,vIdx
     
     # Clear object list
     self.objs = []
     
     # Parse new payload
-    payloadCsv = payload
-    if type(payload) == 'bytes':
-      payloadCsv = payload.decode('utf-8')
-    lines = payloadCsv.split('\n')
-    for line in lines:
-      lineData = line.split(',')
-      #print(lineData)
-      # Line relates to agent status
+    for lineData in data:
       if lineData[0] == 'a':
         objDataCsv = lineData[2:]
         dgpData = np.zeros(objDataLen)

@@ -22,14 +22,17 @@ subscribedTopics = []
 def parseMsgs(messages):
   global monitoredAgents, newSubscriptions
   for msg in messages:
-    payloadStr = msg.payload.decode('utf-8')
-    if "heartbeat" in msg.topic:
-      value = payloadStr.split(',')[1]
-      agentName = value
+    
+    # Received heartbeat from an agent
+    if "heartbeat" in msg['topic']:
+      # Get agent name from message and see if we're already monitoring it
+      agentName = msg['data'][0][1]
       newAgent = True
       for t in subscribedTopics:
         if agentName in t:
           newAgent = False
+          
+      # If new agent, subscribe.  If not, update time stamp
       if newAgent:
         topic = 'dt/'+agentName+'/status'
         newSubscriptions.append(topic)
@@ -38,9 +41,10 @@ def parseMsgs(messages):
           if agentName in a.name:
             a.tLastMsg = time.time()
             
-    elif "status" in msg.topic:
+    # Received a status update from an agent
+    elif "status" in msg['topic']:
       agentData = MonitoredAgent()
-      agentData.parseMsgPayloadCsv(payloadStr)
+      agentData.parseMsgPayloadCsv(msg['data'])
   
       found = False
       for a in monitoredAgents:
@@ -51,15 +55,18 @@ def parseMsgs(messages):
       if not found:
         monitoredAgents.append(agentData)
         
-    elif "wmState" in msg.topic:
+    # Received a world model state from an agent
+    elif "wmState" in msg['topic']:
       for a in monitoredAgents:
-        if a.name in msg.topic:
-          a.wmStatus.updateFromMqtt(payloadStr)
+        if a.name in msg['topic']:
+          a.wmStatus.updateFromMqtt(msg['data'])
           break
 
+# Only subscribe to agent wmState if we've selected them on teleop tab
 def updateTeleopSubs():
-  global gui, subscribedTopics
+  global cloud, gui, subscribedTopics
   
+  # If teleop tab has no agent selected, unsubscribe from all wmState topics
   newSubscribedTopics = []
   if gui.selectedAgent == 'None':
     for topic in subscribedTopics:
@@ -67,6 +74,8 @@ def updateTeleopSubs():
         cloud.unsubscribe([topic])
       else:
         newSubscribedTopics.append(topic)
+  
+  # Subscribe to the relevant wmState topics
   else:
     foundSub = False
     for topic in subscribedTopics:
@@ -85,36 +94,43 @@ def updateTeleopSubs():
   
   subscribedTopics = newSubscribedTopics[:]
 
+def updateStatusSubs():
+  global cloud, newSubscriptions, subscribedTopics
+  for t in newSubscriptions:
+    alreadySubscribed = False
+    for ts in subscribedTopics:
+      if t == ts:
+        alreadySubscribed = True
+    if not alreadySubscribed:
+      cloud.subscribe([t])
+      subscribedTopics.append(t)
+
 if True:
   gui.setupWindow()
   gui.initCanvas()
   cloud.init()
   
   nextUpdate = 0
-  
   while running:
-    # Check for new agents
+    # Update everything
     if time.time() > nextUpdate:
       nextUpdate = time.time()+0.2
       
-      # Update cloud subscriptions for teleop frame
+      # Update agent wmState subscriptions
       updateTeleopSubs()
       
-      for t in newSubscriptions:
-        alreadySubscribed = False
-        for ts in subscribedTopics:
-          if t == ts: alreadySubscribed = True
-        if not alreadySubscribed:
-          cloud.subscribe([t])
-          subscribedTopics.append(t)
+      # Update agent status subscriptions
+      updateStatusSubs()
       
       # Parse updates
       parseMsgs(cloud.getMail())
       gui.update(monitoredAgents)
       
+      # Publish commands
       for ma in monitoredAgents:
         cloud.publishCsv(ma.cmdTopic, ma.getCmdData())
 
+    # Only update the teleop canvas if we've selected an agent
     if not gui.selectedAgent == 'None':
       for a in monitoredAgents:
         if a.name == gui.selectedAgent:

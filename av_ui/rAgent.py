@@ -117,50 +117,20 @@ class MonitoredAgent:
         data += 's,'+s.name+','+str(s.isRunning)+'\n'
     return data
   
-  def parseMsgPayloadCsv(self,payload):
-    payload = payload.strip('\"')
-    lines = payload.split('\n')
+  def parseMsgPayloadCsv(self,data):
     subsystem = MonitoredSubsystem()
-    for line in lines:
-      #print(line)
-      code = line.split(',')[0]
-      if code == 'a':
-        self.name = line.split(',')[1]
+    for lineData in data:
+      if lineData[0] == 'a':
+        self.name = lineData[1]
         self.cmdTopic = 'cmd/'+self.name+'/remote'
-      elif code == 's':
+      elif lineData[0] == 's':
         if subsystem.name != "": self.subsystems.append(subsystem)
         subsystem = MonitoredSubsystem()
-        subsystem.name = line.split(',')[1]
+        subsystem.name = lineData[1]
         subsystem.monitors = []
-      elif code == 'm':
+      elif lineData[0] == 'm':
         mon = MonitoredProcess()
-        mon.name = line.split(',')[1]
-        mon.status = int(line.split(',')[2])
+        mon.name = lineData[1]
+        mon.status = int(lineData[2])
         subsystem.monitors.append(mon)
     self.subsystems.append(subsystem)
-    #self.printStatus()
-  
-  #def parseMsgPayload(self,payload):
-    ##msgJson = ast.literal_eval(msg.payload)
-    #msgJson = json.loads(payload,object_pairs_hook=OrderedDict)
-    ##print(msgJson)
-    
-    #keys = list(msgJson.keys())
-    #if "agent" in keys:
-      #self.name = msgJson["agent"]
-      #self.cmdTopic = 'cmd/'+self.name+'/remote'
-    
-    #if "subs" in keys:
-      #subDict = msgJson["subs"]
-      #subsList = list(subDict.keys())
-      #for s in subsList:
-        #subsystem = MonitoredSubsystem()
-        #subsystem.name = s
-        #monDict = subDict[s]
-        #monsList = list(monDict.keys())
-        #for m in monsList:
-          #mon = MonitoredProcess()
-          #mon.name = m
-          #mon.status = monDict[m]
-          #subsystem.monitors.append(mon)
-        #self.subsystems.append(subsystem)

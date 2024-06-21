@@ -7,6 +7,7 @@ import json
 import argparse
 import paho.mqtt.client as mqtt_client
 from collections import OrderedDict
+from sys import getsizeof
 
 import rospy
 from nrc_msgs.msg import GpsState
@@ -17,6 +18,7 @@ class CloudConnection:
   def __init__(self,clientId):
     self.name = clientId
     self.clientId = self.name+time.strftime("%Y-%m-%d-%H-%M-%S")
+    self.isConnected = False
     print ("Create mqtt connection:",self.clientId) 
 
     # MQTT Broker details
@@ -51,12 +53,33 @@ class CloudConnection:
   def connect_mqtt(self):
       def on_connect(client, userdata, flags, rc):
           if rc == 0:
+              self.isConnected = True
               print("Connected to MQTT Broker!")
           else:
               print("Failed to connect, return code %d\n", rc)
       
+      def on_disconnect(client, userdata, rc):
+        self.isConnected = False
+        print('MQTT disconnected:'+str(rc))
+      
       def on_mqtt_message(client, userdata, message):
-        self.mailbox.append(message)
+        # Get message topic
+        msg = {}
+        msg['topic'] = message.topic
+        
+        # Parse csv data
+        payloadCsv = message.payload
+        if type(payloadCsv) == 'bytes':
+          payloadCsv = message.payload.decode('utf-8')
+        
+        data = []
+        lines = payloadCsv.split('\n')
+        for line in lines:
+          lineData = line.split(',')
+          data.append(list(lineData))
+        
+        msg['data'] = data
+        self.mailbox.append(msg)
 
       def on_mqtt_subscribe(client, userdata, mid, granted_qos):  # subscribe to mqtt broker
           a = 1
@@ -91,10 +114,17 @@ class CloudConnection:
 
   def publishCsv(self,topic,data):
     if len(data) > 0:
-      result = self.client.publish(topic, data)
+      tStart = time.time()
+      result = self.client.publish(topic, data,qos=2)
+      result.wait_for_publish()
       status = result[0]
       if status != 0:
-          print("Failed to send msg to broker.")
+        print("Failed to send msg to broker.")
+      else:
+        dt = time.time()-tStart
+        dtms = round(dt*10000)/10
+        rate = getsizeof(data)/(dt*1000)
+        print('Message sent (ms/kbps):'+str(dtms)+','+str(round(rate)))
     
   #def publish(self,topic,data):
     #if len(data) > 0:

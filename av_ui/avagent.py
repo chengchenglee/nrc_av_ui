@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
 from os.path import expanduser
+import os
+import glob
 import rospy
 from subsystem import Subsystem
 from wmStatus import WmStatus
@@ -38,8 +40,15 @@ class AvAgent:
     self.mapName = Loader.getField(text,'mapName','Franklin.set')
     self.useGui  = int(Loader.getField(text,'useGui',1))
     self.sendWm  = int(Loader.getField(text,'sendWm',0))
+    self.sendSnapshots  = int(Loader.getField(text,'sendSnapshots',0))
+    self.currentSnapshotFile = ''
+    self.currentSnapshotFilesize = 0
+    self.snapshotChunkSendTime = 0
+    self.snapshotChunkSize = 500
+    self.snapshotDataSent = 0
     print ("useGui: "+str(self.useGui))
     print ("sendWm: "+str(self.sendWm))
+    print ("sendSnapshots: "+str(self.sendSnapshots))
     self.cloud = CloudConnection(self.name)
     self.cloud.updateConfig(text)
 
@@ -75,13 +84,57 @@ class AvAgent:
     payload += self.wmStatus.getWmStr()+'\n'
     self.cloud.publishCsv(topic,payload)
     
+  def splitfile(self, filename, size=1000):
+    chunks = []
+    with open(filename) as f:
+      chunk = f.read(size)
+      while chunk:
+        chunks.append(chunk)
+        chunk = f.read(size)
+    return chunks
+    
+  def sendSnapshot(self):
+    # Setup topic name, file directory
+    topic = 'dt/'+self.name+'/snapshots'
+    tStart = time.time()
+    todaysDate = ''.join(time.strftime("%Y-%m-%d"))
+    pathToBags = '/opt/data/snapshots/'+todaysDate+'/'
+    bagFiles = glob.glob(pathToBags+"*.bag")
+    
+    # Check if we've already opened a file
+    if self.currentSnapshotFile == '':
+      for filename in bagFiles:
+        self.currentSnapshotFilesize = os.path.getsize(filename)
+        print('============= Send file:',filename,str(self.currentSnapshotFilesize)+'=============')
+        self.currentSnapshotFile = open(filename)
+        break
+        
+    # Continue sending the file
+    chunk = self.currentSnapshotFile.read(self.snapshotChunkSize)
+    if chunk:
+      if False:
+        tStart = time.time()
+        self.cloud.publishCsv(topic,chunk)
+        dt = time.time()-tStart
+        self.snapshotDataSent += self.snapshotChunkSize
+        print('Sending snapshot:'+str(self.snapshotDataSent)+'/'+str(self.currentSnapshotFilesize)+', '+str(self.snapshotChunkSize))
+        if dt < 0.08:
+          self.snapshotChunkSize = min(200000, self.snapshotChunkSize+200)
+        elif dt > 0.12:
+          self.snapshotChunkSize = max(100,self.snapshotChunkSize-1000)
+      else:
+        self.snapshotChunkSize = 2000000
+    
+    # Done sending the file
+    else:
+      self.currentSnapshotFile.close()
+      self.currentSnapshotFile = ''
+      self.snapshotDataSent = 0
+    
   def getCmds(self):
     msgs = self.cloud.getMail()
     for m in msgs:
-      payloadCsv = m.payload.decode('utf-8')
-      lines = payloadCsv.split('\n')
-      for line in lines:
-        lineData = line.split(',')
+      for lineData in m['data']:
         if lineData[0] == 's':
           for s in self.subsystems:
             cmd = lineData[2]

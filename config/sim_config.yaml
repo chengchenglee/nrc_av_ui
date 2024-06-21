@@ -3,6 +3,7 @@ Configuration:
   mapName: Franklin.set
   useGui: 1
   sendWm: 1
+  sendSnapshots: 0
 
 Subsystem:
   Sim:
