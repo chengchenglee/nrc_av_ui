@@ -267,9 +267,9 @@ class Interface:
     
     msgText = []
     rowIdx = 2
-    colIdx = 2
     buttonWidth = 7
     for a in monitoredAgents:
+      colIdx = 2
       hideInactive = False
       dt = time.time() - a.tLastMsg
       if 2 < dt and dt < 5: print("Agent heartbeat latency:",a.name,dt)
@@ -284,6 +284,7 @@ class Interface:
               m.button.grid_forget()
         else:
           a.button.configure(bg=self.statusToColor(1))
+          a.button.grid(column=1, row=rowIdx, sticky=Tkinter.W+Tkinter.E)
           a.cmdsEnabledButton.grid_forget()
           for s in a.subsystems:
             s.button.grid(column=colIdx, row=rowIdx, sticky=Tkinter.W+Tkinter.E)
@@ -354,7 +355,6 @@ class Interface:
 
       a.drawn = True
       rowIdx += 1
-      colIdx = 2
     self.window.update_idletasks()
     self.window.update()
 
