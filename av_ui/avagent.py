@@ -6,6 +6,7 @@ import glob
 import rospy
 from subsystem import Subsystem
 from wmStatus import WmStatus
+from fileInTransit import FileInTransit
 import loader as Loader
 from nrc_msgs.msg import InterventionRequest
 from std_msgs.msg import Int16MultiArray
@@ -41,11 +42,9 @@ class AvAgent:
     self.useGui  = int(Loader.getField(text,'useGui',1))
     self.sendWm  = int(Loader.getField(text,'sendWm',0))
     self.sendSnapshots  = int(Loader.getField(text,'sendSnapshots',0))
-    self.currentSnapshotFile = ''
-    self.currentSnapshotFilesize = 0
-    self.snapshotChunkSendTime = 0
-    self.snapshotChunkSize = 500
-    self.snapshotDataSent = 0
+    todaysDate = ''.join(time.strftime("%Y-%m-%d"))
+    self.pathToBags = '/opt/data/snapshots/'+todaysDate+'/'
+    self.fileInTransit = FileInTransit()
     print ("useGui: "+str(self.useGui))
     print ("sendWm: "+str(self.sendWm))
     print ("sendSnapshots: "+str(self.sendSnapshots))
@@ -84,52 +83,30 @@ class AvAgent:
     payload += self.wmStatus.getWmStr()+'\n'
     self.cloud.publishCsv(topic,payload)
     
-  def splitfile(self, filename, size=1000):
-    chunks = []
-    with open(filename) as f:
-      chunk = f.read(size)
-      while chunk:
-        chunks.append(chunk)
-        chunk = f.read(size)
-    return chunks
-    
   def sendSnapshot(self):
-    # Setup topic name, file directory
+    # Setup topic name, get list of bagfiles
     topic = 'dt/'+self.name+'/snapshots'
-    tStart = time.time()
-    todaysDate = ''.join(time.strftime("%Y-%m-%d"))
-    pathToBags = '/opt/data/snapshots/'+todaysDate+'/'
-    bagFiles = glob.glob(pathToBags+"*.bag")
+    bagFiles = glob.glob(self.pathToBags+"*.bag")
     
     # Check if we've already opened a file
-    if self.currentSnapshotFile == '':
+    if self.fileInTransit.needFile() == 1:
       for filename in bagFiles:
-        self.currentSnapshotFilesize = os.path.getsize(filename)
-        print('============= Send file:',filename,str(self.currentSnapshotFilesize)+'=============')
-        self.currentSnapshotFile = open(filename)
+        self.fileInTransit.setNew(filename)
         break
         
-    # Continue sending the file
-    chunk = self.currentSnapshotFile.read(self.snapshotChunkSize)
-    if chunk:
-      if False:
-        tStart = time.time()
-        self.cloud.publishCsv(topic,chunk)
-        dt = time.time()-tStart
-        self.snapshotDataSent += self.snapshotChunkSize
-        print('Sending snapshot:'+str(self.snapshotDataSent)+'/'+str(self.currentSnapshotFilesize)+', '+str(self.snapshotChunkSize))
-        if dt < 0.08:
-          self.snapshotChunkSize = min(200000, self.snapshotChunkSize+200)
-        elif dt > 0.12:
-          self.snapshotChunkSize = max(100,self.snapshotChunkSize-1000)
-      else:
-        self.snapshotChunkSize = 2000000
+    # Still more file to send
+    if not self.fileInTransit.isDone():
+      tStart = time.time()
+      payload = self.fileInTransit.getPayload()
+      self.fileInTransit.getHeader(payload)
+      self.cloud.publishCsv(topic,payload)
+      dt = time.time()-tStart
+      print('Payload sent:'+str(self.fileInTransit.chunkSize)+','+str(round(dt*10000)/10))
+      self.fileInTransit.updateChunkSize(dt)
     
     # Done sending the file
     else:
-      self.currentSnapshotFile.close()
-      self.currentSnapshotFile = ''
-      self.snapshotDataSent = 0
+      self.fileInTransit.setDone()
     
   def getCmds(self):
     msgs = self.cloud.getMail()

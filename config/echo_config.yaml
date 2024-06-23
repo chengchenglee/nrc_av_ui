@@ -6,7 +6,7 @@ Subsystem:
   CAR:
     Type: Sensor
     Description: Vehicle CAN
-    Trigger:
+    Trigger: Startup, StartRequest, ARDX, or PMUX
       - Source: Startup
     HealthTopics:
       - HealthTopic: /CtrlStateFLG

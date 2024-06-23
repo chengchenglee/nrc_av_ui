@@ -8,7 +8,7 @@ Subsystem:
   LIDAR:
     Type: Sensor
     Description: command to start innovusion node
-    Trigger:
+    Trigger: Startup, StartRequest, ARDX, or PMUX
       - Source: Startup
     HealthTopics:
       - HealthTopic: /iv_points

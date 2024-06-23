@@ -45,7 +45,7 @@ if True:
   nextPollTime = 0
   nextStSend = 0
   nextWmSend = 0
-  nextSnapSend = time.time()+3
+  nextSnapSend = time.time()+1
   while running:
     # Wait for updates
     if time.time() > nextPollTime:

@@ -9,8 +9,8 @@ Subsystem:
   Sim:
     Type: Sensor
     Description: command to start simulator
-    Trigger:
-      - Source: Startup
+    Trigger: Startup, StartRequest, ARDX, or PMUX
+      - Source: StartRequest
     HealthTopics:
       - HealthTopic: /CtrlStateFLG
         HealthName: CAR
