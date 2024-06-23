@@ -335,11 +335,14 @@ class Interface:
           minStatus = 3
           for m in s.monitors:
             if (not a.drawn):
-              m.button = Tkinter.Button(self.tab1_frame1, text=m.name, width=buttonWidth, padx=1, relief="raised",command=m.select)
+              m.button = Tkinter.Button(self.tab1_frame1, text=m.name, width=buttonWidth, padx=1, pady=1, relief="raised",command=m.select)
             
             if a.selected:
               m.button.grid(column=colIdx, row=rowIdx, sticky=Tkinter.W+Tkinter.E)
               m.button.configure(bg=self.statusToColor(m.status))
+              textStr = m.name+'\n'+str(m.msgCount)
+              m.button.configure(text=textStr)
+              m.button.configure(font = ("Helvetica",8))
               colIdx = colIdx + 1
             else:
               m.button.grid_forget()

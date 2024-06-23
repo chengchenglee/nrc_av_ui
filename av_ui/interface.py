@@ -198,8 +198,11 @@ class Interface:
       
       objCol = 3
       for m in s.monitors:
-        m.label = Tkinter.Button(compFrame, text=m.name, width=msgWidth, padx=1, relief="raised", bg="#505050", command=m.displayMore)
+        m.label = Tkinter.Button(compFrame, text=m.name, width=msgWidth, padx=1, pady=1, relief="raised", bg="#505050", command=m.displayMore)
         m.label.grid(column=objCol, row=objRow, sticky=Tkinter.W+Tkinter.E)
+        textStr = m.name+'\n'+str(m.msgCount)
+        m.label.configure(text=textStr)
+        m.label.configure(font = ("Helvetica",8))
         objCol = objCol + 1
         
       objRow = objRow+1
@@ -316,6 +319,8 @@ class Interface:
     for s in subsystems:
       for m in s.monitors:
         m.label.configure(bg=self.statusToColor(m.status))
+        textStr = m.name+'\n'+str(m.msgCount)
+        m.label.configure(text=textStr)
         if m.displayText == 1 or m.autoText == 1:
           msgText +=m.name+": "+m.msgText+'\n'
 

@@ -17,12 +17,13 @@ class Monitor:
     self.avgTimeDiff = 0.005
     self.tLastRvcd = time.time()
     self.status = 0
+    self.statusStr = '0'
     self.subsystemMode = 'Stopping'
     self.label = 0
     self.displayText = 0
     self.autoText = 0
     self.msgText = "Default"
-    self.msgCounter = 0
+    self.msgCount = 0
     self.statusText = ""
     self.data = np.zeros(5)
 
@@ -33,8 +34,8 @@ class Monitor:
     current_time = time.time()
     tDiff = min(10, max(0.005, current_time - self.tLastRvcd))
     self.tLastRvcd = current_time
-    self.msgCounter = self.msgCounter + 1
-    if self.msgCounter > 999: self.msgCounter = 0
+    self.msgCount += 1
+    if self.msgCount > 999: self.msgCount = 1
 
     # Update avgTimeDiff
     alpha = 0.7
@@ -70,7 +71,7 @@ class Monitor:
     tDiff = min(10, max(0.005, current_time-self.tLastRvcd))
     rate = min(200, max(0, 1/self.avgTimeDiff))
     
-    self.msgText = "MsgCount: " + str(self.msgCounter) + ", Rate: " + str(round(rate,2))+", "+self.statusText
+    self.msgText = "MsgCount: " + str(self.msgCount) + ", Rate: " + str(round(rate,2))+", "+self.statusText
     
     if tDiff > tDiffFailed or self.avgTimeDiff >= tDiffFailed:
       self.status = 1
@@ -89,7 +90,9 @@ class Monitor:
       self.autoText = 0
     else:
       self.autoText = 1
-
+    
+    self.statusStr = str(self.status*1000 + self.msgCount)
+    
     return self.status
 
   def displayMore(self):

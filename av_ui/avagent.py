@@ -42,12 +42,14 @@ class AvAgent:
     self.useGui  = int(Loader.getField(text,'useGui',1))
     self.sendWm  = int(Loader.getField(text,'sendWm',0))
     self.sendSnapshots  = int(Loader.getField(text,'sendSnapshots',0))
+    self.printTimeDebug = int(Loader.getField(text,'printTimeDebug',0))
     todaysDate = ''.join(time.strftime("%Y-%m-%d"))
     self.pathToBags = '/opt/data/snapshots/'+todaysDate+'/'
     self.fileInTransit = FileInTransit()
     print ("useGui: "+str(self.useGui))
     print ("sendWm: "+str(self.sendWm))
     print ("sendSnapshots: "+str(self.sendSnapshots))
+    
     self.cloud = CloudConnection(self.name)
     self.cloud.updateConfig(text)
 
@@ -74,7 +76,7 @@ class AvAgent:
     for s in self.subsystems:
       data += 's,'+s.name+'\n'
       for m in s.monitors:
-        data += 'm,'+m.name+','+str(m.status)+'\n'
+        data += 'm,'+m.name+','+m.statusStr+'\n'
     self.cloud.publishCsv(topic,data)
   
   def sendWmStatus(self):
@@ -101,7 +103,8 @@ class AvAgent:
       self.fileInTransit.getHeader(payload)
       self.cloud.publishCsv(topic,payload)
       dt = time.time()-tStart
-      print('Payload sent:'+str(self.fileInTransit.chunkSize)+','+str(round(dt*10000)/10))
+      if self.printTimeDebug:
+        print('Payload sent:'+str(self.fileInTransit.chunkSize)+','+str(round(dt*10000)/10))
       self.fileInTransit.updateChunkSize(dt)
     
     # Done sending the file

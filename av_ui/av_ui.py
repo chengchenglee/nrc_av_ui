@@ -8,6 +8,7 @@ from RoscoreObj import *
 from avagent import AvAgent
 from interface import Interface
 import time
+import numpy as np
 
 running = True
 
@@ -48,23 +49,36 @@ if True:
   nextSnapSend = time.time()+1
   while running:
     # Wait for updates
+    prevTime = time.time()
+    dtStamps = np.zeros(4)
     if time.time() > nextPollTime:
       nextPollTime = time.time()+0.1
       agent.pollMonitors()
       agent.getCmds()
       if (agent.useGui == 1): interface.update(agent.subsystems)
+      dtStamps[0] = round((time.time() - prevTime)*1000)/1000
+      prevTime = time.time()
 
     if time.time() > nextStSend:
       nextStSend = time.time()+0.25
       agent.sentStatusCsv()
+      dtStamps[1] = round((time.time() - prevTime)*1000)/1000
+      prevTime = time.time()
     
     if time.time() > nextWmSend:
       nextWmSend = time.time()+0.1
       if (agent.sendWm): agent.sendWmStatus()
+      dtStamps[2] = round((time.time() - prevTime)*1000)/1000
+      prevTime = time.time()
     
     if time.time() > nextSnapSend:
       nextSnapSend = time.time()+0.1
       if (agent.sendSnapshots): agent.sendSnapshot()
+      dtStamps[3] = round((time.time() - prevTime)*1000)/1000
+    
+    tTotal = np.sum(dtStamps)
+    if (agent.printTimeDebug == 1 and tTotal > 0.08) or (tTotal > 0.25):
+      print(dtStamps,'====>',str(round(tTotal*1000)/1000))
       
     time.sleep(0.01)
 

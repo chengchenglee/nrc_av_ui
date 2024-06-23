@@ -10,6 +10,7 @@ class MonitoredProcess:
     self.name = []
     self.drawn = False
     self.status = 0
+    self.msgCount = 0
     self.button = []
     self.selected = False
     
@@ -36,6 +37,7 @@ class MonitoredSubsystem:
       for m in self.monitors:
         if mNew.name == m.name:
           m.status = mNew.status
+          m.msgCount = mNew.msgCount
           minStatus = min(minStatus,m.status)
           foundMonitor = True
           break
@@ -131,6 +133,8 @@ class MonitoredAgent:
       elif lineData[0] == 'm':
         mon = MonitoredProcess()
         mon.name = lineData[1]
-        mon.status = int(lineData[2])
+        statusData = int(lineData[2])
+        mon.msgCount = statusData % 1000
+        mon.status = (statusData-mon.msgCount)/1000
         subsystem.monitors.append(mon)
     self.subsystems.append(subsystem)

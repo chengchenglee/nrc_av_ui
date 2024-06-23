@@ -1,9 +1,10 @@
 Configuration:
   Name: sim
   mapName: Franklin.set
+  printTimeDebug: 0
   useGui: 1
   sendWm: 1
-  sendSnapshots: 0
+  sendSnapshots: 1
 
 Subsystem:
   Sim:
