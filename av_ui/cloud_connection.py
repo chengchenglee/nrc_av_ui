@@ -14,6 +14,13 @@ from nrc_msgs.msg import GpsState
 
 subscribeTopics = ["dt/tfc/vehicle/telemetry"]
 
+#MQTT parameters from environment variables
+BROKER_ADDRESS = os.getenv('MQTT_SERVER', 'mqtt-broker-ncal.nrcsv.com')
+BROKER_PORT = int(os.getenv('MQTT_PORT', 8883))
+BROKER_USERNAME = os.getenv('MQTT_USER', 'sam_teleop')
+BROKER_PASSWORD = os.getenv('MQTT_PASSWORD', 'yg#eo5cbAksD82qt')
+TLS_protocol_version = ssl.PROTOCOL_TLSv1_2
+
 class CloudConnection:
   def __init__(self,clientId):
     self.name = clientId
@@ -26,11 +33,11 @@ class CloudConnection:
 
     # MQTT Broker details
     self.configInfo = {
-      'MQTT_SERVER': 'mqtt-broker-ncal.nrcsv.com',
-      'MQTT_PORT': 8883,
-      'MQTT_USER': 'sam-teleop',
-      'MQTT_PASSWORD': 'yg#eo5cbAksD82qt',
-      'PROTOCOL': ssl.PROTOCOL_TLSv1_2,
+      'MQTT_SERVER': BROKER_ADDRESS,
+      'MQTT_PORT': BROKER_PORT,
+      'MQTT_USER': BROKER_USERNAME,
+      'MQTT_PASSWORD': BROKER_PASSWORD,
+      'PROTOCOL': TLS_protocol_version,
     }
     self.client = []
     self.mailbox = []
