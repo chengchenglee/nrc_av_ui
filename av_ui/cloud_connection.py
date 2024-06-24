@@ -8,39 +8,51 @@ import argparse
 import paho.mqtt.client as mqtt_client
 from collections import OrderedDict
 from sys import getsizeof
-
+import yaml
 import rospy
 from nrc_msgs.msg import GpsState
+import rospkg
 
 subscribeTopics = ["dt/tfc/vehicle/telemetry"]
+mqtt_filename = 'mqtt_connection_config.yaml'
 
 #MQTT parameters from environment variables
-BROKER_ADDRESS = os.getenv('MQTT_SERVER', 'mqtt-broker-ncal.nrcsv.com')
-BROKER_PORT = int(os.getenv('MQTT_PORT', 8883))
-BROKER_USERNAME = os.getenv('MQTT_USER', 'sam_teleop')
-BROKER_PASSWORD = os.getenv('MQTT_PASSWORD', 'yg#eo5cbAksD82qt')
+#BROKER_ADDRESS = os.getenv('MQTT_SERVER', 'mqtt-broker-ncal.nrcsv.com')
+#BROKER_PORT = int(os.getenv('MQTT_PORT', 8883))
+#BROKER_USERNAME = os.getenv('MQTT_USER', 'sam_teleop')
+#BROKER_PASSWORD = os.getenv('MQTT_PASSWORD', 'yg#eo5cbAksD82qt')
 TLS_protocol_version = ssl.PROTOCOL_TLSv1_2
 
 class CloudConnection:
   def __init__(self,clientId):
     self.name = clientId
     self.clientId = self.name+time.strftime("%Y-%m-%d-%H-%M-%S")
+    self.filename = self.filename = rospkg.RosPack().get_path('nrc_av_ui')+'/config/'+mqtt_filename
     self.isConnected = False
     self.msgsSinceLastUpdate = 0
     self.avgTransferRate = 3
     self.lastUpdateTime = time.time()
     print ("Create mqtt connection:",self.clientId) 
-
-    # MQTT Broker details
-    self.configInfo = {
-      'MQTT_SERVER': BROKER_ADDRESS,
-      'MQTT_PORT': BROKER_PORT,
-      'MQTT_USER': BROKER_USERNAME,
-      'MQTT_PASSWORD': BROKER_PASSWORD,
-      'PROTOCOL': TLS_protocol_version,
-    }
+    self.configInfo = self.loadBrokerConfigs()
+    print(self.configInfo)
+    self.configInfo['PROTOCOL'] = TLS_protocol_version
+    if not self.configInfo:
+      print("Check mqtt config file.")
     self.client = []
     self.mailbox = []
+
+  def loadBrokerConfigs(self):
+    config_file = open(self.filename, 'r')
+    configs = yaml.full_load(config_file)
+    if 'Configuration' in configs.keys():
+      if 'use_broker' in configs['Configuration'].keys():
+        self.broker = configs['Configuration']['use_broker']
+      if self.broker is not None:
+        mqtt_configs = configs['Brokers'][self.broker]
+        return mqtt_configs
+    else:
+      print("Check mqtt configuration file.")
+      return None
     
   def updateConfig(self,text):
     keys = self.configInfo.keys()

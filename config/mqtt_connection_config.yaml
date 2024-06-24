@@ -1,0 +1,11 @@
+Configuration:
+  use_broker: doris
+
+Brokers:
+  doris:
+    MQTT_SERVER: doris
+    MQTT_PORT: 1883
+    MQTT_USER: sam_teleop
+    MQTT_PASSWORD: yg#eo5cbAksD82qt
+    PROTOCOL: ssl.PROTOCOL_TLSv1_2
+
