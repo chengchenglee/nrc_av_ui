@@ -81,7 +81,12 @@ class FileInTransit:
         print('Extracted header string:',headerVec)
         return [headerVec,chunk[i:]]
       
-      b = ord(chunk[i])
+      b = 0
+      if type(chunk[i]) is int:
+        b = chunk[i]
+      else:
+        b = ord(chunk[i])
+        
       if 0 <= b and b < 128:  #is ascii
         #character = format(b, "s")
         character = chr(b)
