@@ -54,14 +54,14 @@ if True:
     if time.time() > nextPollTime:
       nextPollTime = time.time()+0.1
       agent.pollMonitors()
-      agent.getCmds()
+      agent.parseAgentMail()
       if (agent.useGui == 1): interface.update(agent.subsystems)
       dtStamps[0] = round((time.time() - prevTime)*1000)/1000
       prevTime = time.time()
 
     if time.time() > nextStSend:
       nextStSend = time.time()+0.25
-      agent.sentStatusCsv()
+      agent.sendStatusCsv()
       dtStamps[1] = round((time.time() - prevTime)*1000)/1000
       prevTime = time.time()
     

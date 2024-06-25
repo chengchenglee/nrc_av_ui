@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import sys
+import os
 from nrc_msgs.msg import FailureModeRequest
 from subsystem import Subsystem
 
@@ -56,7 +57,7 @@ class Interface:
     else:
       self.selectedMap = newName
       print ('New map name selected is ',self.selectedMap)
-      #os.system("rosrun nrc_svcs paramsForMap.sh "+map_name)
+      os.system("rosrun nrc_av_ui paramsForMap.sh "+newName)
   
   def setupWindow(self, agent):
     # Setup window dimensions and title
@@ -165,7 +166,7 @@ class Interface:
     # use global map_name - global mapsel controls the menu selection
     mapsel = Tkinter.StringVar(allLaunchFrame);
    
-    map_options = ['Sanborn2019MMv24','Sanborn2020PNHv2','MiniMap','SC_Cached','SanMiguel_Cached','Noe.set','Franklin.set','THill_Cached']
+    map_options = ['Sanborn2019MMv24','Sanborn2020PNHv2','Sanborn2022BRv2','MiniMap','SC_Cached','SanMiguel_Cached','Noe.set','Franklin.set','THill_Cached']
     
     try:
       check_map_name = rospy.get_param('/map_name')

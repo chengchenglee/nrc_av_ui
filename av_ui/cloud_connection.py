@@ -43,7 +43,7 @@ class CloudConnection:
 
   def loadBrokerConfigs(self):
     config_file = open(self.filename, 'r')
-    configs = yaml.full_load(config_file)
+    configs = yaml.safe_load(config_file)
     if 'Configuration' in configs.keys():
       if 'use_broker' in configs['Configuration'].keys():
         self.broker = configs['Configuration']['use_broker']
@@ -89,18 +89,22 @@ class CloudConnection:
         msg = {}
         msg['topic'] = message.topic
         
-        # Parse csv data
-        payloadCsv = message.payload
-        #if type(payloadCsv) == 'bytes':
-        payloadCsv = message.payload.decode('utf-8')
+        if 'snapshots' in message.topic:
+          msg['data'] = message.payload
+          
+        else:
+          # Parse csv data
+          payloadCsv = message.payload
+          #if type(payloadCsv) == 'bytes':
+          payloadCsv = message.payload.decode('utf-8')
+          
+          data = []
+          lines = payloadCsv.split('\n')
+          for line in lines:
+            lineData = line.split(',')
+            data.append(list(lineData))
         
-        data = []
-        lines = payloadCsv.split('\n')
-        for line in lines:
-          lineData = line.split(',')
-          data.append(list(lineData))
-        
-        msg['data'] = data
+          msg['data'] = data
         self.mailbox.append(msg)
 
       def on_mqtt_subscribe(client, userdata, mid, granted_qos):  # subscribe to mqtt broker

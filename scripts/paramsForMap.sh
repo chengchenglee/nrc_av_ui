@@ -33,6 +33,23 @@ SanbornSantaClara() {
     rosparam set SANBORN_SLHACK_DY 0
 }
 
+SanbornBishopRanch() {
+    echo "using map_name $map_name"
+    rosparam set /map_name $map_name
+    rosparam set SANBORN_CREATE_ANNOTATION_FILE 0
+    rosparam set USE_FASTER_FORMAT True
+    rosparam set SANBORN_VERBOSE_ERROR_CHECKING 0
+    rosparam set /siteFrame/originLat 38.01478
+    rosparam set /siteFrame/originLon -122.00849
+    rosparam set /siteFrame/originY 0.0
+    rosparam set /siteFrame/originX 0.0
+    rosparam set /siteFrame/originTheta 0
+    rosparam set xcoordOffset -1.45
+    rosparam set ycoordOffset 0.35
+    rosparam set SANBORN_SLHACK_DX 0
+    rosparam set SANBORN_SLHACK_DY 0
+}
+
 MiniMap() {
     echo $(rosparam set /map_name $map_name)
     echo "Setting up params for Mini Map."
@@ -344,6 +361,7 @@ fi
 main() {
 # pick one
 if   [ $map_name == "Sanborn2019MMv24" ]; then SanbornSantaClara;
+elif [ $map_name == "Sanborn2022BRv2" ];  then SanbornBishopRanch;
 elif [ $map_name == "MiniMap" ];          then MiniMap;
 elif [ $map_name == "SC_Cached" ];        then LearnMapSantaClara;
 elif [ $map_name == "SanMiguel_Cached" ]; then LearnMapSanMiguel;
