@@ -41,13 +41,15 @@ class AvAgent:
     self.useGui  = int(Loader.getField(text,'useGui',1))
     self.sendWm  = int(Loader.getField(text,'sendWm',0))
     self.sendSnapshots  = int(Loader.getField(text,'sendSnapshots',0))
+    self.broker = Loader.getField(text, 'broker', 'ncal')
     print ("useGui: "+str(self.useGui))
     print ("sendWm: "+str(self.sendWm))
     print ("sendSnapshots: "+str(self.sendSnapshots))
+    print ("broker: "+str(self.broker))
     self.printTimeDebug = int(Loader.getField(text,'printTimeDebug',0))
     
     # Prepare cloud connection
-    self.cloud = CloudConnection(self.name)
+    self.cloud = CloudConnection(self.name, self.broker)
     self.cloud.updateConfig(text)
     
     # Prepare variables for uploading snapshots

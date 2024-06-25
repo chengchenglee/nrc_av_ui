@@ -1,6 +1,7 @@
 Configuration:
   Name: Echo
   Map: Franklin.set
+  broker: ncal
 
 Subsystem:
   CAR:
