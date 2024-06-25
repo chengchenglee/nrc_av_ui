@@ -5,8 +5,10 @@ import glob
 import time
 
 class FileInTransit:
-  def __init__(self):
-    self.needFileFlg = 1
+  def __init__(self,pathToBags):
+    self.fileOpen = 0
+    self.pathToBags = pathToBags
+    self.fullname = ''
     self.filename = ''
     self.directory = ''
     self.fileread = ''
@@ -15,59 +17,78 @@ class FileInTransit:
     self.chunkSize = 500
     self.chunkSendTime = 0
     self.bytesSent = 0
-    self.bytesRemaining = 0
   
-  def needFile(self):
-    return self.needFileFlg
-  
-  def setNew(self,filename):
-    self.needFileFlg = 0
-    print('============= Open file: '+filename+' =============')
-    self.filename = filename
-    self.directory = '/'.join(filename.split('/')[:-1])
+  def setNew(self,fullname):
+    self.fileOpen = 1
+    print('============= Open file: '+self.fullname+' =============')
+    self.fullname = fullname
+    self.directory = '/'.join(self.fullname.split('/')[:-1])
+    self.filename = self.fullname.split('/')[-1]
+    self.filename = self.filename.rstrip('.bag')
+    print(self.filename)
     print(self.directory)
-    self.fileread = open(self.filename,'rb')
-    self.filesize = os.path.getsize(filename)
-    self.bytesRemaining = self.filesize
+    self.fileread = open(self.fullname,'rb')
+    self.filesize = os.path.getsize(self.fullname)
     print('Filesize: '+str(self.filesize))
     self.bytesSent = 0
-    self.chunkIdx = 0
     self.chunkSize = 500
     self.chunkHeader = 0
   
-  def getPayload(self):
-    self.bytesSent += self.chunkSize
-    self.bytesRemaining -= self.chunkSize
-    #print('FT (cSize/sent/rem): '+str(self.chunkSize)+', '+str(self.bytesSent)+', '+str(self.bytesRemaining))
+  def transferCmplt(self):
+    self.fileOpen = 0
+    self.fileread.close()
     
+    # Check if sent directory exists
+    doneDir = self.pathToBags+'sent/'
+    isDir = os.path.isdir(doneDir)
+    if not isDir:
+      os.makedirs(doneDir)
+    
+    # Move to sent directory
+    newFilename = doneDir+self.filename+'.bag'
+    os.rename(self.fullname,newFilename)
+    
+  def cancelTransfer(self):
+    if self.fileOpen == 1:
+      print('Cancel transfer, missing remote_snapshot heartbeat.')
+      self.fileOpen = 0
+      self.fileread.close()
+  
+  def getPayload(self):
     # Data
     chunk = self.fileread.read(self.chunkSize)
+    chunkSize = len(chunk) # Can be smaller than chunkSize at end of file
+    
+    if chunkSize < self.chunkSize:
+      print('Last chunk')
+      self.transferCmplt()
     
     # Data header
-    headerStr = str(self.chunkIdx)+','+str(self.bytesSent)+','+str(self.bytesRemaining)+','
+    startByte = self.bytesSent
+    endByte = self.bytesSent + chunkSize - 1
+    headerStr = str(self.filename)+','+str(startByte)+','+str(endByte)+','+str(self.filesize-1)+','
     header = headerStr.encode('ascii')
     
-    self.chunkIdx += 1
+    self.bytesSent += chunkSize
     return header+chunk
-  
-  def header(self):
-    return self.chunkHeader
   
   def splitPayload(self, chunk):
     headerStr = ''
+    headerVec = []
     commaCount = 0
     for i in range(0,100):
+      if commaCount >= 4:
+        print('Extracted header string:',headerVec)
+        return [headerVec,chunk[i:]]
+      
       b = ord(chunk[i])
       if 0 <= b and b < 128:  #is ascii
         #character = format(b, "s")
         character = chr(b)
         if character == ',':
           commaCount += 1
-          character = '_'
-          
-        if commaCount >= 3:
-          print('Extracted header string:'+headerStr)
-          return [headerStr,chunk[i:]]
+          headerVec.append(headerStr)
+          headerStr = ''
         else:
           headerStr += character
       else:
@@ -76,37 +97,40 @@ class FileInTransit:
     return ['InvalidHeader','']
     
   def saveChunk(self,header,chunk):
-    todaysDate = ''.join(time.strftime("%Y-%m-%d"))
-    tempDir = '/opt/data/snapshots/'+todaysDate+'/temp/'
+    tempDir = self.pathToBags+'temp/'
     isDir = os.path.isdir(tempDir)
     if not isDir:
       os.makedirs(tempDir)
+      
+    # Check if we can append to existing file
+    tmpFiles = glob.glob(tempDir+"*.tmp")
+    for tmp in tmpFiles:
+      tmpFilename = tmp.split('/')[-1]
+      fileHeader = tmpFilename.split('.')
+      if len(fileHeader) == 5 and fileHeader[0] == header[0]:
+        if int(fileHeader[2])+1 == int(header[1]):
+          # Append data to existing tmp file
+          print('Append to existing file')
+          chunkFile = open(tmp,'ab')
+          chunkFile.write(chunk)
+          chunkFile.close()
+          
+          # Rename tmp file to reflect start/end byte information
+          newFilename = '.'.join([fileHeader[0],fileHeader[1],header[2],fileHeader[3],'tmp'])
+          newFilename = tempDir+newFilename
+          os.rename(tmp,newFilename)
+          return
     
-    chunkName = header+'.tmp'
-    #chunkFile = open(tempDir+'/'+chunkName,'wb')
-    #chunkFile.write(chunk)
+    # Create new tmp file to add data
+    print('Create new file:',header)
+    chunkName = '.'.join(header)+'.tmp'
+    print(chunkName)
+    chunkFile = open(tempDir+'/'+chunkName,'wb')
+    chunkFile.write(chunk)
 
   def updateChunkSize(self,dt):
     if dt < 0.08:
       self.chunkSize = min(200000, self.chunkSize+200)
     elif dt > 0.12:
       self.chunkSize = max(100,self.chunkSize-1000)
-  
-  def isDone(self):
-    if self.bytesRemaining <= 0:
-      return True
-    else:
-      return False
-  
-  def setDone(self):
-    if self.needFileFlg == 0:
-      self.needFileFlg = 1
-      self.name = ''
-      self.bytesSent = 0
-      self.bytesRemaining = 0
-      self.filesize = 0
-      self.fileread.close()
-    
-    
-    
-    
+

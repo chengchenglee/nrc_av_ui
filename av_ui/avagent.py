@@ -25,7 +25,6 @@ class AvAgent:
     self.filename = rospkg.RosPack().get_path('nrc_av_ui')+'/config/'+agent_type
     self.mapName = "Franklin.set"
     self.subsystems = []
-    self.avStatusPub = []
     self.avLedStatusPub = []
     self.pmuAvIdx = 3
     self.pmuAvReqHist = 'None'
@@ -42,34 +41,43 @@ class AvAgent:
     self.useGui  = int(Loader.getField(text,'useGui',1))
     self.sendWm  = int(Loader.getField(text,'sendWm',0))
     self.sendSnapshots  = int(Loader.getField(text,'sendSnapshots',0))
-    self.printTimeDebug = int(Loader.getField(text,'printTimeDebug',0))
-    todaysDate = ''.join(time.strftime("%Y-%m-%d"))
-    self.pathToBags = '/opt/data/snapshots/'+todaysDate+'/'
-    self.fileInTransit = FileInTransit()
     print ("useGui: "+str(self.useGui))
     print ("sendWm: "+str(self.sendWm))
     print ("sendSnapshots: "+str(self.sendSnapshots))
+    self.printTimeDebug = int(Loader.getField(text,'printTimeDebug',0))
     
+    # Prepare cloud connection
     self.cloud = CloudConnection(self.name)
     self.cloud.updateConfig(text)
+    
+    # Prepare variables for uploading snapshots
+    self.lastSnapshotRepoMsg = 0
+    self.numSnapshotRepoMsgs = 0
+    todaysDate = ''.join(time.strftime("%Y-%m-%d"))
+    self.pathToBags = '/opt/data/snapshots/'+todaysDate+'/'
+    self.fileInTransit = FileInTransit(self.pathToBags)
 
   def pubSubSetup(self):
+    # Setup ros publishers and subscribers
     rospy.init_node('listener', anonymous=True)  # AvAgent Node
     Loader.subscribe_health_msgs(self.subsystems)
-    self.avStatusPub = rospy.Publisher("ailsv_av_status",InterventionRequest,queue_size=1)
     self.avLedStatusPub = rospy.Publisher("ailsv_av_led",Int16MultiArray,queue_size=1)
     if self.sendWm == 1: 
       self.wmStatusSub = rospy.Subscriber("pc_processor/multi_object_tracker/tracked_object_set", TrackedObjectSet, self.wmStatus.updateObjs, queue_size = 1)
     
+    # Setup mqtt publishers and subscribers
     self.cloud.init()
     self.cloud.subscribe(['cmd/'+self.name+'/remote'])
+    self.cloud.subscribe(['dt/remote_snapshot/heartbeat'])
     
-  def sentStatusCsv(self):
+  def sendStatusCsv(self):
+    # Heartbeat message
     topic = "dt/agents/heartbeat"
     data = ''
     data +='a,'+self.name
     self.cloud.publishCsv(topic,data)
     
+    # Subsystem status
     topic = "dt/"+self.name+"/status"
     data = ''
     data = 'a,'+self.name+'\n'
@@ -80,50 +88,59 @@ class AvAgent:
     self.cloud.publishCsv(topic,data)
   
   def sendWmStatus(self):
+    # Send world model status (ego + other positions)
     topic = 'dt/'+self.name+'/wmState'
     payload = ''
     payload += self.wmStatus.getWmStr()+'\n'
     self.cloud.publishCsv(topic,payload)
     
   def sendSnapshot(self):
+    # Check if remote snapshot database ready to receive
+    if time.time() - self.lastSnapshotRepoMsg > 3:
+      self.numSnapshotRepoMsgs = 0
+      self.fileInTransit.cancelTransfer()
+      return
+    elif self.numSnapshotRepoMsgs < 3:
+      # Almost ready to receive
+      return
+    
     # Setup topic name, get list of bagfiles
     topic = 'dt/'+self.name+'/snapshots'
     bagFiles = glob.glob(self.pathToBags+"*.bag")
     
     # Check if we've already opened a file
-    if self.fileInTransit.needFile() == 1:
+    if self.fileInTransit.fileOpen == 0:
       for filename in bagFiles:
         self.fileInTransit.setNew(filename)
         break
         
-    # Still more file to send
-    if not self.fileInTransit.isDone():
+    # Send the file
+    if self.fileInTransit.fileOpen == 1:
       tStart = time.time()
       payload = self.fileInTransit.getPayload()
-      [header,chunk] = self.fileInTransit.splitPayload(payload)
-      self.fileInTransit.saveChunk(header,chunk)
       self.cloud.publishCsv(topic,payload)
       dt = time.time()-tStart
-      if self.printTimeDebug:
-        print('Payload sent:'+str(self.fileInTransit.chunkSize)+','+str(round(dt*10000)/10))
       self.fileInTransit.updateChunkSize(dt)
     
-    # Done sending the file
-    else:
-      self.fileInTransit.setDone()
-    
-  def getCmds(self):
+  def parseAgentMail(self):
     msgs = self.cloud.getMail()
     for m in msgs:
-      for lineData in m['data']:
-        if lineData[0] == 's':
-          for s in self.subsystems:
-            cmd = lineData[2]
-            if s.name == lineData[1]:
-              if cmd == '0' or cmd == '1':
-                if s.shouldBeStarted != int(cmd):
-                  print("Remote cmd:",s.name, int(cmd))
-                  s.shouldBeStarted = int(cmd)
+      # Command message from remote_monitor
+      if 'cmd' in m['topic']:
+        for lineData in m['data']:
+          if lineData[0] == 's':
+            for s in self.subsystems:
+              cmd = lineData[2]
+              if s.name == lineData[1]:
+                if cmd == '0' or cmd == '1':
+                  if s.shouldBeStarted != int(cmd):
+                    print("Remote cmd:",s.name, int(cmd))
+                    s.shouldBeStarted = int(cmd)
+                    
+      # Heartbeat from remote snapshot database
+      elif 'remote_snapshot' in m['topic']:
+        self.lastSnapshotRepoMsg = time.time()
+        self.numSnapshotRepoMsgs += 1
 
   def setLaunchAll(self):
     for s in self.subsystems:
@@ -136,24 +153,29 @@ class AvAgent:
         s.shouldBeStarted = 0
 
   def pollMonitors(self):
-    # Check if subsystems need launching
+    # Check if subsystems should be running or stopped
     for s in self.subsystems:
+      
+      # Should be started
       if s.shouldBeStarted > 0:
         readyToStart = s.status == 0 and s.timeStopped > 1
 
+        # Check for dependencies
         dependenciesMet = True
         for sDepend in s.launchDepend:
           for sOther in self.subsystems:
             if (sDepend != '') and (sDepend in sOther.name) and ((not sOther.readyToMonitor) or (sOther.status < 3)):
               dependenciesMet = False
         
-        # Dependencies met
+        # If dependencies met, start or restart subsystems as required
         if dependenciesMet:
           if s.restartRequest and s.isStarted == 1:
-            s.stop()
+            s.stop() # Need to stop before restarting
           
           elif readyToStart:
             s.start(s.restartRequest)
+      
+      # Should be stopped
       else:
         if s.isStarted == True:
           s.stop()
@@ -161,7 +183,10 @@ class AvAgent:
     # Update subsystem status
     ledVec = [0,0,0,0,0,0,0,0]
     for s in self.subsystems:
+      # Update subsystem status, returns LED status vector
       sLedVec = s.updateStatus('Update')
+      
+      # Subsystem specific stuff
       if s.name == 'CAR':
         if s.pmuData[self.pmuAvIdx] == 2 and self.pmuState[self.pmuAvIdx] == 1:
           print('PMU Start Request!')
@@ -173,22 +198,27 @@ class AvAgent:
           self.pmuAvReqHist = 'None'
           self.setStopRequested()
           
+        # Copy pmu and arduino data to AvAgent object
         self.pmuState = s.pmuData[:]
         self.ardState = s.ardData[:]
       
+      # Copy dgp data to wmStatus
       if len(s.dgpData) > 0:
         self.dgpState = s.dgpData[:]
         self.wmStatus.setDgp(self.dgpState)
       
+      # Start/Stop subsystems based on Arduino request
       if s.trigger == 'ARD' and s.triggerBit != -1 and s.triggerBit < len(self.ardState):
           if s.isStarted == 0 and self.ardState[s.triggerBit] > 0:
             s.reqStart()
           elif s.isStarted == 1 and self.ardState[s.triggerBit] == 0:
             s.reqStop()
       
+      #Update led strip
       for i in range(0,8,1):
         ledVec[i] = max(sLedVec[i], ledVec[i])
       
+    # Publis led strip status
     avStatusLedMsg = Int16MultiArray()
     avStatusLedMsg.layout.data_offset = 8
     avStatusLedMsg.data = ledVec
