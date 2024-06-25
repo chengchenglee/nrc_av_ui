@@ -43,7 +43,7 @@ class CloudConnection:
 
   def loadBrokerConfigs(self):
     config_file = open(self.filename, 'r')
-    configs = yaml.full_load(config_file)
+    configs = yaml.safe_load(config_file)
     if 'Configuration' in configs.keys():
       if 'use_broker' in configs['Configuration'].keys():
         self.broker = configs['Configuration']['use_broker']

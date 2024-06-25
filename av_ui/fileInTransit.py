@@ -2,6 +2,7 @@
 
 import os
 import glob
+import time
 
 class FileInTransit:
   def __init__(self):
@@ -23,8 +24,8 @@ class FileInTransit:
     self.needFileFlg = 0
     print('============= Open file: '+filename+' =============')
     self.filename = filename
-    #self.directory = filename.split('/')[:-1]
-    #print(self.directory)
+    self.directory = '/'.join(filename.split('/')[:-1])
+    print(self.directory)
     self.fileread = open(self.filename,'rb')
     self.filesize = os.path.getsize(filename)
     self.bytesRemaining = self.filesize
@@ -52,21 +53,38 @@ class FileInTransit:
   def header(self):
     return self.chunkHeader
   
-  def getHeader(self, chunk):
+  def splitPayload(self, chunk):
     headerStr = ''
     commaCount = 0
     for i in range(0,100):
-      b = chr(chunk[i])
-      if b.isascii():
-        character = format(b, "s")
-        headerStr += character
+      b = ord(chunk[i])
+      if 0 <= b and b < 128:  #is ascii
+        #character = format(b, "s")
+        character = chr(b)
         if character == ',':
           commaCount += 1
+          character = '_'
+          
         if commaCount >= 3:
-          break
+          print('Extracted header string:'+headerStr)
+          return [headerStr,chunk[i:]]
+        else:
+          headerStr += character
       else:
         break
-    #print('Extracted header string:'+headerStr)
+
+    return ['InvalidHeader','']
+    
+  def saveChunk(self,header,chunk):
+    todaysDate = ''.join(time.strftime("%Y-%m-%d"))
+    tempDir = '/opt/data/snapshots/'+todaysDate+'/temp/'
+    isDir = os.path.isdir(tempDir)
+    if not isDir:
+      os.makedirs(tempDir)
+    
+    chunkName = header+'.tmp'
+    #chunkFile = open(tempDir+'/'+chunkName,'wb')
+    #chunkFile.write(chunk)
 
   def updateChunkSize(self,dt):
     if dt < 0.08:

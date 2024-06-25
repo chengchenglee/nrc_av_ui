@@ -100,7 +100,8 @@ class AvAgent:
     if not self.fileInTransit.isDone():
       tStart = time.time()
       payload = self.fileInTransit.getPayload()
-      self.fileInTransit.getHeader(payload)
+      [header,chunk] = self.fileInTransit.splitPayload(payload)
+      self.fileInTransit.saveChunk(header,chunk)
       self.cloud.publishCsv(topic,payload)
       dt = time.time()-tStart
       if self.printTimeDebug:
