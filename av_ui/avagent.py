@@ -38,6 +38,7 @@ class AvAgent:
     printDebug = False
     self.subsystems = Loader.read_subsystems(text, printDebug)
     self.mapName = Loader.getField(text,'mapName','Franklin.set')
+    self.mqttConfig = Loader.getField(text,'mqttConfig','ncal')
     self.useGui  = int(Loader.getField(text,'useGui',1))
     self.sendWm  = int(Loader.getField(text,'sendWm',0))
     self.sendSnapshots  = int(Loader.getField(text,'sendSnapshots',0))
@@ -66,16 +67,17 @@ class AvAgent:
       self.wmStatusSub = rospy.Subscriber("pc_processor/multi_object_tracker/tracked_object_set", TrackedObjectSet, self.wmStatus.updateObjs, queue_size = 1)
     
     # Setup mqtt publishers and subscribers
-    self.cloud.init()
+    self.cloud.init(self.mqttConfig)
     self.cloud.subscribe(['cmd/'+self.name+'/remote'])
     self.cloud.subscribe(['dt/remote_snapshot/heartbeat'])
     
   def sendStatusCsv(self):
     # Heartbeat message
+    qos = 0
     topic = "dt/agents/heartbeat"
     data = ''
     data +='a,'+self.name
-    self.cloud.publishCsv(topic,data)
+    self.cloud.publishCsv(topic,data,qos)
     
     # Subsystem status
     topic = "dt/"+self.name+"/status"
@@ -85,14 +87,15 @@ class AvAgent:
       data += 's,'+s.name+'\n'
       for m in s.monitors:
         data += 'm,'+m.name+','+m.statusStr+'\n'
-    self.cloud.publishCsv(topic,data)
+    self.cloud.publishCsv(topic,data,qos)
   
   def sendWmStatus(self):
     # Send world model status (ego + other positions)
+    qos=0
     topic = 'dt/'+self.name+'/wmState'
     payload = ''
     payload += self.wmStatus.getWmStr()+'\n'
-    self.cloud.publishCsv(topic,payload)
+    self.cloud.publishCsv(topic,payload,qos)
     
   def sendSnapshot(self):
     # Check if remote snapshot database ready to receive

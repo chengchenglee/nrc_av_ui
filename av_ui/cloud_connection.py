@@ -63,8 +63,8 @@ class CloudConnection:
           value = line.split(': ')[1]
           self.configInfo[key] = value
     
-  def init(self):
-    self.client = self.connect_mqtt()
+  def init(self, configName='doris'):
+    self.client = self.connect_mqtt(configName)
     self.client.loop_start()
     
   def getMail(self):
@@ -72,7 +72,7 @@ class CloudConnection:
     self.mailbox = []
     return mail
 
-  def connect_mqtt(self):
+  def connect_mqtt(self,configName):
       def on_connect(client, userdata, flags, rc):
           if rc == 0:
               self.isConnected = True
@@ -123,6 +123,7 @@ class CloudConnection:
           client.tls_set_context(context)
 
       client.on_connect = on_connect
+      print(self.configInfo['MQTT_SERVER'], self.configInfo['MQTT_PORT'])
       client.connect(self.configInfo['MQTT_SERVER'], self.configInfo['MQTT_PORT'])
       client.on_subscribe = on_mqtt_subscribe
       client.on_message = on_mqtt_message
@@ -138,10 +139,10 @@ class CloudConnection:
       print('Mqtt unsubscribe to topic:',topic)
       self.client.unsubscribe(topic)
 
-  def publishCsv(self,topic,data):
+  def publishCsv(self,topic,data,qos=2):
     if len(data) > 0:
       tStart = time.time()
-      result = self.client.publish(topic, data,qos=2)
+      result = self.client.publish(topic,data,qos)
       result.wait_for_publish()
       status = result[0]
       if status != 0:
@@ -157,6 +158,6 @@ class CloudConnection:
         dt = time.time() - self.lastUpdateTime
         if dt > 1:
           msgsPerSec = self.msgsSinceLastUpdate / dt
-          print('Mqtt stats (msg/sec, kbps):'+str(round(msgsPerSec))+', '+str(round(self.avgTransferRate*10)/10))
+          #print('Mqtt stats (msg/sec, kbps):'+str(round(msgsPerSec))+', '+str(round(self.avgTransferRate*10)/10))
           self.lastUpdateTime = time.time()
           self.msgsSinceLastUpdate = 0

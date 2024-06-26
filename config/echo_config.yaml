@@ -1,6 +1,11 @@
 Configuration:
   Name: Echo
-  Map: Franklin.set
+  mapName: Franklin.set
+  mqttConfig: ncal
+  printTimeDebug: 0
+  useGui: 1
+  sendWm: 0
+  sendSnapshots: 0
 
 Subsystem:
   CAR:

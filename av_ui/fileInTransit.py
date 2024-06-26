@@ -134,8 +134,8 @@ class FileInTransit:
     chunkFile.write(chunk)
 
   def updateChunkSize(self,dt):
-    if dt < 0.08:
+    if dt < 0.6:
       self.chunkSize = min(200000, self.chunkSize+200)
-    elif dt > 0.12:
+    elif dt > 0.8:
       self.chunkSize = max(100,self.chunkSize-1000)
 

@@ -55,7 +55,8 @@ class CsvWriterAVinterface:
         self.prefixList = []
         self.snapshotUpdated = False
         self.filename = ''
-        self.csvDir = os.path.join(os.path.expanduser("~"), 'projects/disengagementData/bags/', time.strftime("%Y-%m-%d"))
+        #self.csvDir = os.path.join(os.path.expanduser("~"), 'projects/disengagementData/bags/', time.strftime("%Y-%m-%d"))
+        self.csvDir = os.path.join(os.path.expanduser("~"), '/opt/data/snapshots/', time.strftime("%Y-%m-%d"))
         print("csvDir:",self.csvDir)
         dirExists = os.path.isdir(self.csvDir)
         

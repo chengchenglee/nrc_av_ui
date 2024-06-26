@@ -114,7 +114,7 @@ if True:
   while running:
     # Update everything
     if time.time() > nextUpdate:
-      nextUpdate = time.time()+0.2
+      nextUpdate = time.time()+0.05
       
       # Update agent wmState subscriptions
       updateTeleopSubs()

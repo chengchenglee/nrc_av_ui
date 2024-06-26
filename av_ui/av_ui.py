@@ -60,7 +60,7 @@ if True:
       prevTime = time.time()
 
     if time.time() > nextStSend:
-      nextStSend = time.time()+0.25
+      nextStSend = time.time()+0.1
       agent.sendStatusCsv()
       dtStamps[1] = round((time.time() - prevTime)*1000)/1000
       prevTime = time.time()
@@ -78,7 +78,7 @@ if True:
     
     tTotal = np.sum(dtStamps)
     if (agent.printTimeDebug == 1 and tTotal > 0.08) or (tTotal > 0.25):
-      print(dtStamps,'====>',str(round(tTotal*1000)/1000))
+      print('[Poll/SendSt/SendW/SendSn]',dtStamps,'====>',str(round(tTotal*1000)/1000))
       
     time.sleep(0.01)
 
