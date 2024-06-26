@@ -11,6 +11,7 @@ from collections import OrderedDict
 from rInterface import Interface
 from fileInTransit import FileInTransit
 import time
+import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-b', '--broker', default='ncal')
