@@ -3,6 +3,7 @@ Configuration:
   Map: Franklin.set
   useGui: 0
   sendWm: 1
+  broker: doris
 
 Subsystem:
   LIDAR:
@@ -62,7 +63,7 @@ Subsystem:
       - Source: Startup
     Commands:
       - Name: ROS-MQTT-Bridge
-        Command: roslaunch ${HOME}/projects/fvla-infrapod/mqtt-client-config/launch/standalone_local.launch params_file:="${HOME}/projects/fvla-infrapod/mqtt-client-config/fvla-dev/test2/params_infrapod_1_fvla.yaml"
+        Command: bash $HOME/projects/fvla-infrapod/launch_mqtt.sh
         NodeName: mqtt_client_local
         Type: Software
         LaunchTime: 3.0

@@ -1,5 +1,4 @@
 Configuration:
-  use_broker: ncal
 
 Brokers:
   doris:

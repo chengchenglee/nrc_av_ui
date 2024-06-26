@@ -1,11 +1,12 @@
 Configuration:
   Name: Echo
   mapName: Franklin.set
-  mqttConfig: ncal
   printTimeDebug: 0
   useGui: 1
   sendWm: 0
   sendSnapshots: 0
+  Map: Franklin.set
+  broker: ncal
 
 Subsystem:
   CAR:

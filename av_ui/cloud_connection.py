@@ -24,8 +24,9 @@ mqtt_filename = 'mqtt_connection_config.yaml'
 TLS_protocol_version = ssl.PROTOCOL_TLSv1_2
 
 class CloudConnection:
-  def __init__(self,clientId):
+  def __init__(self,clientId, brokerName):
     self.name = clientId
+    self.broker = brokerName
     self.clientId = self.name+time.strftime("%Y-%m-%d-%H-%M-%S")
     self.filename = self.filename = rospkg.RosPack().get_path('nrc_av_ui')+'/config/'+mqtt_filename
     self.isConnected = False
@@ -44,14 +45,11 @@ class CloudConnection:
   def loadBrokerConfigs(self):
     config_file = open(self.filename, 'r')
     configs = yaml.safe_load(config_file)
-    if 'Configuration' in configs.keys():
-      if 'use_broker' in configs['Configuration'].keys():
-        self.broker = configs['Configuration']['use_broker']
-      if self.broker is not None:
-        mqtt_configs = configs['Brokers'][self.broker]
-        return mqtt_configs
+    if self.broker in configs['Brokers'].keys():
+      mqtt_configs = configs['Brokers'][self.broker]
+      return mqtt_configs
     else:
-      print("Check mqtt configuration file.")
+      print("Check mqtt configuration file. Available brokers: ", configs['Brokers'].keys())
       return None
     
   def updateConfig(self,text):

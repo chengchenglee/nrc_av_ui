@@ -13,7 +13,7 @@ import time
 
 running = True
 gui = Interface()
-cloud = CloudConnection("RemoteMonitor")
+cloud = CloudConnection("RemoteMonitor",'ncal')
 
 monitoredAgents = []
 newSubscriptions = ['dt/agents/heartbeat']
