@@ -12,10 +12,14 @@ from rInterface import Interface
 from fileInTransit import FileInTransit
 import time
 
+parser = argparse.ArgumentParser()
+parser.add_argument('-b', '--broker', default='ncal')
+args, uargs = parser.parse_known_args()
+
 running = True
 gui = Interface()
 agentName = 'RemoteSnapshot'
-cloud = CloudConnection(agentName)
+cloud = CloudConnection(agentName,args.broker)
 
 newSubscriptions = ['dt/agents/heartbeat']
 subscribedTopics = []
