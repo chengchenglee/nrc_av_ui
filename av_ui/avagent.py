@@ -31,6 +31,8 @@ class AvAgent:
     self.pmuState = [0,0,0,0,0,0,0,0]
     self.ardState = [0,0,0,0,0,0,0,0]
     self.wmStatus = WmStatus()
+    self.remoteWmDisplayOn = 0
+    self.remoteWmDisplayLastReq = 0
 
     # Load the agent configuration
     with open(self.filename, 'r') as file:
@@ -141,7 +143,11 @@ class AvAgent:
                   if s.shouldBeStarted != int(cmd):
                     print("Remote cmd:",s.name, int(cmd))
                     s.shouldBeStarted = int(cmd)
-                    
+          elif lineData[0] == 'w':
+            self.remoteWmDisplayOn = int(lineData[1])
+            if self.remoteWmDisplayOn == 1:
+              self.remoteWmDisplayLastReq = time.time()
+            
       # Heartbeat from remote snapshot database
       elif 'remote_snapshot' in m['topic']:
         self.lastSnapshotRepoMsg = time.time()

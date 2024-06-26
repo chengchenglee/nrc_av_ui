@@ -64,14 +64,16 @@ if True:
       agent.sendStatusCsv()
       dtStamps[1] = round((time.time() - prevTime)*1000)/1000
       prevTime = time.time()
-    
-    if time.time() > nextWmSend:
+
+    remoteWmReq = agent.remoteWmDisplayOn == 1
+    remoteWmReq = remoteWmReq or (time.time()-agent.remoteWmDisplayLastReq < 3.0)
+    if time.time() > nextWmSend and (remoteWmReq or agent.sendWm == 2):
       nextWmSend = time.time()+0.1
-      if (agent.sendWm): agent.sendWmStatus()
+      if (agent.sendWm > 0): agent.sendWmStatus()
       dtStamps[2] = round((time.time() - prevTime)*1000)/1000
       prevTime = time.time()
     
-    if time.time() > nextSnapSend:
+    if (time.time() > nextSnapSend) and (not remoteWmReq):
       nextSnapSend = time.time()+0.1
       if (agent.sendSnapshots): agent.sendSnapshot()
       dtStamps[3] = round((time.time() - prevTime)*1000)/1000

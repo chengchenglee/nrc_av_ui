@@ -72,6 +72,7 @@ class MonitoredAgent:
     self.selected = False
     self.tLastMsg = time.time()
     self.wmStatus = WmStatus()
+    self.wmDisplayOn = 0
   
   def update(self,latestSubsystems):
     foundSubsystem = False
@@ -114,6 +115,7 @@ class MonitoredAgent:
   
   def getCmdData(self):
     data = ''
+    data += 'w,'+str(self.wmDisplayOn)+'\n'
     if self.cmdsMode == 'Ctrl':
       for s in self.subsystems:
         data += 's,'+s.name+','+str(s.isRunning)+'\n'

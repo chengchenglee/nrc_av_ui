@@ -59,12 +59,12 @@ class Interface:
     self.window.protocol("WM_DELETE_WINDOW", self.onClosing)  # Bind action when window closes
 
   # Tab def
-    tab_control = ttk.Notebook(self.window)
-    self.tab1 = Tkinter.Frame(tab_control)
-    self.tab2 = Tkinter.Frame(tab_control)
-    tab_control.add(self.tab1, text='Agents')
-    tab_control.add(self.tab2, text='Teleop')
-    tab_control.pack(expand=1, fill='both')
+    self.tab_control = ttk.Notebook(self.window)
+    self.tab1 = Tkinter.Frame(self.tab_control)
+    self.tab2 = Tkinter.Frame(self.tab_control)
+    self.tab_control.add(self.tab1, text='Agents')
+    self.tab_control.add(self.tab2, text='Teleop')
+    self.tab_control.pack(expand=1, fill='both')
 
   # Frame def
     tab1_label1 = Tkinter.Label(self.tab1, text="Active Agents")
@@ -248,12 +248,9 @@ class Interface:
     self.window.update()
   
   def update(self,monitoredAgents):
-    
-    # Update teleop selections
-    # for option in self.agent_options:
-      # m.delete(option)
-    
+    # Update list of agents available for teleoperation
     for a in monitoredAgents:
+      a.wmDisplayOn = 0
       found = False
       for l in self.agent_options:
         if a.name == l:

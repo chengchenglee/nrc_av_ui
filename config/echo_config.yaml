@@ -3,8 +3,8 @@ Configuration:
   mapName: Franklin.set
   printTimeDebug: 0
   useGui: 1
-  sendWm: 0
-  sendSnapshots: 0
+  sendWm: 1
+  sendSnapshots: 1
   Map: Franklin.set
   broker: ncal
 

@@ -10,10 +10,15 @@ from cloud_connection import CloudConnection
 from collections import OrderedDict
 from rInterface import Interface
 import time
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-b', '--broker', default='ncal')
+args, uargs = parser.parse_known_args()
 
 running = True
 gui = Interface()
-cloud = CloudConnection("RemoteMonitor",'ncal')
+cloud = CloudConnection("RemoteMonitor",args.broker)
 
 monitoredAgents = []
 newSubscriptions = ['dt/agents/heartbeat']
@@ -110,10 +115,11 @@ if True:
   gui.initCanvas()
   cloud.init()
   
-  nextUpdate = 0
+  updateSubs = 0
+  updatePubs = 0
   while running:
     # Update everything
-    if time.time() > nextUpdate:
+    if time.time() > updateSubs:
       nextUpdate = time.time()+0.05
       
       # Update agent wmState subscriptions
@@ -126,17 +132,23 @@ if True:
       parseMsgs(cloud.getMail())
       gui.update(monitoredAgents)
       
+      # Only update the teleop canvas if we've selected an agent
+      isTeleopTab = gui.tab_control.tab(gui.tab_control.select(),"text") == 'Teleop'
+      if (not gui.selectedAgent == 'None') and isTeleopTab:
+        for a in monitoredAgents:
+          if a.name == gui.selectedAgent:
+            a.wmDisplayOn = 1
+            gui.updateCanvas(a.wmStatus)
+    
+    if time.time() > updatePubs:
+      updatePubs = time.time() + 1.0
+
       # Publish commands
       for ma in monitoredAgents:
-        cloud.publishCsv(ma.cmdTopic, ma.getCmdData())
+        qos=0
+        cloud.publishCsv(ma.cmdTopic, ma.getCmdData(),qos)
 
-    # Only update the teleop canvas if we've selected an agent
-    if not gui.selectedAgent == 'None':
-      for a in monitoredAgents:
-        if a.name == gui.selectedAgent:
-          gui.updateCanvas(a.wmStatus)
-    
-    time.sleep(0.05)
+    time.sleep(0.01)
 
   # Close
   print("Closing Remote Monitor")
