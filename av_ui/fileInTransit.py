@@ -68,6 +68,7 @@ class FileInTransit:
     endByte = self.bytesSent + chunkSize - 1
     headerStr = str(self.filename)+','+str(startByte)+','+str(endByte)+','+str(self.filesize-1)+','
     header = headerStr.encode('ascii')
+    #print('Sending:',headerStr,str(chunkSize))
     
     self.bytesSent += chunkSize
     return header+chunk
@@ -135,7 +136,7 @@ class FileInTransit:
 
   def updateChunkSize(self,dt):
     if dt < 0.6:
-      self.chunkSize = min(200000, self.chunkSize+200)
+      self.chunkSize = min(500000, self.chunkSize+5000)
     elif dt > 0.8:
-      self.chunkSize = max(100,self.chunkSize-1000)
+      self.chunkSize = max(1000,self.chunkSize-20000)
 

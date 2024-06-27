@@ -114,7 +114,58 @@ Subsystem:
     Depends:
       - Launch:
         Run:
+
+  CAM:
+    Type: Algorithm
+    Description: Tower_Cams
+    HealthTopics:
+      - HealthTopic: /tower_cam_front/image_stamped
+        HealthName: TCF
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 7, 3
+    Commands:
+      - Name: CAM
+        Command: roslaunch nrc_hw_svcs pgr_gige_cameras.launch FrRCam:=true FrLCam:=true FrCam:=true BaRCam:=false BaLCam:=false BaCam:=false enableArduino:=true video_preprocess:=true leaf_foxtrot:=true
+        Type: Software
+        LaunchTime: 5.0
+    Diagnostic: 
+      LED: 
+      Retry: 5
+      Timeout: 5
+    Depends:
         
+        
+  TCAM:
+    Type: Sensor
+    Description: Tower Cams
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /tower_cam_front/image_stamped/health_status
+        HealthName: TCF
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /tower_cam_frontLeft/image_stamped/health_status
+        HealthName: TCFR
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /tower_cam_frontRight/image_stamped/health_status
+        HealthName: TCFL
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: TowerCam
+        Command: roslaunch nrc_hw_svcs pgr_gige_cameras.launch FrRCam:=true FrLCam:=true FrCam:=true BaRCam:=false BaLCam:=false BaCam:=false enableArduino:=true video_preprocess:=true leaf_foxtrot:=true
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 3
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:
+
   VELPCP:
     Type: Sensor
     Description: Lidar/PCP
@@ -139,7 +190,7 @@ Subsystem:
         Type: Software
         LaunchTime: 1.0
       - Name: PCP
-        Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Echo:=true Leaf_Foxtrot:=false dynamic_global_pose_topic_name:=/dynamic_global_pose do_curb_detection:=false do_curb_points_accumulation:=false include_curb_points_for_drivable_area:=false include_lateral_curb_points_for_drivable_area:=false include_accumulated_curb_points_for_drivable_area:=false srcgs/cluster_height_threshold:=0.3
+        Command: roslaunch nrc_pcp_svcs pc_processor.launch dynamic_global_pose_topic_name:=/dynamic_global_pose do_road_surf_change_detection:=true include_road_surf_change_boundary_pts_for_drivable_area:=true Leaf_Foxtrot:=true
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -223,4 +274,39 @@ Subsystem:
       Timeout: 5
     Depends:
       - Launch: WM
+        Run:
+
+  BAG:
+    Type: Algorithm
+    Description: Record bagfiles
+    Trigger:
+      - Source: ARD2
+    HealthTopics:
+      - HealthTopic: /BagfileHealth
+        HealthName: BAG
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /snapshotTrigger/health_status
+        HealthName: TRIG
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /SnapshotHealth
+        HealthName: SBAG
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: BAG
+        Command: roslaunch nrc_av_ui record_separately.launch record_machine:=node02
+        Type: Software
+        LaunchTime: 3.0
+      - Name: SNAP
+        Command: roslaunch nrc_av_ui snapshotPipeline.launch
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 7
+      Retry: 0
+      Timeout: 5
+    Depends:
+      - Launch:
         Run:

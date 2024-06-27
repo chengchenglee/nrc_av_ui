@@ -41,6 +41,9 @@ class CloudConnection:
       print("Check mqtt config file.")
     self.client = []
     self.mailbox = []
+    self.subscriptions = []
+    self.unsubscriptions = []
+    self.isPublishing = False
 
   def loadBrokerConfigs(self):
     config_file = open(self.filename, 'r')
@@ -75,6 +78,14 @@ class CloudConnection:
           if rc == 0:
               self.isConnected = True
               print("Connected to MQTT Broker!")
+              
+              resubscribeTopics = []
+              for t in self.subscriptions:
+                if t[1] == True:
+                  self.client.subscribe(t[0],2)
+                  resubscribeTopics.append(t[0])
+              if len(resubscribeTopics) > 0:
+                print('Resubscribe:',resubscribeTopics)
           else:
               print("Failed to connect, return code %d\n", rc)
       
@@ -132,10 +143,24 @@ class CloudConnection:
       print('Mqtt subscribe to topic:',topic)
       self.client.subscribe(topic,2)
       
+      foundTopic = False
+      for t in self.subscriptions:
+        if t[0] == topic:
+          foundTopic = True
+          t[1] = True
+          break
+      if not foundTopic:
+        self.subscriptions.append([topic,True])
+      
   def unsubscribe(self,topics):
     for topic in topics:
       print('Mqtt unsubscribe to topic:',topic)
       self.client.unsubscribe(topic)
+      
+      for t in self.subscriptions:
+        if t[0] == topic:
+          t[1] = False
+          break
 
   def publishCsv(self,topic,data,qos=2):
     if len(data) > 0:
