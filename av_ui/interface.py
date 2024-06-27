@@ -70,9 +70,9 @@ class Interface:
   # Frame row def'n
     launchAllSectionTitleRow = 1
     launchAllSectionRow = launchAllSectionTitleRow + 1
-    setConfigSectionTitleRow =  launchAllSectionRow + 1
-    setConfigSectionRow =  setConfigSectionTitleRow + 1
-    computerSectionTitleRow = setConfigSectionRow + 1
+    setStatusSectionTitleRow =  launchAllSectionRow + 1
+    setStatusSectionRow =  setStatusSectionTitleRow + 1
+    computerSectionTitleRow = setStatusSectionRow + 1
     computerSectionRow = computerSectionTitleRow + 1
     sensorsSectionTitleRow = computerSectionRow + 1
     sensorsSectionRow = sensorsSectionTitleRow + 1
@@ -105,10 +105,10 @@ class Interface:
     allLaunchFrame = Tkinter.Frame(tab1, width=400, height=50)
     allLaunchFrame.grid(row=launchAllSectionRow,columnspan=10, sticky=Tkinter.W)
     
-    lbl_config = Tkinter.Label(tab1, text="Set Config")
-    lbl_config.grid(row=setConfigSectionTitleRow, stick=Tkinter.W)
-    setConfigFrame = Tkinter.Frame(tab1, width=400, height=50)
-    setConfigFrame.grid(row=setConfigSectionRow,columnspan=10, sticky=Tkinter.W)
+    lbl_config = Tkinter.Label(tab1, text="Status")
+    lbl_config.grid(row=setStatusSectionTitleRow, stick=Tkinter.W)
+    setStatusFrame = Tkinter.Frame(tab1, width=400, height=50)
+    setStatusFrame.grid(row=setStatusSectionRow,columnspan=10, sticky=Tkinter.W)
     
     lbl_comp = Tkinter.Label(tab1, text="Subsystems")
     lbl_comp.grid(row=computerSectionTitleRow, sticky=Tkinter.W)
@@ -207,7 +207,10 @@ class Interface:
         objCol = objCol + 1
         
       objRow = objRow+1
-      
+     
+    self.snpTextBox = Tkinter.Message(setStatusFrame, text="Snapshot: Init", padx=1, width=500, relief="raised", bg="white", anchor=Tkinter.W)
+    self.snpTextBox.grid(column=0, row=0, columnspan=10)
+    
     self.textBox = Tkinter.Message(textFrame, text="Init", padx=1, width=500, relief="raised", bg="white", anchor=Tkinter.W)
     self.textBox.grid(column=0, row=0, columnspan=10)
       
@@ -314,6 +317,21 @@ class Interface:
       return "pink"
     else:
       return "#D0D0D0"
+  
+  def updateSnpText(self,fileTransfer):
+    newText = ''
+    if fileTransfer.state[0] == 'Requested' or fileTransfer.state[0] == 'Wait':
+      newText = ''.join(fileTransfer.state)
+    elif fileTransfer.state[0] == 'Begin':
+      newText = 'Snapshot: Ready to send '
+    elif fileTransfer.state[0] == 'Sending':
+      MB_sent  = int(fileTransfer.bytesSent/1000000)
+      MB_total = int(fileTransfer.filesize/1000000)
+      newText = 'Snapshot: Sending: '+str(MB_sent)+' / '+str(MB_total)+' MB '
+    else:
+      newText = fileTransfer.state[0]
+    
+    self.snpTextBox.configure(text=newText)
   
   def update(self,subsystems):
     msgText = []

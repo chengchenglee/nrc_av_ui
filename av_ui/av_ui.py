@@ -55,7 +55,9 @@ if True:
       nextPollTime = time.time()+0.1
       agent.pollMonitors()
       agent.parseAgentMail()
-      if (agent.useGui == 1): interface.update(agent.subsystems)
+      if (agent.useGui == 1):
+        interface.updateSnpText(agent.fileInTransit)
+        interface.update(agent.subsystems)
       dtStamps[0] = round((time.time() - prevTime)*1000)/1000
       prevTime = time.time()
 

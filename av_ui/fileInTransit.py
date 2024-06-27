@@ -17,22 +17,24 @@ class FileInTransit:
     self.chunkSize = 500
     self.chunkSendTime = 0
     self.bytesSent = 0
+    self.state = ['Idle','Initializing']
   
-  def setNew(self,fullname):
+  def setNew(self,fileInfo):
     self.fileOpen = 1
-    print('============= Open file: '+self.fullname+' =============')
-    self.fullname = fullname
+    self.fullname = fileInfo[0]
     self.directory = '/'.join(self.fullname.split('/')[:-1])
     self.filename = self.fullname.split('/')[-1]
     self.filename = self.filename.rstrip('.bag')
+    print('============= Open file: '+self.filename+', '+str(fileInfo[1])+' =============')
     print(self.filename)
     print(self.directory)
     self.fileread = open(self.fullname,'rb')
     self.filesize = os.path.getsize(self.fullname)
     print('Filesize: '+str(self.filesize))
-    self.bytesSent = 0
+    
+    self.fileread.read(fileInfo[1])
+    self.bytesSent = fileInfo[1]
     self.chunkSize = 500
-    self.chunkHeader = 0
   
   def transferCmplt(self):
     self.fileOpen = 0
@@ -47,12 +49,14 @@ class FileInTransit:
     # Move to sent directory
     newFilename = doneDir+self.filename+'.bag'
     os.rename(self.fullname,newFilename)
+    self.state = ['Idle',', Transfer complete']
     
   def cancelTransfer(self):
     if self.fileOpen == 1:
       print('Cancel transfer, missing remote_snapshot heartbeat.')
       self.fileOpen = 0
       self.fileread.close()
+    self.state = ['Idle','Transfer cancelled']
   
   def getPayload(self):
     # Data
@@ -101,6 +105,23 @@ class FileInTransit:
         break
 
     return ['InvalidHeader','']
+  
+  def getPartialList(self):
+    payload = ''
+    tempDir = self.pathToBags+'temp/'
+
+    # Check for unfinished files    
+    if os.path.isdir(tempDir):
+      tmpFiles = glob.glob(tempDir+"*.tmp")
+      for tmp in tmpFiles:
+        tmpFilename = tmp.split('/')[-1]
+        fileHeader = tmpFilename.split('.')
+        if len(fileHeader) == 5 and not fileHeader[2] == fileHeader[3]:
+          payload += 'f,'+fileHeader[0]+','+fileHeader[2]+'\n'
+        
+    if payload == '':
+      payload = 'f,None\n'
+    return payload
     
   def saveChunk(self,header,chunk):
     tempDir = self.pathToBags+'temp/'
@@ -122,9 +143,14 @@ class FileInTransit:
           chunkFile.close()
           
           # Rename tmp file to reflect start/end byte information
-          newFilename = '.'.join([fileHeader[0],fileHeader[1],header[2],fileHeader[3],'tmp'])
-          newFilename = tempDir+newFilename
-          os.rename(tmp,newFilename)
+          if header[2] == fileHeader[3]:
+            newFilename = '.'.join([fileHeader[0],'bag'])
+            newFilename = tempDir+newFilename
+            os.rename(tmp,newFilename)
+          else:
+            newFilename = '.'.join([fileHeader[0],fileHeader[1],header[2],fileHeader[3],'tmp'])
+            newFilename = tempDir+newFilename
+            os.rename(tmp,newFilename)
           return
     
     # Create new tmp file to add data

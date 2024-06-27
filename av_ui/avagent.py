@@ -73,7 +73,8 @@ class AvAgent:
     # Setup mqtt publishers and subscribers
     self.cloud.init(self.mqttConfig)
     self.cloud.subscribe(['cmd/'+self.name+'/remote'])
-    self.cloud.subscribe(['dt/remote_snapshot/heartbeat'])
+    self.cloud.subscribe(['snp/remote_server/heartbeat'])
+    self.cloud.subscribe(['snp/'+self.name+'/resPartList'])
     
   def sendStatusCsv(self):
     # Heartbeat message
@@ -101,33 +102,71 @@ class AvAgent:
     payload += self.wmStatus.getWmStr()+'\n'
     self.cloud.publishCsv(topic,payload,qos)
     
+  def getFilenameToSend(self,partList):
+    # Get list of all files in directory
+    bagFiles = glob.glob(self.pathToBags+"*.bag")
+    
+    # Pick one to send
+    anyFilename = ['',0]
+    matchFilename = ['',0]
+    for filename in bagFiles:
+      anyFilename = [filename,0]
+      for partFile in partList:
+        if partFile[0] in filename:
+          matchFilename = [filename,partFile[1]]
+          break;
+    
+    if not matchFilename[0] == '':
+      return matchFilename
+    else:
+      return anyFilename
+      
   def sendSnapshot(self):
-    # Check if remote snapshot database ready to receive
+    # Debounce remote server heartbeat
     if time.time() - self.lastSnapshotRepoMsg > 3:
       self.numSnapshotRepoMsgs = 0
       self.fileInTransit.cancelTransfer()
-      return
+      self.fileInTransit.state = ['Wait',', No server heartbeat']
+      
+    # Wait for remote server heartbeat
     elif self.numSnapshotRepoMsgs < 3:
-      # Almost ready to receive
-      return
-    
-    # Setup topic name, get list of bagfiles
-    topic = 'dt/'+self.name+'/snapshots'
-    bagFiles = glob.glob(self.pathToBags+"*.bag")
-    
-    # Check if we've already opened a file
-    if self.fileInTransit.fileOpen == 0:
-      for filename in bagFiles:
-        self.fileInTransit.setNew(filename)
-        break
-        
-    # Send the file
-    if self.fileInTransit.fileOpen == 1:
+      self.fileInTransit.state = ['Wait',', Debounce server heartbeat']
+
+    elif self.fileInTransit.state[0] == 'Wait':
+      self.fileInTransit.state = ['Idle',', Remote server ready']
+
+    # Check if remote server has partial transfers
+    if self.fileInTransit.state[0] == 'Idle':
+      topic = 'snp/'+self.name+'/reqPartList'
+      payload = 'c,ReqPartList'
+      qos = 2
+      self.cloud.publishCsv(topic,payload,qos)
+      self.fileInTransit.state = ['Requested',', Requested partial transfer list']
+      
+    # Wait for response
+    elif self.fileInTransit.state[0] == 'Requested':
+      a = 1
+
+    elif self.fileInTransit.state[0] == 'Begin':
+      # Open the file, prepare to send
+      fileInfo = self.getFilenameToSend(self.fileInTransit.state[1:])
+      if fileInfo[0] == '':
+        # Wait in this state until new snapshot shows up
+        self.fileInTransit.state = ['Begin',', Wait for new snapshots...']
+      else:
+        self.fileInTransit.setNew(fileInfo)
+        self.fileInTransit.state = ['Sending','']
+      
+    # Send a chunk of data
+    if self.fileInTransit.state[0] == 'Sending':
       tStart = time.time()
       payload = self.fileInTransit.getPayload()
+      topic = 'snp/'+self.name+'/data'
       self.cloud.publishCsv(topic,payload)
       dt = time.time()-tStart
       self.fileInTransit.updateChunkSize(dt)
+    
+    #print('File transfer status: '+self.fileInTransit.state[0]+self.fileInTransit.state[1])
     
   def parseAgentMail(self):
     msgs = self.cloud.getMail()
@@ -149,10 +188,20 @@ class AvAgent:
               self.remoteWmDisplayLastReq = time.time()
             
       # Heartbeat from remote snapshot database
-      elif 'remote_snapshot' in m['topic']:
+      elif 'snp/remote_server/heartbeat' in m['topic']:
+        print('Rx snapshot server heartbeat')
         self.lastSnapshotRepoMsg = time.time()
         self.numSnapshotRepoMsgs += 1
-
+        
+      elif 'resPartList' in m['topic']:
+        if self.fileInTransit.state[0] == 'Requested':
+          self.fileInTransit.state = ['Begin']
+          for lineData in m['data']:
+            if len(lineData) < 3:
+              self.fileInTransit.state.append(['None',0])
+            else:
+              self.fileInTransit.state.append([str(lineData[1]),int(lineData[2])+1])
+        
   def setLaunchAll(self):
     for s in self.subsystems:
       if s.trigger == 'Startup' or s.trigger == 'StartRequest' or s.trigger == 'PMU':

@@ -98,7 +98,7 @@ class CloudConnection:
         msg = {}
         msg['topic'] = message.topic
         
-        if 'snapshots' in message.topic:
+        if ('snp' in message.topic) and ('data' in message.topic):
           msg['data'] = message.payload
           
         else:
@@ -184,3 +184,5 @@ class CloudConnection:
           #print('Mqtt stats (msg/sec, kbps):'+str(round(msgsPerSec))+', '+str(round(self.avgTransferRate*10)/10))
           self.lastUpdateTime = time.time()
           self.msgsSinceLastUpdate = 0
+    else:
+      print('Cloud connection - empty payload, not sending msg.')

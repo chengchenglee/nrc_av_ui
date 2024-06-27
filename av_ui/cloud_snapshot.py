@@ -28,7 +28,7 @@ subscribedTopics = []
 snapshotStreams = {}
 
 def parseMsgs(messages):
-  global monitoredAgents, newSubscriptions
+  global cloud, monitoredAgents, newSubscriptions
   for msg in messages:
     
     # Received heartbeat from an agent
@@ -43,19 +43,28 @@ def parseMsgs(messages):
       # If new agent, subscribe.  If not, update time stamp
       if newAgent == True:
         print('Rx new agent heartbeat',agentName)
-        topic = 'dt/'+agentName+'/snapshots'
+        topic = 'snp/'+agentName+'/data'
+        newSubscriptions.append(topic)
+        topic = 'snp/'+agentName+'/reqPartList'
         newSubscriptions.append(topic)
         
         todaysDate = ''.join(time.strftime("%Y-%m-%d"))
         pathToBags = '/opt/data/snapshots/'+agentName+'/'+todaysDate+'/'
         snapshotStreams[agentName] = FileInTransit(pathToBags)
 
-    if "snapshots" in msg['topic']:
-      print('Rx snapshot data',msg['topic'])
-      agentName = msg['topic'].split('/')[1]
-      [h,c] = snapshotStreams[agentName].splitPayload(msg['data'])
-      if not h == 'Invalid Header':
-        snapshotStreams[agentName].saveChunk(h,c)
+    if 'snp' in msg['topic']:
+      if 'data' in msg ['topic']:
+        print('Rx snapshot data',msg['topic'])
+        agentName = msg['topic'].split('/')[1]
+        [h,c] = snapshotStreams[agentName].splitPayload(msg['data'])
+        if not h == 'Invalid Header':
+          snapshotStreams[agentName].saveChunk(h,c)
+      else:
+        agentName = msg['topic'].split('/')[1]
+        topic = 'snp/'+agentName+'/resPartList'
+        payload = snapshotStreams[agentName].getPartialList()
+        cloud.publishCsv(topic,payload)
+        print('Publish part files list: '+payload)
 
 def updateStatusSubs():
   global cloud, newSubscriptions, subscribedTopics
@@ -83,7 +92,7 @@ if True:
       updateStatusSubs()
 
     if time.time() > nextHeartbeat:
-      topic = 'dt/remote_snapshot/heartbeat'
+      topic = 'snp/remote_server/heartbeat'
       data ='a,'+agentName
       cloud.publishCsv(topic,data)
       nextHeartbeat = time.time()+1
