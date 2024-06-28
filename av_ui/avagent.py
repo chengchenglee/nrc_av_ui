@@ -153,9 +153,11 @@ class AvAgent:
       if fileInfo[0] == '':
         # Wait in this state until new snapshot shows up
         self.fileInTransit.state = ['Begin',', Wait for new snapshots...']
+        self.fileInTransit.debounceNewFile = time.time()
       else:
-        self.fileInTransit.setNew(fileInfo)
-        self.fileInTransit.state = ['Sending','']
+        if (time.time()-self.fileInTransit.debounceNewFile > 3) :
+          self.fileInTransit.setNew(fileInfo)
+          self.fileInTransit.state = ['Sending','']
       
     # Send a chunk of data
     if self.fileInTransit.state[0] == 'Sending':
@@ -189,7 +191,7 @@ class AvAgent:
             
       # Heartbeat from remote snapshot database
       elif 'snp/remote_server/heartbeat' in m['topic']:
-        print('Rx snapshot server heartbeat')
+        #print('Rx snapshot server heartbeat')
         self.lastSnapshotRepoMsg = time.time()
         self.numSnapshotRepoMsgs += 1
         

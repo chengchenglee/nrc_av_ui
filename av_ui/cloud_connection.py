@@ -43,7 +43,7 @@ class CloudConnection:
     self.mailbox = []
     self.subscriptions = []
     self.unsubscriptions = []
-    self.isPublishing = False
+    self.dataInQueue = False
 
   def loadBrokerConfigs(self):
     config_file = open(self.filename, 'r')
@@ -92,6 +92,11 @@ class CloudConnection:
       def on_disconnect(client, userdata, rc):
         self.isConnected = False
         print('MQTT disconnected:'+str(rc))
+        try:
+          print('Attempt reconnect')
+          self.client.connect(self.configInfo['MQTT_SERVER'], self.configInfo['MQTT_PORT'])
+        except:
+          print('Failed to reconnect')
       
       def on_mqtt_message(client, userdata, message):
         # Get message topic
@@ -115,6 +120,9 @@ class CloudConnection:
         
           msg['data'] = data
         self.mailbox.append(msg)
+        
+      def on_publish(client, userdata, mid):
+        self.dataInQueue = False
 
       def on_mqtt_subscribe(client, userdata, mid, granted_qos):  # subscribe to mqtt broker
           a = 1
@@ -132,10 +140,12 @@ class CloudConnection:
           client.tls_set_context(context)
 
       client.on_connect = on_connect
+      client.on_disconnect = on_disconnect
       print(self.configInfo['MQTT_SERVER'], self.configInfo['MQTT_PORT'])
       client.connect(self.configInfo['MQTT_SERVER'], self.configInfo['MQTT_PORT'])
       client.on_subscribe = on_mqtt_subscribe
       client.on_message = on_mqtt_message
+      client.on_publish = on_publish
       return client
 
   def subscribe(self,topics):
@@ -166,7 +176,8 @@ class CloudConnection:
     if len(data) > 0:
       tStart = time.time()
       result = self.client.publish(topic,data,qos)
-      result.wait_for_publish()
+      self.dataInQueue = True
+      #result.wait_for_publish()
       status = result[0]
       if status != 0:
         print("Failed to send msg to broker.")

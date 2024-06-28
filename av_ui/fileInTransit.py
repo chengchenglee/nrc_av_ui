@@ -18,6 +18,7 @@ class FileInTransit:
     self.chunkSendTime = 0
     self.bytesSent = 0
     self.state = ['Idle','Initializing']
+    self.debounceNewFile = 5
   
   def setNew(self,fileInfo):
     self.fileOpen = 1
@@ -26,8 +27,7 @@ class FileInTransit:
     self.filename = self.fullname.split('/')[-1]
     self.filename = self.filename.rstrip('.bag')
     print('============= Open file: '+self.filename+', '+str(fileInfo[1])+' =============')
-    print(self.filename)
-    print(self.directory)
+    print('============= Directory: '+self.directory+' =============')
     self.fileread = open(self.fullname,'rb')
     self.filesize = os.path.getsize(self.fullname)
     print('Filesize: '+str(self.filesize))
@@ -37,6 +37,7 @@ class FileInTransit:
     self.chunkSize = 500
   
   def transferCmplt(self):
+    print('============= Transfer Cmplt: '+self.filename+' =============')
     self.fileOpen = 0
     self.fileread.close()
     
@@ -64,7 +65,6 @@ class FileInTransit:
     chunkSize = len(chunk) # Can be smaller than chunkSize at end of file
     
     if chunkSize < self.chunkSize:
-      print('Last chunk')
       self.transferCmplt()
     
     # Data header

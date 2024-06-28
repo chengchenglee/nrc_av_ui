@@ -62,8 +62,9 @@ if True:
       prevTime = time.time()
 
     if time.time() > nextStSend:
-      nextStSend = time.time()+0.1
-      agent.sendStatusCsv()
+      nextStSend = time.time()+0.5
+      if agent.cloud.isConnected == True:
+        agent.sendStatusCsv()
       dtStamps[1] = round((time.time() - prevTime)*1000)/1000
       prevTime = time.time()
 
@@ -71,17 +72,19 @@ if True:
     remoteWmReq = remoteWmReq or (time.time()-agent.remoteWmDisplayLastReq < 3.0)
     if time.time() > nextWmSend and (remoteWmReq or agent.sendWm == 2):
       nextWmSend = time.time()+0.1
-      if (agent.sendWm > 0): agent.sendWmStatus()
+      if agent.sendWm > 0 and agent.cloud.isConnected == True:
+        agent.sendWmStatus()
       dtStamps[2] = round((time.time() - prevTime)*1000)/1000
       prevTime = time.time()
     
     if (time.time() > nextSnapSend) and (not remoteWmReq):
       nextSnapSend = time.time()+0.1
-      if (agent.sendSnapshots): agent.sendSnapshot()
+      if agent.cloud.dataInQueue == False and agent.cloud.isConnected == True:
+        if (agent.sendSnapshots): agent.sendSnapshot()
       dtStamps[3] = round((time.time() - prevTime)*1000)/1000
     
     tTotal = np.sum(dtStamps)
-    if (agent.printTimeDebug == 1 and tTotal > 0.08) or (tTotal > 0.25):
+    if (agent.printTimeDebug == 1 and tTotal > 0.08) or (tTotal > 0.9):
       print('[Poll/SendSt/SendW/SendSn]',dtStamps,'====>',str(round(tTotal*1000)/1000))
       
     time.sleep(0.01)

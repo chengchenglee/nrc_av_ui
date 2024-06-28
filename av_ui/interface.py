@@ -327,7 +327,7 @@ class Interface:
     elif fileTransfer.state[0] == 'Sending':
       MB_sent  = int(fileTransfer.bytesSent/1000000)
       MB_total = int(fileTransfer.filesize/1000000)
-      newText = 'Snapshot: Sending: '+str(MB_sent)+' / '+str(MB_total)+' MB '
+      newText = 'Snapshot: Sending '+str(MB_sent)+' / '+str(MB_total)+' MB '
     else:
       newText = fileTransfer.state[0]
     
