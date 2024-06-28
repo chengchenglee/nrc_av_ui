@@ -110,6 +110,9 @@ class AvAgent:
     anyFilename = ['',0]
     matchFilename = ['',0]
     for filename in bagFiles:
+      if time.time() - os.path.getmtime(filename) < 3:
+        print('Snapshot: New file, but waiting for it to finish writing to disk.')
+        continue
       anyFilename = [filename,0]
       for partFile in partList:
         if partFile[0] in filename:
@@ -155,9 +158,9 @@ class AvAgent:
         self.fileInTransit.state = ['Begin',', Wait for new snapshots...']
         self.fileInTransit.debounceNewFile = time.time()
       else:
-        if (time.time()-self.fileInTransit.debounceNewFile > 3) :
-          self.fileInTransit.setNew(fileInfo)
-          self.fileInTransit.state = ['Sending','']
+        #if (time.time()-self.fileInTransit.debounceNewFile > 3) :
+        self.fileInTransit.setNew(fileInfo)
+        self.fileInTransit.state = ['Sending','']
       
     # Send a chunk of data
     if self.fileInTransit.state[0] == 'Sending':
