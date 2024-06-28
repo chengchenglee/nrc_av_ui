@@ -12,6 +12,10 @@ import yaml
 import rospy
 from nrc_msgs.msg import GpsState
 import rospkg
+from threading import Lock
+
+mutex = Lock()
+usingMailbox = False
 
 subscribeTopics = ["dt/tfc/vehicle/telemetry"]
 mqtt_filename = 'mqtt_connection_config.yaml'
@@ -69,8 +73,11 @@ class CloudConnection:
     self.client.loop_start()
     
   def getMail(self):
-    mail = self.mailbox[:]
-    self.mailbox = []
+    with mutex:
+      usingMailbox = True
+      mail = self.mailbox[:]
+      self.mailbox = []
+      usingMailbox = False
     return mail
 
   def connect_mqtt(self,configName):
@@ -82,7 +89,7 @@ class CloudConnection:
               resubscribeTopics = []
               for t in self.subscriptions:
                 if t[1] == True:
-                  self.client.subscribe(t[0],2)
+                  client.subscribe(t[0],2)
                   resubscribeTopics.append(t[0])
               if len(resubscribeTopics) > 0:
                 print('Resubscribe:',resubscribeTopics)
@@ -94,7 +101,7 @@ class CloudConnection:
         print('MQTT disconnected:'+str(rc))
         try:
           print('Attempt reconnect')
-          self.client.connect(self.configInfo['MQTT_SERVER'], self.configInfo['MQTT_PORT'])
+          client.connect(self.configInfo['MQTT_SERVER'], self.configInfo['MQTT_PORT'])
         except:
           print('Failed to reconnect')
       
@@ -119,7 +126,11 @@ class CloudConnection:
             data.append(list(lineData))
         
           msg['data'] = data
-        self.mailbox.append(msg)
+        
+        with mutex:
+          #if usingMailbox == True:
+            #print('Possible mutex issue!')
+          self.mailbox.append(msg)
         
       def on_publish(client, userdata, mid):
         self.dataInQueue = False
@@ -129,7 +140,7 @@ class CloudConnection:
           #print("Subscribed to mqtt messages.")
       
       client_id = 'natcsv-mqtt-client.'+self.clientId
-      client = mqtt_client.Client(client_id)
+      client = mqtt_client.Client(client_id, clean_session=False)
       client.username_pw_set(self.configInfo['MQTT_USER'], self.configInfo['MQTT_PASSWORD'])
       
       if self.configInfo['MQTT_PORT'] == 8883:
