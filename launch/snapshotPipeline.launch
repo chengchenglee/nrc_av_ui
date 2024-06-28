@@ -32,6 +32,7 @@
   |/pmu_state
   |/controller_state
   |/driver_input
+  |/dynamic_global_pose
   |/gps_state/dynamic_global_pose_f9r
   |/gps_state/gps_state_f9r
   |/gps_state/dynamic_global_pose_oxts
