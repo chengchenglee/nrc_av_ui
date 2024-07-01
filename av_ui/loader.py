@@ -146,8 +146,9 @@ def read_subsystems(text, printDebug):
     if mode == 'Diagnostic':
       if 'LED' in line:
         idx = line.split(': ')[1]
-        current_subsystem.ledIdx = int(idx)
-        if printDebug: print('LED Index:',idx)
+        if not idx == '':
+          current_subsystem.ledIdx = int(idx)
+          if printDebug: print('LED Index:',idx)
       elif 'Retry' in line:
         maxRetries = int(line.split(': ')[1])
         current_subsystem.maxRetries = maxRetries

@@ -2,16 +2,18 @@ Configuration:
   Name: fvla-infrapod
   Map: Franklin.set
   useGui: 0
+  sendWm: 1
+  broker: doris
 
 Subsystem:
   IV:
     Type: Sensor
     Description: command to start innovusion node
-    Trigger:
-      - Source: StartRequest
+    Trigger: Startup, StartRequest, ARDX, or PMUX
+      - Source: Startup
     HealthTopics:
       - HealthTopic: /iv_points
-        HealthName: IV PTS
+        HealthName: IV
         HealthTopicType: PointCloud2
         NomWarnErrRate: 10, 7, 1
     Commands:
@@ -31,9 +33,9 @@ Subsystem:
     Type: Algorithm
     Description: command to start point cloud processor
     Trigger:
-      - Source: StartRequest
+      - Source: Startup
     HealthTopics:
-      - HealthTopic: /drivable_area_boundary_points_car_frame
+      - HealthTopic: /drivable_area_boundary_points
         HealthName: DA
         HealthTopicType: PointCloud2
         NomWarnErrRate: 10, 7, 1
@@ -61,7 +63,7 @@ Subsystem:
       - Source: Startup
     Commands:
       - Name: ROS-MQTT-Bridge
-        Command: roslaunch ${HOME}/projects/fvla-infrapod/mqtt-client-config/launch/standalone_local.launch params_file:="${HOME}/projects/fvla-infrapod/mqtt-client-config/fvla-dev/test2/params_infrapod_1_fvla.yaml"
+        Command: bash $HOME/projects/fvla-infrapod/launch_mqtt.sh
         NodeName: mqtt_client_local
         Type: Software
         LaunchTime: 3.0
@@ -72,19 +74,19 @@ Subsystem:
       - Launch:
         Run:
   
-  TOS-TF:
+  TOSTF:
     Type: Algorithm
     Description: Transform TOS to map frame
     Trigger:
       - Source: Startup
     Commands:
       - Name: TrackedObjectSinglePoint
-        Command: cd ${HOME}/projects/fvla-infrapod/calibration_scripts/ && python trackedobjsinglepoint.py
+        Command: python ${HOME}/projects/fvla-infrapod/calibration_scripts/trackedobjsinglepoint.py
         Type: Algorithm
         LaunchTime: 3.0
     HealthTopics:
       - HealthTopic: /pc_processor/multi_object_tracker/tracked_object_set_calibrated
-        HealthName: TOS_TF
+        HealthName: TOSTF
         HealthTopicType: TrackedObjectSet
         NomWarnErrRate: 10, 7, 1
     Diagnostic:
@@ -92,9 +94,10 @@ Subsystem:
       Timeout: 3
       Depends:
       - Launch:
+      - Launch:
         Run: 
 
-  DA-TF:
+  DATF:
     Type: Algorithm
     Description: Transform drivable area to map frame
     Trigger:
@@ -106,13 +109,14 @@ Subsystem:
         LaunchTime: 3.0
     HealthTopics:
       - HealthTopic: /drivable_area_boundary_points_map_frame
-        HealthName: DA_TF
+        HealthName: DATF
         HealthTopicType: PointCloud2
         NomWarnErrRate: 10, 7, 1
     Diagnostic:
       Retry: 3
       Timeout: 3
       Depends:
+      - Launch:
       - Launch:
         Run:  
 
@@ -123,7 +127,7 @@ Subsystem:
       - Source: Startup
     HealthTopics:
       - HealthTopic: /dynamic_global_pose
-        HealthName: GPS
+        HealthName: DGP
         HealthTopicType: DynamicPoseWithCovar
         NomWarnErrRate: 5, 2, 1
     Commands:
@@ -139,7 +143,7 @@ Subsystem:
       - Launch:
         Run:
 
-  Camera:
+  CAM:
     Type: Sensor
     Description: Camera streaming
     Trigger:
@@ -156,7 +160,7 @@ Subsystem:
       - Launch:
         Run:
 
-  Telemetry:
+  TEL:
     Type: Software
     Description: Telemetry over MQTT
     Trigger:

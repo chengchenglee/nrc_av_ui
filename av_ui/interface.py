@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import sys
+import os
 from nrc_msgs.msg import FailureModeRequest
 from subsystem import Subsystem
 
@@ -56,7 +57,7 @@ class Interface:
     else:
       self.selectedMap = newName
       print ('New map name selected is ',self.selectedMap)
-      #os.system("rosrun nrc_svcs paramsForMap.sh "+map_name)
+      os.system("rosrun nrc_av_ui paramsForMap.sh "+newName)
   
   def setupWindow(self, agent):
     # Setup window dimensions and title
@@ -69,9 +70,9 @@ class Interface:
   # Frame row def'n
     launchAllSectionTitleRow = 1
     launchAllSectionRow = launchAllSectionTitleRow + 1
-    setConfigSectionTitleRow =  launchAllSectionRow + 1
-    setConfigSectionRow =  setConfigSectionTitleRow + 1
-    computerSectionTitleRow = setConfigSectionRow + 1
+    setStatusSectionTitleRow =  launchAllSectionRow + 1
+    setStatusSectionRow =  setStatusSectionTitleRow + 1
+    computerSectionTitleRow = setStatusSectionRow + 1
     computerSectionRow = computerSectionTitleRow + 1
     sensorsSectionTitleRow = computerSectionRow + 1
     sensorsSectionRow = sensorsSectionTitleRow + 1
@@ -104,10 +105,10 @@ class Interface:
     allLaunchFrame = Tkinter.Frame(tab1, width=400, height=50)
     allLaunchFrame.grid(row=launchAllSectionRow,columnspan=10, sticky=Tkinter.W)
     
-    lbl_config = Tkinter.Label(tab1, text="Set Config")
-    lbl_config.grid(row=setConfigSectionTitleRow, stick=Tkinter.W)
-    setConfigFrame = Tkinter.Frame(tab1, width=400, height=50)
-    setConfigFrame.grid(row=setConfigSectionRow,columnspan=10, sticky=Tkinter.W)
+    lbl_config = Tkinter.Label(tab1, text="Status")
+    lbl_config.grid(row=setStatusSectionTitleRow, stick=Tkinter.W)
+    setStatusFrame = Tkinter.Frame(tab1, width=400, height=50)
+    setStatusFrame.grid(row=setStatusSectionRow,columnspan=10, sticky=Tkinter.W)
     
     lbl_comp = Tkinter.Label(tab1, text="Subsystems")
     lbl_comp.grid(row=computerSectionTitleRow, sticky=Tkinter.W)
@@ -165,7 +166,7 @@ class Interface:
     # use global map_name - global mapsel controls the menu selection
     mapsel = Tkinter.StringVar(allLaunchFrame);
    
-    map_options = ['Sanborn2019MMv24','Sanborn2020PNHv2','MiniMap','SC_Cached','SanMiguel_Cached','Noe.set','Franklin.set','THill_Cached']
+    map_options = ['Sanborn2019MMv24','Sanborn2020PNHv2','Sanborn2022BRv2','MiniMap','SC_Cached','SanMiguel_Cached','Noe.set','Franklin.set','THill_Cached']
     
     try:
       check_map_name = rospy.get_param('/map_name')
@@ -198,12 +199,18 @@ class Interface:
       
       objCol = 3
       for m in s.monitors:
-        m.label = Tkinter.Button(compFrame, text=m.name, width=msgWidth, padx=1, relief="raised", bg="#505050", command=m.displayMore)
+        m.label = Tkinter.Button(compFrame, text=m.name, width=msgWidth, padx=1, pady=1, relief="raised", bg="#505050", command=m.displayMore)
         m.label.grid(column=objCol, row=objRow, sticky=Tkinter.W+Tkinter.E)
+        textStr = m.name+'\n'+str(m.msgCount)
+        m.label.configure(text=textStr)
+        m.label.configure(font = ("Helvetica",8))
         objCol = objCol + 1
         
       objRow = objRow+1
-      
+     
+    self.snpTextBox = Tkinter.Message(setStatusFrame, text="Snapshot: Init", padx=1, width=500, relief="raised", bg="white", anchor=Tkinter.W)
+    self.snpTextBox.grid(column=0, row=0, columnspan=10)
+    
     self.textBox = Tkinter.Message(textFrame, text="Init", padx=1, width=500, relief="raised", bg="white", anchor=Tkinter.W)
     self.textBox.grid(column=0, row=0, columnspan=10)
       
@@ -311,11 +318,28 @@ class Interface:
     else:
       return "#D0D0D0"
   
+  def updateSnpText(self,fileTransfer):
+    newText = ''
+    if fileTransfer.state[0] == 'Requested' or fileTransfer.state[0] == 'Wait':
+      newText = ''.join(fileTransfer.state)
+    elif fileTransfer.state[0] == 'Begin':
+      newText = 'Snapshot: Ready to send '
+    elif fileTransfer.state[0] == 'Sending':
+      MB_sent  = int(fileTransfer.bytesSent/1000000)
+      MB_total = int(fileTransfer.filesize/1000000)
+      newText = 'Snapshot: Sending '+str(MB_sent)+' / '+str(MB_total)+' MB '
+    else:
+      newText = fileTransfer.state[0]
+    
+    self.snpTextBox.configure(text=newText)
+  
   def update(self,subsystems):
     msgText = []
     for s in subsystems:
       for m in s.monitors:
         m.label.configure(bg=self.statusToColor(m.status))
+        textStr = m.name+'\n'+str(m.msgCount)
+        m.label.configure(text=textStr)
         if m.displayText == 1 or m.autoText == 1:
           msgText +=m.name+": "+m.msgText+'\n'
 

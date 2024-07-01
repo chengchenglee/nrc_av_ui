@@ -18,6 +18,7 @@ class Subsystem:
     self.PMU_AD_ON_BIT = 3
     self.ardData = []
     self.pmuData = []
+    self.dgpData = []
     self.shouldBeStarted = 0
     self.isStarted = False
     self.status = 0
@@ -131,6 +132,10 @@ class Subsystem:
           self.pmuData = []
           for val in m.data:
             self.pmuData.append(val)
+        elif m.name == 'DGP':
+          self.dgpData = []
+          for val in m.data:
+            self.dgpData.append(val)
         
         if m.customLedValue != -1:
           customLedValue = m.customLedValue

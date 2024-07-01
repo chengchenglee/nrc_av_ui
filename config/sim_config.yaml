@@ -1,21 +1,25 @@
 Configuration:
   Name: sim
   mapName: Franklin.set
+  printTimeDebug: 0
   useGui: 1
+  sendWm: 1
+  sendSnapshots: 1
+  broker: doris
 
 Subsystem:
   Sim:
     Type: Sensor
     Description: command to start simulator
-    Trigger:
-      - Source: Startup
+    Trigger: Startup, StartRequest, ARDX, or PMUX
+      - Source: StartRequest
     HealthTopics:
       - HealthTopic: /CtrlStateFLG
         HealthName: CAR
         HealthTopicType: CtrlStateFLG
         NomWarnErrRate: 100, 70, 50
       - HealthTopic: /dynamic_global_pose
-        HealthName: OxtsRaw
+        HealthName: DGP
         HealthTopicType: DynamicPoseWithCovar
         NomWarnErrRate: 100, 80, 60
     Commands:

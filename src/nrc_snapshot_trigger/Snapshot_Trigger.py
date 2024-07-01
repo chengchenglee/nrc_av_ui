@@ -55,7 +55,8 @@ class CsvWriterAVinterface:
         self.prefixList = []
         self.snapshotUpdated = False
         self.filename = ''
-        self.csvDir = os.path.join(os.path.expanduser("~"), 'projects/disengagementData/bags/', time.strftime("%Y-%m-%d"))
+        #self.csvDir = os.path.join(os.path.expanduser("~"), 'projects/disengagementData/bags/', time.strftime("%Y-%m-%d"))
+        self.csvDir = os.path.join(os.path.expanduser("~"), '/opt/data/snapshots/', time.strftime("%Y-%m-%d"))
         print("csvDir:",self.csvDir)
         dirExists = os.path.isdir(self.csvDir)
         
@@ -79,41 +80,41 @@ class CsvWriterAVinterface:
     
     
     def timerCallback(self, data):            # Interval decided by timerInterval.
-        if self.avEngaged and self.BRK_Override:
+        if self.avEngaged:
+            if (not self.BRK_Override) and (not self.ACC_Override):
+              self.avEngagedTimer += self.timerInterval
+        
+        wasAutonomous = self.avEngagedTimer > 2.0
+        
+        if wasAutonomous and self.BRK_Override:
             self.writeSnapshot = True
             self.prefixList.append('brkOverride')
             self.BRK_OverrideTimer += self.timerInterval
         
-        if self.avEngaged and self.ACC_Override:
+        if wasAutonomous and self.ACC_Override:
             self.writeSnapshot = True
             self.prefixList.append('accOverride')
             self.ACC_OverrideTimer += self.timerInterval
         
-        if self.snapButton == 2: #and self.avEngaged:
+        if wasAutonomous and self.snapButton == 2:
             print('Snapshot triggered by button press.')
             self.writeSnapshot = True
             self.prefixList.append('snapButton')
             self.snapButtonTimer += self.timerInterval
             
-        if self.avEngaged and self.EVNT_trigger:
+        if wasAutonomous and self.EVNT_trigger:
             self.writeSnapshot = True
             self.prefixList.append(str(self.eventName))
             self.eventTimer += self.timerInterval
             self.eventName = ''         # Reset the name of the event name to ''.
-
-        if self.avEngaged:
-            self.updateThisCycle = True
-            self.avEngagedTimer += self.timerInterval
         
-        if (not self.avEngaged) and self.updateThisCycle:
+        if (not self.avEngaged) and wasAutonomous:
             self.writeSnapshot = True
             self.prefixList.append('avDisengaged')
         
-            
         # Arranging the name of the prefix for saving files.
         #self.prefixList.sort()
         self.prefixList = list(set(self.prefixList))      # This removes any duplicate trigger names in the prefix.
-        
         
         if self.writeSnapshot:
             self.writeTime += self.timerInterval
@@ -160,7 +161,6 @@ class CsvWriterAVinterface:
                 
             self.writeSnapshot = False
             self.writeTime = 0
-            self.updateThisCycle = False
             self.prefixList = []
 
             # Reset all timers.

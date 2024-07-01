@@ -1,12 +1,18 @@
 Configuration:
   Name: Echo
+  mapName: Franklin.set
+  printTimeDebug: 0
+  useGui: 1
+  sendWm: 1
+  sendSnapshots: 1
   Map: Franklin.set
+  broker: ncal
 
 Subsystem:
   CAR:
     Type: Sensor
     Description: Vehicle CAN
-    Trigger:
+    Trigger: Startup, StartRequest, ARDX, or PMUX
       - Source: Startup
     HealthTopics:
       - HealthTopic: /CtrlStateFLG

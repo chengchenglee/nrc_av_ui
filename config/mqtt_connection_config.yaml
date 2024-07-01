@@ -1,0 +1,16 @@
+Configuration:
+
+Brokers:
+  doris:
+    MQTT_SERVER: doris
+    MQTT_PORT: 1883
+    MQTT_USER: sam_teleop
+    MQTT_PASSWORD: yg#eo5cbAksD82qt
+    PROTOCOL: ssl.PROTOCOL_TLSv1_2
+  
+  ncal:
+    MQTT_SERVER: mqtt-broker-ncal.nrcsv.com
+    MQTT_PORT: 8883
+    MQTT_USER: sam-teleop
+    MQTT_PASSWORD: yg#eo5cbAksD82qt
+    PROTOCOL: ssl.PROTOCOL_TLSv1_2  

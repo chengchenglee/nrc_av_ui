@@ -3,12 +3,14 @@
 import json, ast
 from collections import OrderedDict
 import time
+from wmStatus import WmStatus
 
 class MonitoredProcess:
   def __init__(self):
     self.name = []
     self.drawn = False
     self.status = 0
+    self.msgCount = 0
     self.button = []
     self.selected = False
     
@@ -35,6 +37,7 @@ class MonitoredSubsystem:
       for m in self.monitors:
         if mNew.name == m.name:
           m.status = mNew.status
+          m.msgCount = mNew.msgCount
           minStatus = min(minStatus,m.status)
           foundMonitor = True
           break
@@ -68,6 +71,8 @@ class MonitoredAgent:
     self.cmdsEnabledButton = []
     self.selected = False
     self.tLastMsg = time.time()
+    self.wmStatus = WmStatus()
+    self.wmDisplayOn = 0
   
   def update(self,latestSubsystems):
     foundSubsystem = False
@@ -109,56 +114,29 @@ class MonitoredAgent:
         print("    Process:",m.name,m.status)
   
   def getCmdData(self):
-    data = OrderedDict()
-    for s in self.subsystems:
-      if self.cmdsMode == 'Ctrl':
-        data[s.name] = s.isRunning
+    data = ''
+    data += 'w,'+str(self.wmDisplayOn)+'\n'
+    if self.cmdsMode == 'Ctrl':
+      for s in self.subsystems:
+        data += 's,'+s.name+','+str(s.isRunning)+'\n'
     return data
   
-  def parseMsgPayloadCsv(self,payload):
-    payload = payload.strip('\"')
-    lines = payload.split('\n')
+  def parseMsgPayloadCsv(self,data):
     subsystem = MonitoredSubsystem()
-    for line in lines:
-      #print(line)
-      code = line.split(',')[0]
-      if code == 'a':
-        self.name = line.split(',')[1]
+    for lineData in data:
+      if lineData[0] == 'a':
+        self.name = lineData[1]
         self.cmdTopic = 'cmd/'+self.name+'/remote'
-      elif code == 's':
+      elif lineData[0] == 's':
         if subsystem.name != "": self.subsystems.append(subsystem)
         subsystem = MonitoredSubsystem()
-        subsystem.name = line.split(',')[1]
+        subsystem.name = lineData[1]
         subsystem.monitors = []
-      elif code == 'm':
+      elif lineData[0] == 'm':
         mon = MonitoredProcess()
-        mon.name = line.split(',')[1]
-        mon.status = int(line.split(',')[2])
+        mon.name = lineData[1]
+        statusData = int(lineData[2])
+        mon.msgCount = statusData % 1000
+        mon.status = (statusData-mon.msgCount)/1000
         subsystem.monitors.append(mon)
     self.subsystems.append(subsystem)
-    #self.printStatus()
-  
-  def parseMsgPayload(self,payload):
-    #msgJson = ast.literal_eval(msg.payload)
-    msgJson = json.loads(payload,object_pairs_hook=OrderedDict)
-    #print(msgJson)
-    
-    keys = list(msgJson.keys())
-    if "agent" in keys:
-      self.name = msgJson["agent"]
-      self.cmdTopic = 'cmd/'+self.name+'/remote'
-    
-    if "subs" in keys:
-      subDict = msgJson["subs"]
-      subsList = list(subDict.keys())
-      for s in subsList:
-        subsystem = MonitoredSubsystem()
-        subsystem.name = s
-        monDict = subDict[s]
-        monsList = list(monDict.keys())
-        for m in monsList:
-          mon = MonitoredProcess()
-          mon.name = m
-          mon.status = monDict[m]
-          subsystem.monitors.append(mon)
-        self.subsystems.append(subsystem)

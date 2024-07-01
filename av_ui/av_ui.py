@@ -8,6 +8,7 @@ from RoscoreObj import *
 from avagent import AvAgent
 from interface import Interface
 import time
+import numpy as np
 
 running = True
 
@@ -42,14 +43,51 @@ if True:
   
   agent.pubSubSetup()
 
+  nextPollTime = 0
+  nextStSend = 0
+  nextWmSend = 0
+  nextSnapSend = time.time()+1
   while running:
     # Wait for updates
-    agent.pollMonitors()
-    if (agent.useGui == 1): interface.update(agent.subsystems)
-    #agent.sendStatus()
-    agent.sentStatusCsv()
-    agent.getCmds()
-    time.sleep(0.25)
+    prevTime = time.time()
+    dtStamps = np.zeros(4)
+    if time.time() > nextPollTime:
+      nextPollTime = time.time()+0.1
+      agent.pollMonitors()
+      agent.parseAgentMail()
+      if (agent.useGui == 1):
+        interface.updateSnpText(agent.fileInTransit)
+        interface.update(agent.subsystems)
+      dtStamps[0] = round((time.time() - prevTime)*1000)/1000
+      prevTime = time.time()
+
+    if time.time() > nextStSend:
+      nextStSend = time.time()+0.5
+      if agent.cloud.isConnected == True:
+        agent.sendStatusCsv()
+      dtStamps[1] = round((time.time() - prevTime)*1000)/1000
+      prevTime = time.time()
+
+    remoteWmReq = agent.remoteWmDisplayOn == 1
+    remoteWmReq = remoteWmReq or (time.time()-agent.remoteWmDisplayLastReq < 3.0)
+    if time.time() > nextWmSend and (remoteWmReq or agent.sendWm == 2):
+      nextWmSend = time.time()+0.1
+      if agent.sendWm > 0 and agent.cloud.isConnected == True:
+        agent.sendWmStatus()
+      dtStamps[2] = round((time.time() - prevTime)*1000)/1000
+      prevTime = time.time()
+    
+    if (time.time() > nextSnapSend) and (not remoteWmReq):
+      nextSnapSend = time.time()+0.1
+      if agent.cloud.dataInQueue == False and agent.cloud.isConnected == True:
+        if (agent.sendSnapshots): agent.sendSnapshot()
+      dtStamps[3] = round((time.time() - prevTime)*1000)/1000
+    
+    tTotal = np.sum(dtStamps)
+    if (agent.printTimeDebug == 1 and tTotal > 0.08) or (tTotal > 0.9):
+      print('[Poll/SendSt/SendW/SendSn]',dtStamps,'====>',str(round(tTotal*1000)/1000))
+      
+    time.sleep(0.01)
 
   # End rospy
   print("Closing interface monitor")
