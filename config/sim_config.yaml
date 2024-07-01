@@ -5,6 +5,7 @@ Configuration:
   useGui: 1
   sendWm: 1
   sendSnapshots: 1
+  broker: doris
 
 Subsystem:
   Sim:
