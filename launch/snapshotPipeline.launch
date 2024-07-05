@@ -40,8 +40,7 @@
   |/gps_state/gps_state_ariya"/>
   
   <arg name="snapshot_system_front_tower_cameras_topics"
-  default="/tower_cam_front/image_stamped/compressed
-  |/lucid_cam_front/image_rect_color/compressed"/>
+  default="/snapshot/image/compressed"/>
   
   <arg name="snapshot_system_lidar_topics"
   default="/velodyne_packets
@@ -85,6 +84,14 @@
 
     <!--Run snapshot node-->
     <node pkg="nrc_av_ui" type="Snapshot_Trigger.py" name="snapshot_trigger_node" output="screen"/>
+    
+    <node name="snapshot" pkg="nodelet" type="nodelet"
+        args="standalone image_proc/resize" output="screen">
+        <remap from="image" to="/tower_cam_front/image_stamped" />
+        <remap from="camera_info" to="/tower_cam_front/camera_info" />
+        <param name="scale_width" value="0.4" />
+        <param name="scale_height" value="0.4" />
+    </node>
   </group>
   
   <node pkg="nrc_av_ui" type="rosbagRecordMonitor.py" name="snapshot_monitor" args="-d ~/projects/disengagementData/bags/ -t SnapshotHealth -n SnapshotMonitor -m Trigger" machine="$(arg snapshot_machine)" output="screen"/>
