@@ -9,6 +9,8 @@ from avagent import AvAgent
 from interface import Interface
 import time
 import numpy as np
+from argparse import ArgumentParser
+import rospkg
 
 running = True
 
@@ -20,14 +22,31 @@ def signal_handler(sig, frame):
 # Catch ctrl-c
 signal.signal(signal.SIGINT, signal_handler)
 
+default_path = rospkg.RosPack().get_path('nrc_av_ui')+'/config/'
+parser = ArgumentParser()
+parser.add_argument("-c", "--config", dest='config',
+                    default=default_path+os.environ.get('AGENT_CONFIG'), 
+                    help="pass config file as argument. Default from environment variable AGENT_CONFIG")
+parser.add_argument("-a", "--agent", dest='agent',
+                    default=os.environ.get('AGENT_NAME'), 
+                    help="pass agent name as argument. Default from environment variable AGENT_NAME")
+parser.add_argument("-v", "--verbose",
+                    type=bool, default=False, dest='verbose',
+                    help="set True for verbose mode. Default set to false.")
+
+args = parser.parse_args()
+print(f"Starting AV Agent for {args.agent} using configs from {args.config}...")
+
 text = []
 
 inclGui = True
-agent_name = os.environ['AGENT_NAME']
-agent_type = os.environ['AGENT_CONFIG']
+agent_name = args.agent
+agent_config = args.config
+verbose = args.verbose
+
 
 filename = 'sim_config.yaml'
-agent = AvAgent(agent_type, agent_name)
+agent = AvAgent(agent_config, agent_name, verbose)
 if (agent.useGui == 1): interface = Interface(agent.name, agent.mapName)
 
 # Start roscore

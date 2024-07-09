@@ -19,10 +19,10 @@ from collections import OrderedDict
 import rospkg
 
 class AvAgent:
-  def __init__(self, agent_type, agent_name):
+  def __init__(self, agent_config, agent_name, verbose):
     self.name = agent_name
     home = expanduser("~")
-    self.filename = rospkg.RosPack().get_path('nrc_av_ui')+'/config/'+agent_type
+    self.filename = agent_config
     self.mapName = "Franklin.set"
     self.subsystems = []
     self.avLedStatusPub = []
@@ -37,7 +37,7 @@ class AvAgent:
     # Load the agent configuration
     with open(self.filename, 'r') as file:
       text = file.read()
-    printDebug = False
+    printDebug = int(verbose)
     self.subsystems = Loader.read_subsystems(text, printDebug)
     self.mapName = Loader.getField(text,'mapName','Franklin.set')
     self.mqttConfig = Loader.getField(text,'mqttConfig','ncal')
@@ -49,7 +49,8 @@ class AvAgent:
     print ("sendWm: "+str(self.sendWm))
     print ("sendSnapshots: "+str(self.sendSnapshots))
     print ("broker: "+str(self.broker))
-    self.printTimeDebug = int(Loader.getField(text,'printTimeDebug',0))
+    self.printTimeDebug = max(int(Loader.getField(text,'printTimeDebug',0)), int(verbose))
+    print(self.printTimeDebug)
     
     # Prepare cloud connection
     self.cloud = CloudConnection(self.name, self.broker)
