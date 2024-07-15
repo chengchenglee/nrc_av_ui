@@ -4,7 +4,8 @@ Configuration:
   printTimeDebug: 0
   useGui: 1
   sendWm: 1
-  sendSnapshots: 1
+  sendSnapshots: 0
+  broker: local
 
 Subsystem:
   Sim:

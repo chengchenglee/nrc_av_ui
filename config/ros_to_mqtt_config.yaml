@@ -1,0 +1,9 @@
+ros:
+  topic: "/dynamic_global_pose"
+  topic_type: "DynamicPoseWithCovar"
+
+mqtt:
+  topic: "dgp"
+  rate: 50
+
+compress: True  
