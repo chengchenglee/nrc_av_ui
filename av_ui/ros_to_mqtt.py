@@ -5,6 +5,7 @@ import threading
 import ssl
 import yaml
 import importlib
+import os
 
 class ROStoMQTTConverter:
     def __init__(self, config_file, broker_file, broker_name):
@@ -54,8 +55,9 @@ class ROStoMQTTConverter:
             rate = topic_config['rate']
             compress_flag = topic_config['compress']
 
-            # Load the YAML file for the compression module
-            with open(f"{compress_module}.yaml", 'r') as file:
+            # Load the YAML file for the compression module from the specified directory
+            yaml_file_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '../config', f"{compress_module}.yaml")
+            with open(yaml_file_path, 'r') as file:
                 compress_config = yaml.safe_load(file)
             
             message_type = compress_config['message_type']

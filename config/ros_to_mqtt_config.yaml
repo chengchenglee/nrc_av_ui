@@ -3,20 +3,20 @@ topics:
   - ros_topic: "/dynamic_global_pose"
     ros_type: "nrc_msgs/DynamicPoseWithCovar"
     mqtt_topic: "dgp"
-    compress_module: "dgp"
+    compress_module: "dynamic_global_pose"
     rate: 100
-    compress: False
+    compress: True
 
   - ros_topic: "/vehicle_trajectory_control"
     ros_type: "nrc_msgs/VehicleTrajectoryControl"
     mqtt_topic: "vtc"
-    compress_module: "vtc"
+    compress_module: "vehicle_trajectory_control"
     rate: 100
     compress: True
 
   - ros_topic: "/controller_state"
     ros_type: "nrc_msgs/ControllerState"
     mqtt_topic: "cs"
-    compress_module: "cs"
+    compress_module: "controller_state"
     rate: 10
     compress: True

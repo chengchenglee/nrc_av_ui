@@ -5,6 +5,7 @@ import re
 import yaml
 
 DEFAULT_MSG_PATH = "/home/users/jshah/projects/fvla-base/nrc_ws/src/nrc_msgs/msg"
+DEFAULT_SAVE_PATH = "/home/users/jshah/projects/nrc_ws/src/nrc_av_ui/config"
 
 def parse_msg_file(file_content):
     lines = file_content.split('\n')
@@ -122,7 +123,11 @@ class MessageFieldSelector:
         
         content = self.generate_yaml_content(selected_fields_compressed, all_fields_full)
         
-        file_path = filedialog.asksaveasfilename(defaultextension=".yaml", filetypes=[("YAML files", "*.yaml")])
+        file_path = filedialog.asksaveasfilename(
+            initialdir=DEFAULT_SAVE_PATH,
+            defaultextension=".yaml",
+            filetypes=[("YAML files", "*.yaml")]
+        )
         if file_path:
             with open(file_path, "w") as f:
                 yaml.dump(content, f)
