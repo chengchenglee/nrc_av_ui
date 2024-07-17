@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog
 import os
 import re
+import yaml
 
 DEFAULT_MSG_PATH = "/home/users/jshah/projects/fvla-base/nrc_ws/src/nrc_msgs/msg"
 
@@ -77,7 +78,7 @@ class MessageFieldSelector:
         self.fields_frame = ttk.Frame(self.master)
         self.fields_frame.pack(pady=10, expand=True, fill="both")
 
-        ttk.Button(self.master, text="Generate Compression File", command=self.generate_file).pack(pady=10)
+        ttk.Button(self.master, text="Generate YAML File", command=self.generate_file).pack(pady=10)
 
     def load_msg_file(self):
         file_path = filedialog.askopenfilename(
@@ -104,11 +105,11 @@ class MessageFieldSelector:
 
         if self.message_type_var.get():
             fields = self.message_types[self.message_type_var.get()]
-            self.field_vars = {}
+            self.field_vars_compressed = {}
 
             for field in fields:
                 var = tk.BooleanVar(value=True)
-                self.field_vars[field] = var
+                self.field_vars_compressed[field] = var
                 ttk.Checkbutton(self.fields_frame, text=field, variable=var).pack(anchor="w")
 
     def generate_file(self):
@@ -116,56 +117,25 @@ class MessageFieldSelector:
             print("Please load a MSG file first.")
             return
 
-        selected_fields = [field for field, var in self.field_vars.items() if var.get()]
+        selected_fields_compressed = [field for field, var in self.field_vars_compressed.items() if var.get()]
+        all_fields_full = list(self.message_types[self.message_type_var.get()])
         
-        content = self.generate_python_content(selected_fields)
+        content = self.generate_yaml_content(selected_fields_compressed, all_fields_full)
         
-        file_path = filedialog.asksaveasfilename(defaultextension=".py", filetypes=[("Python files", "*.py")])
+        file_path = filedialog.asksaveasfilename(defaultextension=".yaml", filetypes=[("YAML files", "*.yaml")])
         if file_path:
             with open(file_path, "w") as f:
-                f.write(content)
+                yaml.dump(content, f)
             print(f"File saved: {file_path}")
 
-    def generate_python_content(self, selected_fields):
+    def generate_yaml_content(self, fields_compressed, fields_full):
         message_type = self.message_type_var.get()
         
-        content = "import rospy\n\n"
-        content += f"def compress_{message_type.lower()}(data):\n"
-        content += "    return {\n"
-        
-        for field in selected_fields:
-            if "." in field:
-                parts = field.split(".")
-                content += f"        '{parts[0]}': {{\n"
-                for part in parts[1:-1]:
-                    content += f"            '{part}': {{\n"
-                content += f"            '{parts[-1]}': data.{field},\n"
-                for _ in range(len(parts) - 1):
-                    content += "        },\n"
-            else:
-                content += f"        '{field}': data.{field},\n"
-        
-        content += "    }\n\n"
-        
-        content += f"def full_{message_type.lower()}(data):\n"
-        content += "    return {\n"
-        
-        all_fields = self.message_types[message_type]
-        for field in all_fields:
-            if "." in field:
-                parts = field.split(".")
-                content += f"        '{parts[0]}': {{\n"
-                for part in parts[1:-1]:
-                    content += f"            '{part}': {{\n"
-                content += f"            '{parts[-1]}': data.{field},\n"
-                for _ in range(len(parts) - 1):
-                    content += "        },\n"
-            else:
-                content += f"        '{field}': data.{field},\n"
-        
-        content += "    }\n"
-        
-        return content
+        return {
+            'message_type': message_type,
+            'fields_compressed': fields_compressed,
+            'fields_full': fields_full
+        }
 
 if __name__ == "__main__":
     root = tk.Tk()

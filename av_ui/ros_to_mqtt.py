@@ -54,23 +54,22 @@ class ROStoMQTTConverter:
             rate = topic_config['rate']
             compress_flag = topic_config['compress']
 
-            # Dynamically import the compression module
-            module = importlib.import_module(compress_module)
-            message_type = ros_type.split('/')[-1].lower()
-            compress_func_name = f"compress_{message_type}"
-            full_func_name = f"full_{message_type}"
-            compress_func = getattr(module, compress_func_name)
-            full_func = getattr(module, full_func_name)
+            # Load the YAML file for the compression module
+            with open(f"{compress_module}.yaml", 'r') as file:
+                compress_config = yaml.safe_load(file)
+            
+            message_type = compress_config['message_type']
+            fields_to_use = compress_config['fields_compressed'] if compress_flag else compress_config['fields_full']
 
             # Create message buffer and lock for this topic
             self.message_buffers[ros_topic] = []
             self.buffer_locks[ros_topic] = threading.Lock()
 
             # Create a closure to capture topic-specific variables
-            def callback_factory(topic, compress_flag, compress_func, full_func):
+            def callback_factory(topic, fields):
                 def callback(data):
                     with self.buffer_locks[topic]:
-                        message_dict = compress_func(data) if compress_flag else full_func(data)
+                        message_dict = {field: self.extract_field(data, field) for field in fields}
                         self.message_buffers[topic].append((mqtt_topic, message_dict))
                 return callback
 
@@ -79,7 +78,7 @@ class ROStoMQTTConverter:
             subscriber = rospy.Subscriber(
                 ros_topic,
                 ros_msg_type,
-                callback_factory(ros_topic, compress_flag, compress_func, full_func)
+                callback_factory(ros_topic, fields_to_use)
             )
             self.subscribers.append(subscriber)
 
@@ -88,6 +87,13 @@ class ROStoMQTTConverter:
         package, msg_name = type_string.split('/')
         module = importlib.import_module(f"{package}.msg")
         return getattr(module, msg_name)
+
+    def extract_field(self, data, field):
+        parts = field.split('.')
+        value = data
+        for part in parts:
+            value = getattr(value, part)
+        return value
 
     def on_connect(self, client, userdata, flags, rc):
         if rc == 0:
