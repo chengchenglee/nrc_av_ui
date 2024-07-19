@@ -25,7 +25,7 @@ signal.signal(signal.SIGINT, signal_handler)
 default_path = rospkg.RosPack().get_path('nrc_av_ui')+'/config/'
 parser = ArgumentParser()
 parser.add_argument("-c", "--config", dest='config',
-                    default=default_path+os.environ.get('AGENT_CONFIG'), 
+                    default=default_path+str(os.environ.get('AGENT_CONFIG')), 
                     help="pass config file as argument. Default from environment variable AGENT_CONFIG")
 parser.add_argument("-a", "--agent", dest='agent',
                     default=os.environ.get('AGENT_NAME'), 
@@ -56,9 +56,19 @@ if True:
   
   if (agent.useGui == 1): interface.setupWindow(agent)
 
-  os.system("rosparam set /agent_name "+agent.name)
+
   os.system("rosrun nrc_svcs paramsForDriving.sh")
   os.system("rosrun nrc_svcs paramsForMap.sh "+agent.mapName)
+  if agent.agentType == 'sim':
+    os.system("rosparam set /use_sim_time "+"True")
+  os.system("rosparam set /robot_description -t "+rospkg.RosPack().get_path('nrc_svcs')+'/src/nrc_car_description/'+agent.agentType+'.urdf')
+  os.system("rosparam set /agent_name "+agent.name)
+  os.system("rosparam set /agent_config "+agent_config)
+  if agent.rosparams:
+    for key, value in agent.rosparams.items():
+      os.system("rosparam set "+key+" "+value)
+
+
   
   agent.pubSubSetup()
 

@@ -29,6 +29,33 @@ def getField(text,field,default):
   #print ("getField: "+field+" ==> "+value)
   return value
 
+def getSubConfigs(text, config):
+  params = {}
+  config_indent = -1
+  config_found = False
+  lines = text.split('\n')
+  for line in lines:
+    if not line or line.startswith('#'):
+      continue
+    indent = len(line) - len(line.lstrip())
+    # print(rosparams_found, indent)
+    if config in line:
+      config_found = True
+      config_indent = indent
+      continue
+
+    if config_found and indent == config_indent:
+      config_found = False
+    
+    if config_found and indent > config_indent:
+      # print(line)
+      key, value = line.split(':')
+      key = key.strip()
+      value = value.strip() if value else None
+      if key:
+        params[key] = value
+  return params
+
 def getCloudConfig(text):
   configInfo = {
     'MQTT_SERVER': 'mqtt-broker-ncal.nrcsv.com',

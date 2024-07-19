@@ -33,6 +33,8 @@ class AvAgent:
     self.wmStatus = WmStatus()
     self.remoteWmDisplayOn = 0
     self.remoteWmDisplayLastReq = 0
+    self.agentType = 'leaf'
+    self.fixedPose = None
 
     # Load the agent configuration
     with open(self.filename, 'r') as file:
@@ -45,13 +47,20 @@ class AvAgent:
     self.sendWm  = int(Loader.getField(text,'sendWm',0))
     self.sendSnapshots  = int(Loader.getField(text,'sendSnapshots',0))
     self.broker = Loader.getField(text, 'broker', 'ncal')
+    self.agentType = Loader.getField(text, 'agentType', 'leaf')
     print ("useGui: "+str(self.useGui))
     print ("sendWm: "+str(self.sendWm))
     print ("sendSnapshots: "+str(self.sendSnapshots))
     print ("broker: "+str(self.broker))
+    print ("agent type: "+str(self.agentType))
+    self.rosparams = Loader.getSubConfigs(text, 'ROSParams')
     self.printTimeDebug = max(int(Loader.getField(text,'printTimeDebug',0)), int(verbose))
     print(self.printTimeDebug)
     
+    #if infrapod, get fixed pose
+    if self.agentType == 'infrapod':
+      self.fixedPose = Loader.getField(text,'pose',[])
+
     # Prepare cloud connection
     self.cloud = CloudConnection(self.name, self.broker)
     self.cloud.updateConfig(text)

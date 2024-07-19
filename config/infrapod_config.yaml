@@ -1,9 +1,13 @@
 Configuration:
   Name: fvla-infrapod
+  agentType: infrapod
   Map: Franklin.set
   useGui: 0
   sendWm: 1
   broker: doris
+
+AgentConfigs:
+  pose: [4852.11280000001, -2229.1606, 0, 1.1519]
 
 Subsystem:
   LIDAR:
