@@ -10,7 +10,7 @@ from fileInTransit import FileInTransit
 import loader as Loader
 from nrc_msgs.msg import InterventionRequest
 from std_msgs.msg import Int16MultiArray
-from nrc_msgs.msg import TrackedObjectSet
+from nrc_msgs.msg import TrackedObjectSet,DynamicPoseWithCovar
 import numpy as np
 import time
 from cloud_connection import CloudConnection
@@ -24,6 +24,7 @@ class AvAgent:
     home = expanduser("~")
     self.filename = agent_config
     self.mapName = "Franklin.set"
+    # self.mapName = rospy.get_param('~map_name', 'Franklin.set') 
     self.subsystems = []
     self.avLedStatusPub = []
     self.pmuAvIdx = 3
@@ -36,13 +37,16 @@ class AvAgent:
     self.agentType = 'leaf'
     self.fixedPose = None
 
+    self.x_position = 0.0
+    self.y_position = 0.0
+
     # Load the agent configuration
     with open(self.filename, 'r') as file:
       text = file.read()
     printDebug = int(verbose)
     self.subsystems = Loader.read_subsystems(text, printDebug)
     self.mapName = Loader.getField(text,'mapName','Franklin.set')
-    self.mqttConfig = Loader.getField(text,'mqttConfig','ncal')
+    self.mqttConfig = Loader.getField(text,'mqttConfig','local')
     self.useGui  = int(Loader.getField(text,'useGui',1))
     self.sendWm  = int(Loader.getField(text,'sendWm',0))
     self.sendSnapshots  = int(Loader.getField(text,'sendSnapshots',0))
@@ -77,21 +81,31 @@ class AvAgent:
     rospy.init_node('listener', anonymous=True)  # AvAgent Node
     Loader.subscribe_health_msgs(self.subsystems)
     self.avLedStatusPub = rospy.Publisher("ailsv_av_led",Int16MultiArray,queue_size=1)
+    self.poseSub = rospy.Subscriber("/dynamic_global_pose",DynamicPoseWithCovar,self.pose_callback,queue_size=1)
     if self.sendWm == 1: 
       self.wmStatusSub = rospy.Subscriber("pc_processor/multi_object_tracker/tracked_object_set", TrackedObjectSet, self.wmStatus.updateObjs, queue_size = 1)
-    
+
     # Setup mqtt publishers and subscribers
     self.cloud.init(self.mqttConfig)
     self.cloud.subscribe(['cmd/'+self.name+'/remote'])
     self.cloud.subscribe(['snp/remote_server/heartbeat'])
     self.cloud.subscribe(['snp/'+self.name+'/resPartList'])
-    
+
+  def pose_callback(self, msg):
+    print("im here")
+    self.x_position = msg.pose.position.x
+    self.y_position = msg.pose.position.y
+
   def sendStatusCsv(self):
     # Heartbeat message
     qos = 0
     topic = "dt/agents/heartbeat"
     data = ''
-    data +='a,'+self.name
+    data +='a,'+self.name + ', '+ str(self.x_position) + ', ' + str(self.y_position)
+    # data +=  str(self.x_position)  
+    # data +=  str(self.y_position)  
+    # data +=  self.mapName  
+    # data += ',type,' + self.agent_type  
     self.cloud.publishCsv(topic,data,qos)
     
     # Subsystem status

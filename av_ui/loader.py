@@ -58,11 +58,10 @@ def getSubConfigs(text, config):
 
 def getCloudConfig(text):
   configInfo = {
-    'MQTT_SERVER': 'mqtt-broker-ncal.nrcsv.com',
-    'MQTT_PORT': 8883,
-    'MQTT_USER': 'sam-teleop',
-    'MQTT_PASSWORD': 'yg#eo5cbAksD82qt',
-    'PROTOCOL': ssl.PROTOCOL_TLSv1_2,
+    'MQTT_SERVER': '127.0.0.1',
+    'MQTT_PORT': 1883,
+    'MQTT_USER': 'poza',
+    'MQTT_PASSWORD': 'fvla',
   }
   keys = configInfo.keys()
   lines = text.split('\n')
