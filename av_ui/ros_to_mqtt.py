@@ -96,6 +96,23 @@ class ROStoMQTTConverter:
         for part in parts:
             value = getattr(value, part)
         return value
+    
+
+    def serialize_ros_message(self, msg):
+        if hasattr(msg, '_type'):
+            return {
+                'type': msg._type,
+                'data': {
+                    field: self.serialize_ros_message(getattr(msg, field))
+                    for field in msg.__slots__
+                }
+            }
+        elif isinstance(msg, (int, float, str, bool)):
+            return msg
+        elif isinstance(msg, (list, tuple)):
+            return [self.serialize_ros_message(item) for item in msg]
+        else:
+            return str(msg)
 
     def on_connect(self, client, userdata, flags, rc):
         if rc == 0:
@@ -126,7 +143,8 @@ class ROStoMQTTConverter:
                 with self.buffer_locks[ros_topic]:
                     if self.message_buffers[ros_topic]:
                         message = self.message_buffers[ros_topic].pop(0)
-                        json_message = json.dumps(message[1])
+                        serialized_message = self.serialize_ros_message(message[1])
+                        json_message = json.dumps(serialized_message)
                         try:
                             result = self.mqtt_client.publish(mqtt_topic, json_message, qos=1)
                             if result.rc == mqtt.MQTT_ERR_SUCCESS:
