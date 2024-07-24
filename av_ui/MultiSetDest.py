@@ -11,6 +11,14 @@ import tf
 import os
 
 MULTI_DEST_LIST = [
+    {"name": "CCTA Task2 Route", "dests":[
+        {"posX": 4002.114, "posY": -27294.275, "posTh": 2.063}, #Bishop Ranch Parking Lot START   
+        {"posX": 5816.824, "posY": -32352.945, "posTh": -1.509}, # San Ramon Valley Blvd and Alcosta Blvd
+        {"posX": 3970.098, "posY": -28227.105, "posTh": 0.228}, #   I680N off - Bolliger Canyon Rd. 
+        {"posX": 4416.771, "posY": -28047.719, "posTh": 0.47},  #  Bollinger Canyon Rd. at Camino Ramon
+        {"posX": 4092.156 , "posY":-27282.348 ,"posTh": -1.096}   #  #Bishop Ranch Parking Lot START  
+      ]
+    },
     {"name": "Route 1: Auto 5k", "dests": [
             {"posX": 4735.066, "posY": -1827.617, "posTh": 1.54}, #Arques
             {"posX": 4590.261, "posY": -1319.800, "posTh": 0.0}, #Midas
