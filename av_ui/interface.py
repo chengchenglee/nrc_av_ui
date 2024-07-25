@@ -42,7 +42,7 @@ class Interface:
     
     self.teleopMenu = []
 
-    self.MultiDestList = self.load_mulit_destList(MULTI_DEST_LIST)
+    self.MultiDestList = self.load_multi_destList(MULTI_DEST_LIST)
   
   def onClosing(self):
     print("OnClosing")
@@ -226,8 +226,7 @@ class Interface:
       d.label.grid(column=0, row=multiDestRow, sticky=Tkinter.W+Tkinter.E)
       multiDestRow = multiDestRow + 1
 
-  
-  def load_mulit_destList(self, multi_dest_list = None):
+  def load_multi_destList(self, multi_dest_list = None):
 
     if multi_dest_list is None:
       return []

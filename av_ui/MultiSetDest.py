@@ -16,89 +16,32 @@ MULTI_DEST_LIST = [
         {"posX": 5816.824, "posY": -32352.945, "posTh": -1.509}, # San Ramon Valley Blvd and Alcosta Blvd
         {"posX": 3970.098, "posY": -28227.105, "posTh": 0.228}, #   I680N off - Bolliger Canyon Rd. 
         {"posX": 4416.771, "posY": -28047.719, "posTh": 0.47},  #  Bollinger Canyon Rd. at Camino Ramon
-        {"posX": 4092.156 , "posY":-27282.348 ,"posTh": -1.096}   #  #Bishop Ranch Parking Lot START  
+        {"posX": 4092.156, "posY": -27282.348, "posTh": -1.096}   #  #Bishop Ranch Parking Lot START  
       ]
     },
-    {"name": "Route 1: Auto 5k", "dests": [
-            {"posX": 4735.066, "posY": -1827.617, "posTh": 1.54}, #Arques
-            {"posX": 4590.261, "posY": -1319.800, "posTh": 0.0}, #Midas
-            {"posX": 4053.639, "posY": -1085.373, "posTh": 0.0},#Right on Duane
-            {"posX": 4020.345, "posY": -789.602, "posTh": 0.0},#North on San Tomas
-            {"posX": 3469.775, "posY": -647.087, "posTh": 0.0},#West on Amador, before San Ramon
-            {"posX": 3332.936, "posY": -531.918, "posTh": 0.0},#South on Santa Paula, before Amador   
-            {"posX": 3338.210, "posY": -755.072, "posTh": 3.14},#South on Santa Paula, before Coachella    
-            {"posX": 3550.670, "posY": -814.517, "posTh": -1.535},#East on Coachella, before San Rafael
-            {"posX": 3756.950, "posY": -884.409, "posTh": -1.535},#East on Colusa, before Santa Rosa
-            {"posX": 3781.480, "posY": -717.584, "posTh": 0.0},#North on Santa Rosa
-            {"posX": 3855.450, "posY": -770.428, "posTh": 3.18},#South on San Simeon
-            {"posX": 3938.400, "posY": -774.329, "posTh": 0.0},#North on Santa Susana
-            {"posX": 4013.660, "posY": -820.776, "posTh": 3.14},#South on San Tomas
-            {"posX": 4054.660, "posY": -949.931, "posTh": 1.57},#West on Duane Ct, after Santa Ynez
-        ]
+    {"name": "NATCSV-parking lot loop", "dests":[
+        {"posX": 4811.222, "posY": -2273.501, "posTh":  0.042},    
+        {"posX": 4852.110, "posY": -2260.700, "posTh":  1.715}, 
+        {"posX": 4830.217, "posY": -2236.996, "posTh": -3.128}, 
+        {"posX": 4780.050, "posY": -2249.111, "posTh": -1.494},
+      ]
     },
-    {"name": "Route 2: Bootstrap", "dests": [
-            {"posX": 4014.40, "posY": -707.287, "posTh": 0.0},
-            {"posX": 3448.89, "posY": -651.676, "posTh": 1.54},
-            {"posX": 3411.23, "posY": -425.434, "posTh": 0.00},
-            {"posX": 3337.15, "posY": -640.820, "posTh": 3.16},
-            {"posX": 3338.93, "posY": -905.174, "posTh": 3.16},
-
-        ]
-    },
-    {"name": "Route 3: To Central", "dests": [
-            {"posX": 4071.159, "posY": -1348.208, "posTh": 0.0},#South on Stewart
-            {"posX": 4191.960, "posY": -1856.890, "posTh": -1.56},#East on Arques, before Lawrence
-            {"posX": 4556.954, "posY": -1862.619, "posTh": -1.64},#East on Arques, after lakeside
-            #{"posX": 4664.87, "posY": -2151.16, "posTh": 1.56},#Exit from Arques into Central
-            {"posX": 4224.28, "posY": -2157.65, "posTh":1.56},#Right lane, West on Central, edge of map
-        ]
-    },
-    {"name": "Route 4: After Insta", "dests": [
-            {"posX": 4191.960, "posY": -1856.890, "posTh": -1.56},#East on Arques, before Lawrence
-            {"posX": 4556.954, "posY": -1862.619, "posTh": -1.64},#East on Arques, after lakeside
-            {"posX": 4961.606, "posY": -2097.672, "posTh": 3.15},#South on corvin, before central
-            {"posX": 4799.710, "posY": -2235.900, "posTh": 1.55},#In SV pkg lot, main entry road
-            {"posX": 4781.070, "posY": -2262.660, "posTh": 3.15},#Demo PUDO location
-        ]
-    },
-    {"name": "Autonomy 5k v4", "dests": [
-            {"posX": 4735.066, "posY": -1827.617, "posTh": 1.54}, #Arques
-            {"posX": 4590.261, "posY": -1319.800, "posTh": 0.0}, #Midas
-            {"posX": 4053.639, "posY": -1085.373, "posTh": 0.0},#Right on Duane
-            {"posX": 4020.345, "posY": -789.602, "posTh": 0.0},#North on San Tomas
-            {"posX": 3469.775, "posY": -647.087, "posTh": 0.0},#West on Amador, before San Ramon
-            {"posX": 3332.936, "posY": -531.918, "posTh": 0.0},#South on Santa Paula, before Amador   
-            {"posX": 3338.210, "posY": -755.072, "posTh": 3.14},#South on Santa Paula, before Coachella    
-            {"posX": 3550.670, "posY": -814.517, "posTh": -1.535},#East on Coachella, before San Rafael
-            {"posX": 3756.950, "posY": -884.409, "posTh": -1.535},#East on Colusa, before Santa Rosa
-            {"posX": 3781.480, "posY": -717.584, "posTh": 0.0},#North on Santa Rosa
-            {"posX": 3855.450, "posY": -770.428, "posTh": 3.18},#South on San Simeon
-            {"posX": 3938.400, "posY": -774.329, "posTh": 0.0},#North on Santa Susana
-            {"posX": 3469.775, "posY": -647.087, "posTh": 0.0},#East on Amador, before San Ramon
-            {"posX": 3338.210, "posY": -755.072, "posTh": 3.14},#South on Santa Paula, before Coachella 
-            {"posX": 4071.159, "posY": -1348.208, "posTh": 0.0},#South on Stewart
-            {"posX": 4191.960, "posY": -1856.890, "posTh": -1.56},#East on Arques, before Lawrence
-            {"posX": 4556.954, "posY": -1862.619, "posTh": -1.64},#East on Arques, after lakeside
-            {"posX": 4961.606, "posY": -2097.672, "posTh": 3.15},#South on corvin, before central
-            {"posX": 4799.710, "posY": -2235.900, "posTh": 1.55},#In SV pkg lot, main entry road
-            {"posX": 4781.070, "posY": -2262.660, "posTh": 3.15},#Demo PUDO location
-        ]
-    },
-    {"name": "Auto5k, Short San Miguel", "dests": [
-            {"posX": 4735.066, "posY": -1827.617, "posTh": 1.54}, #Arques
-            {"posX": 4590.261, "posY": -1319.800, "posTh": 0.0}, #Midas
-            {"posX": 4053.639, "posY": -1085.373, "posTh": 0.0},#Right on Duane
-            {"posX": 4020.345, "posY": -789.602, "posTh": 0.0},#North on San Tomas
-            {"posX": 3469.775, "posY": -647.087, "posTh": 0.0},#West on Amador, before San Ramon
-            {"posX": 3338.210, "posY": -755.072, "posTh": 3.14},#South on Santa Paula, before Coachella 
-            {"posX": 4071.159, "posY": -1348.208, "posTh": 0.0},#South on Stewart
-            {"posX": 4191.960, "posY": -1856.890, "posTh": -1.56},#East on Arques, before Lawrence
-            {"posX": 4556.954, "posY": -1862.619, "posTh": -1.64},#East on Arques, after lakeside
-            {"posX": 4961.606, "posY": -2097.672, "posTh": 3.15},#South on corvin, before central
-            {"posX": 4799.710, "posY": -2235.900, "posTh": 1.55},#In SV pkg lot, main entry road
-            {"posX": 4781.070, "posY": -2262.660, "posTh": 3.15},#Demo PUDO location
-        ]
-    },
+    {
+      "name": "NATCSV testing route 1", "dests":[
+        {"posX": 4913.783, "posY":  -2245.352, "posTh": -0.050},
+        {"posX": 4913.783, "posY":  -2245.352, "posTh": -0.050},
+        {"posX": 4963.124, "posY":  -2433.774, "posTh": -1.587},
+        {"posX": 5322.753, "posY":  -2570.669, "posTh": -0.002},
+        {"posX": 5697.440, "posY":  -2564.615, "posTh": 0.047},
+        {"posX": 5879.388, "posY":  -2735.727, "posTh": -1.251},
+        {"posX": 5655.852, "posY":  -2821.157, "posTh": 3.127},
+        {"posX": 5448.475, "posY":  -2671.637, "posTh": 1.433},
+        {"posX": 5132.022, "posY":  -2558.263, "posTh": -3.138},
+        {"posX": 4971.259, "posY":  -2410.244, "posTh": 1.508},
+        {"posX": 4900.645, "posY":  -2236.769, "posTh": -3.083},
+        {"posX": 4780.266, "posY":  -2250.462, "posTh": -1.600}
+      ]
+    }
 ]
 
 class MultiSetDest:
