@@ -5,7 +5,7 @@ Configuration:
   useGui: 1
   sendWm: 1
   sendSnapshots: 0
-  broker: local
+  broker: ncal
 
 Subsystem:
   Sim:
@@ -74,7 +74,32 @@ Subsystem:
     Depends:
       - Launch: Sim
         Run:
-    
+
+
+  Route:
+    Type: Algorithm
+    Description: Route Planner
+    Trigger:
+      - Source: Manual
+    HealthTopics:
+      - HealthTopic: /modia/route_plan/health
+        HealthName: ROUTE
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 1, 0.5, 0.2
+    Commands:
+      - Name: Route
+        Command: roslaunch nrc_dm_svcs modia_all.launch autonomy_level:=ad5 use_modia_decisions:=false
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 6
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:
+
+
   Goals:
     Type: Algorithm
     Description: AutoGoals

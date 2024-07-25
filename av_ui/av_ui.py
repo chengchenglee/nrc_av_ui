@@ -35,7 +35,7 @@ parser.add_argument("-v", "--verbose",
                     help="set True for verbose mode. Default set to false.")
 
 args = parser.parse_args()
-print(f"Starting AV Agent for {args.agent} using configs from {args.config}...")
+print('Starting AV Agent (name/config):',args.agent,args.config)
 
 text = []
 
