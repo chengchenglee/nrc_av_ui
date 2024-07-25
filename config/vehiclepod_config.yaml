@@ -1,12 +1,12 @@
 Configuration:
-  Name: NRC_Leaf_Zulu
+  Name: NRC_Leaf_Hotel
   mapName: Franklin.set
   agentType: leaf
   printTimeDebug: 0
   useGui: 0
   sendWm: 0
   sendSnapshots: 0
-  broker: local
+  broker: doris
 
 ROSParams:
   vehicleFeeder/sourceMode: MODE_DYNAMIC_POSE
@@ -18,228 +18,106 @@ ROSParams:
   f9rRTCM_devname: /dev/gps/ublox/F9R_RTCM
 
 Subsystem:
+  CAN:
+    Type: Sensor
+    Description: Vehicle CAN
+    Trigger: Startup or StartRequest
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /CtrlStateFLG
+        HealthName: CAR
+        HealthTopicType: CtrlStateFLG
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: CanXH0
+        Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=4 CanAdasWriterXH0:=true CanAdasWriterXH0Ch:=2 CanVConsumer:=true CanVConsumerCh:=0
+        Type: Software
+        LaunchTime: 5.0
+    Diagnostic:
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:
+
   Pose:
     Type: Sensor
     Description: Raw GPS
     Trigger:
       - Source: StartRequest
     HealthTopics:
-      - HealthTopic: /gps_state/dynamic_global_pose_oxts
-        HealthName: RAW
+      - HealthTopic: /dynamic_global_pose_F9R
+        HealthName: F9R
         HealthTopicType: DynamicPoseWithCovar
-        NomWarnErrRate: 100, 80, 60
+        NomWarnErrRate: 20, 5, 2
+      - HealthTopic: /gps_state
+        HealthName: GPS
+        HealthTopicType: DynamicPoseWithCovar
+        NomWarnErrRate: 20, 5, 2
       - HealthTopic: /dynamic_global_pose
-        HealthName: DGP
+        HealthName: PE
         HealthTopicType: DynamicPoseWithCovar
         NomWarnErrRate: 100, 80, 60
     Commands:
-      - Name: NTRIP
-        Command: rosrun nrc_hw_svcs ntripCommand-leaf2.sh
-        Type: Software
-        LaunchTime: 1.0
-      - Name: GPS_Raw
-        Command: roslaunch nrc_hw_svcs gps_leaf.launch sanborn:=true
+      - Name: F9R
+        Command: roslaunch nrc_hw_svcs f9r.launch
         Type: Software
         LaunchTime: 1.0
       - Name: TF_Sys
         Command: roslaunch nrc_svcs leaf_tf_subsystem.launch sanborn:=true
         Type: Software
         LaunchTime: 1.0
-      - Name: MapMatch
-        Command: rosrun nrc_wm2_svcs map_match name:=MapMatch_node _useOxts:=true _useLaneMap:=true
-        NodeName: MapMatch_node
-        Type: Software
-        LaunchTime: 3.0
-    Diagnostic:
-      LED: 1
-      Retry: 3
-      Timeout: 5
-    Depends:
-      - Launch:
-        Run:
-        
-  EYEQ5:
-    Type: Sensor
-    Description: Mobileye Camera
-    Trigger:
-      - Source: StartRequest
-    HealthTopics:
-      - HealthTopic: /ME5/health
-        HealthName: NOD
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /ME5_ObjData
-        HealthName: CAN
-        HealthTopicType: Mobileye5ObjectArray
-        NomWarnErrRate: 30, 20, 10
-    Commands:
-      - Name: Can_Com_Eyeq5
-        Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=2 Eyeq5DevCh0:=true Eyeq5DevCh0Ch:=0 Eyeq5DevWrite:=true Eyeq5DevWriteCh:=0 Eyeq5DevCh1:=true Eyeq5DevCh1Ch:=1 nodeName:=eyeq5CanCom machine:=node03
-        Type: Software
-        LaunchTime: 2.0
-      - Name: Me2Yolo
-        Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch
+        - Name: Pose Estimator
+        Command: roslaunch pose_estimator pose_estimator.launch
         Type: Software
         LaunchTime: 1.0
     Diagnostic:
-      LED: 2
       Retry: 3
       Timeout: 5
     Depends:
       - Launch:
         Run:
 
-  CAM:
-    Type: Algorithm
-    Description: Tower_Cams
-    HealthTopics:
-      - HealthTopic: /tower_cam_front/image_stamped
-        HealthName: TCF
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 7, 3
-    Commands:
-      - Name: CAM
-        Command: roslaunch nrc_hw_svcs pgr_gige_cameras.launch FrRCam:=true FrLCam:=true FrCam:=true BaRCam:=false BaLCam:=false BaCam:=false enableArduino:=true video_preprocess:=true leaf_foxtrot:=true
-        Type: Software
-        LaunchTime: 5.0
-    Diagnostic: 
-      LED: 
-      Retry: 5
-      Timeout: 5
-    Depends:
-        
-        
-  TCAM:
-    Type: Sensor
-    Description: Tower Cams
+  MQTT:
+    Type: Software
+    Description: ROS traffic over MQTT
     Trigger:
       - Source: StartRequest
-    HealthTopics:
-      - HealthTopic: /tower_cam_front/image_stamped/health_status
-        HealthName: TCF
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /tower_cam_frontLeft/image_stamped/health_status
-        HealthName: TCFR
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /tower_cam_frontRight/image_stamped/health_status
-        HealthName: TCFL
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
     Commands:
-      - Name: TowerCam
-        Command: roslaunch nrc_hw_svcs pgr_gige_cameras.launch FrRCam:=true FrLCam:=true FrCam:=true BaRCam:=false BaLCam:=false BaCam:=false enableArduino:=true video_preprocess:=true leaf_foxtrot:=true
+      - Name: ROS-MQTT-Bridge
+        Command: roslaunch $HOME/projects/fvla-vehiclepod/nrc_ws/src/mqtt-client-config/launch/standalone_local.launch params_file:="$HOME/projects/fvla-vehiclepod/nrc_ws/src/mqtt-client-config/fvla-dev/test2/params_local_ego_fvla.yaml"
+        NodeName: mqtt_client_local
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
-      LED: 3
       Retry: 3
-      Timeout: 5
-    Depends:
+      Timeout: 3
+      Depends:
       - Launch:
         Run:
-
-  VELPCP:
-    Type: Sensor
-    Description: Lidar/PCP
-    Trigger:
-      - Source: StartRequest
-    HealthTopics:
-      - HealthTopic: /velodyne_health
-        HealthName: VLDY
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /pc_processor/multi_object_tracker/tracked_object_set
-        HealthName: TOS
-        HealthTopicType: TrackedObjectSet
-        NomWarnErrRate: 10, 7, 3
-      - HealthTopic: /drivable_area_boundary_points
-        HealthName: DA
-        HealthTopicType: PointCloud2
-        NomWarnErrRate: 10, 7, 3
-    Commands:
-      - Name: VelodyneDriver
-        Command: roslaunch velodyne_pointcloud VLS128_points.launch velodyne_machine:=local
-        Type: Software
-        LaunchTime: 1.0
-      - Name: PCP
-        Command: roslaunch nrc_pcp_svcs pc_processor.launch dynamic_global_pose_topic_name:=/dynamic_global_pose do_road_surf_change_detection:=true include_road_surf_change_boundary_pts_for_drivable_area:=true Leaf_Foxtrot:=true
-        Type: Software
-        LaunchTime: 3.0
-    Diagnostic:
-      LED: 4
-      Retry: 3
-      Timeout: 5
-    Depends:
-      - Launch:
-        Run:
-        
-  WM:
+  
+  FLWR:
     Type: Algorithm
-    Description: World Model
+    Description: Trajectory Follower
     Trigger:
       - Source: StartRequest
     HealthTopics:
-      - HealthTopic: /object_tracker/health
-        HealthName: FUS
-        HealthTopicType: DiagnosticArray
+      - HealthTopic: /vehicle_trajectory_control
+        HealthName: TRJ
+        HealthTopicType: VehicleTrajectoryControl
         NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /traffic_light/detection/health
-        HealthName: TLR
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 1, 0.5, 0.2
-      - HealthTopic: /ailsv_virtual_objects
-        HealthName: VRT
-        HealthTopicType: TrackedObjectSet
-        NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /master_filter/health
-        HealthName: WOS
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
-    Commands:
-      - Name: WM
-        Command: roslaunch nrc_wm2_svcs leaf_pred.launch
-        Type: Software
-        LaunchTime: 1.0
-    Diagnostic:
-      LED: 5
-      Retry: 3
-      Timeout: 5
-    Depends:
-      - Launch: VELPCP
-        Run:
-        
-  PLAN:
-    Type: Algorithm
-    Description: AutoGoals
-    Trigger:
-      - Source: StartRequest
-    HealthTopics:
-      - HealthTopic: /autoGoals/health
-        HealthName: GOALS
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /prm/risk_field/health
-        HealthName: RSKFLD
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /lane_planner_state
-        HealthName: TRP
-        HealthTopicType: LanePlannerState
-        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /control_inputs
+        HealthName: CTRL
+        HealthTopicType: ForceSteeringControl
+        NomWarnErrRate: 100, 80, 60
       - HealthTopic: /lane_follower_state
         HealthName: TRC
         HealthTopicType: TrajectoryControllerState
         NomWarnErrRate: 100, 60, 10
     Commands:
-      - Name: AutoGoals
-        Command: rosrun nrc_wm2_svcs auto_goals2 __name:=AutoGoals_node
-        NodeName: AutoGoals_node
-        Type: Software
-        LaunchTime: 3.0
-      - Name: Trajectory Planner
-        Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=LeafFS
+      - Name: Follower
+        Command: roslaunch nrc_ralp_svcs leaf_follower.launch vehicle_type:=Leaf_Hotel
+        NodeName: Trajectory Follower
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -247,40 +125,73 @@ Subsystem:
       Retry: 3
       Timeout: 5
     Depends:
-      - Launch: WM
+      - Launch: MQTT
         Run:
 
-  BAG:
+  HM:
     Type: Algorithm
-    Description: Record bagfiles
+    Description: Health Monitor
     Trigger:
-      - Source: ARD2
-    HealthTopics:
-      - HealthTopic: /BagfileHealth
-        HealthName: BAG
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /snapshotTrigger/health_status
-        HealthName: TRIG
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /SnapshotHealth
-        HealthName: SBAG
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
+      - Source: StartRequest
     Commands:
-      - Name: BAG
-        Command: roslaunch nrc_av_ui record_separately.launch record_machine:=node02
-        Type: Software
-        LaunchTime: 3.0
-      - Name: SNAP
-        Command: roslaunch nrc_av_ui snapshotPipeline.launch
+      - Name: Start Health Monitor
+        Command: roslaunch health-monitor vehicle_health.launch config_file:=$HOME/projects/fvla-vehiclepod/src/configs/health-monitor/Vehicle_HealthCheck.yaml
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
-      LED: 7
-      Retry: 0
-      Timeout: 5
+      Retry: 3
+      Timeout: 3
+    Depends:
+      - Launch:
+        Run:
+
+  CAM:
+    Type: Sensor
+    Description: Camera streaming
+    Trigger:
+      - Source: StartRequest
+    Commands:
+      - Name: Start Camera
+        Command: bash ${HOME}/projects/fvla-vehiclepod/scripts/3_start_camera.sh 
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      Retry: 3
+      Timeout: 3
+    Depends:
+      - Launch:
+        Run:
+
+  TEL:
+    Type: Software
+    Description: Telemetry over MQTT
+    Trigger:
+      - Source: StartRequest
+    Commands:
+      - Name: Telemetry
+        Command: bash ${HOME}/projects/fvla-vehiclepod/scripts/3_start_telemetry.sh 
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      Retry: 3
+      Timeout: 3
+    Depends:
+      - Launch:
+        Run:
+  
+  BAG:
+    Type: Software
+    Description: Automated recorder
+    Trigger:
+      - Source: StartRequest
+    Commands:
+      - Name: Start Recorder
+        Command: bash ${HOME}/projects/fvla-vehiclepod/scripts/4_start_recording.sh
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      Retry: 3
+      Timeout: 3
     Depends:
       - Launch:
         Run:
