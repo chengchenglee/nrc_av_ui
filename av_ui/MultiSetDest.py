@@ -3,7 +3,7 @@
 # Ros Messages
 import rospy
 import time
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import Pose, PoseStamped
 from nrc_msgs.msg import MODIARoutePlanDestinations
 import tf
 
@@ -23,7 +23,12 @@ MULTI_DEST_LIST = [
         {"posX": 4811.222, "posY": -2273.501, "posTh":  0.042},    
         {"posX": 4852.110, "posY": -2260.700, "posTh":  1.715}, 
         {"posX": 4830.217, "posY": -2236.996, "posTh": -3.128}, 
-        {"posX": 4780.050, "posY": -2249.111, "posTh": -1.494},
+        {"posX": 4780.050, "posY": -2249.111, "posTh": -1.494},   #4780.092 -2251.246 -1.625
+      ]
+    },
+    {"name": "destination goal test", "dests":[
+        {"posX": 4851.722, "posY": -2260.203, "posTh":  1.617},    #4851.722 -2260.203 1.617  
+        {"posX": 4899.645, "posY": -2245.225, "posTh": -0.022},   #4899.645 -2245.225 -0.022
       ]
     },
     {
@@ -54,7 +59,28 @@ class MultiSetDest:
 
     if self.advertised == False:
       self.publisher = rospy.Publisher("/modia/route_plan/destinations", MODIARoutePlanDestinations, queue_size=1)
+      self.goal_publisher = rospy.Publisher("/move_base_simple/goal", PoseStamped, queue_size=1)
+
       self.advertised = True
+    
+    rospy.sleep(1.0) 
+    msg_goal = PoseStamped()
+
+    msg_goal.header.frame_id = "site"
+    msg_goal.header.stamp = rospy.Time.now()
+    goal_pose = Pose()
+
+    goal_pose.position.x = self.dests[-1]["posX"]
+    goal_pose.position.y = self.dests[-1]["posY"]
+    quaternion = tf.transformations.quaternion_from_euler(0, 0, self.dests[-1]["posTh"])
+    goal_pose.orientation.x = quaternion[0]
+    goal_pose.orientation.y = quaternion[1]
+    goal_pose.orientation.z = quaternion[2]
+    goal_pose.orientation.w = quaternion[3]
+
+    msg_goal.pose = goal_pose
+
+    self.goal_publisher.publish(msg_goal)
 
     msg = MODIARoutePlanDestinations()
     msg.header.frame_id = "site"
