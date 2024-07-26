@@ -92,7 +92,6 @@ class AvAgent:
     self.cloud.subscribe(['snp/'+self.name+'/resPartList'])
 
   def pose_callback(self, msg):
-    print("im here")
     self.x_position = msg.pose.position.x
     self.y_position = msg.pose.position.y
 
