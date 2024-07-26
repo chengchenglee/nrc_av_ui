@@ -29,7 +29,6 @@ MULTI_DEST_LIST = [
     {
       "name": "NATCSV testing route 1", "dests":[
         {"posX": 4913.783, "posY":  -2245.352, "posTh": -0.050},
-        {"posX": 4913.783, "posY":  -2245.352, "posTh": -0.050},
         {"posX": 4963.124, "posY":  -2433.774, "posTh": -1.587},
         {"posX": 5322.753, "posY":  -2570.669, "posTh": -0.002},
         {"posX": 5697.440, "posY":  -2564.615, "posTh": 0.047},

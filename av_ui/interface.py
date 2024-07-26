@@ -102,6 +102,9 @@ class Interface:
     tab_control.add(tab5, text='Multi Destinations')
     tab_control.pack(expand=1, fill='both')
 
+    from ccta_utils.ccta_task_utility_tab import MULTI_DEST_TAB
+    tab_multi_dest_control = MULTI_DEST_TAB(tab5)
+    tab_multi_dest_control.create()
     buttonWidth = 7
 
   # Frame def
