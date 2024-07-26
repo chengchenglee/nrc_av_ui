@@ -277,15 +277,20 @@ class AvAgent:
       
       # Subsystem specific stuff
       if s.name == 'CAR':
-        if s.pmuData[self.pmuAvIdx] == 2 and self.pmuState[self.pmuAvIdx] == 1:
-          print('PMU Start Request!')
-          self.pmuAvReqHist = 'Started'
-          self.setLaunchAll()
-          
-        if s.pmuData[self.pmuAvIdx] == 1 and self.pmuState[self.pmuAvIdx] == 2 and self.pmuAvReqHist == 'Started':
-          print('PMU Stop Request!')
-          self.pmuAvReqHist = 'None'
-          self.setStopRequested()
+        try:
+          if s.pmuData[self.pmuAvIdx] == 2 and self.pmuState[self.pmuAvIdx] == 1:
+            print('PMU Start Request!')
+            self.pmuAvReqHist = 'Started'
+            self.setLaunchAll()
+        except:
+          pass
+        try:
+          if s.pmuData[self.pmuAvIdx] == 1 and self.pmuState[self.pmuAvIdx] == 2 and self.pmuAvReqHist == 'Started':
+            print('PMU Stop Request!')
+            self.pmuAvReqHist = 'None'
+            self.setStopRequested()
+        except:
+          pass
           
         # Copy pmu and arduino data to AvAgent object
         self.pmuState = s.pmuData[:]

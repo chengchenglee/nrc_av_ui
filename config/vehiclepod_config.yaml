@@ -18,7 +18,7 @@ ROSParams:
   f9rRTCM_devname: /dev/gps/ublox/F9R_RTCM
 
 Subsystem:
-  CAN:
+  CAR:
     Type: Sensor
     Description: Vehicle CAN
     Trigger: Startup or StartRequest
