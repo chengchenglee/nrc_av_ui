@@ -108,9 +108,9 @@ class CsvWriterAVinterface:
             self.eventTimer += self.timerInterval
             self.eventName = ''         # Reset the name of the event name to ''.
         
-        if (not self.avEngaged) and wasAutonomous:
-            self.writeSnapshot = True
-            self.prefixList.append('avDisengaged')
+        #if (not self.avEngaged) and wasAutonomous:
+        #    self.writeSnapshot = True
+        #    self.prefixList.append('avDisengaged')
         
         # Arranging the name of the prefix for saving files.
         #self.prefixList.sort()
