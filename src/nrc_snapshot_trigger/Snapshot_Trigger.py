@@ -13,13 +13,13 @@ import time
 import subprocess
 import os
 
-# AWS boto3 implementation
-import boto3
-import botocore
-from botocore.errorfactory import ClientError
-from threading import Thread
-from time import sleep
-import progressbar
+## AWS boto3 implementation
+#import boto3
+#import botocore
+#from botocore.errorfactory import ClientError
+#from threading import Thread
+#from time import sleep
+#import progressbar
 
 
 #from RosMsgMonitorForAVinterface import *
@@ -56,11 +56,11 @@ class CsvWriterAVinterface:
         self.filename = ''
         self.csvDir = os.path.join(os.path.expanduser("~"), 'projects/disengagementData/', time.strftime("%Y%m%d"),'bags')
         
-        # AWS variables
-        self.session = boto3.Session(profile_name='foxtrot')
-        self.s3 = self.session.resource('s3')
-        self.s3Client = self.session.client('s3')
-        self.rospyUp = False
+        ## AWS variables
+        #self.session = boto3.Session(profile_name='foxtrot')
+        #self.s3 = self.session.resource('s3')
+        #self.s3Client = self.session.client('s3')
+        #self.rospyUp = False
 
         # Vehicle health publisher
         self.pub = rospy.Publisher('health_status', DiagnosticArray, queue_size=10)
@@ -222,47 +222,47 @@ class CsvWriterAVinterface:
         
 
         
-    def upload_to_aws(self, local_file, s3_bucket, s3_folder, s3_filename):
-        def write_to_aws():
-            statinfo = os.stat(local_file)
-            up_progress = progressbar.progressbar.ProgressBar(maxval=statinfo.st_size)
-            up_progress.start()
+    #def upload_to_aws(self, local_file, s3_bucket, s3_folder, s3_filename):
+        #def write_to_aws():
+            #statinfo = os.stat(local_file)
+            #up_progress = progressbar.progressbar.ProgressBar(maxval=statinfo.st_size)
+            #up_progress.start()
 
-            def upload_progress(chunk):
-               up_progress.update(up_progress.currval + chunk)
+            #def upload_progress(chunk):
+               #up_progress.update(up_progress.currval + chunk)
 
-            try:
-               print("Writing "+ s3_filename)
-               self.s3Client.upload_file(local_file, s3_bucket, s3_folder+"/"+s3_filename, Callback=upload_progress)
-               print("Upload Successful")
-               return True
-            except FileNotFoundError:
-               print("The source file was not found")
-               return False
-            except NoCredentialsError:
-               print("Credentials not available")
-               return False
-        try:
-            #print('bucket: ' + s3_bucket + ", key: " + s3_folder+s3_filename+'/')
-            self.s3Client.head_object(Bucket=s3_bucket, Key=s3_folder+'/'+s3_filename)
-            #print(s3_filename + " exists already, not uploading")
-        except ClientError as e:
-            write_to_aws()
+            #try:
+               #print("Writing "+ s3_filename)
+               #self.s3Client.upload_file(local_file, s3_bucket, s3_folder+"/"+s3_filename, Callback=upload_progress)
+               #print("Upload Successful")
+               #return True
+            #except FileNotFoundError:
+               #print("The source file was not found")
+               #return False
+            #except NoCredentialsError:
+               #print("Credentials not available")
+               #return False
+        #try:
+            ##print('bucket: ' + s3_bucket + ", key: " + s3_folder+s3_filename+'/')
+            #self.s3Client.head_object(Bucket=s3_bucket, Key=s3_folder+'/'+s3_filename)
+            ##print(s3_filename + " exists already, not uploading")
+        #except ClientError as e:
+            #write_to_aws()
         
         
-    def awsSessionStart(self, data):
-        bucket = 'foxtrot-snapshots'
-        s3_folder = 'snapshot_bagfiles'+'/'+time.strftime("%Y%m%d")
-        while self.rospyUp:
-            if os.path.isdir(self.csvDir):
-                for filename in os.listdir(self.csvDir):
-                    fullPath = self.csvDir+'/'+filename
-                    self.upload_to_aws(fullPath,bucket,s3_folder,filename)
-                    #print(filename)
-            else:
-                pass
-                #print("Dir does not exist")
-            sleep(60)
+    #def awsSessionStart(self, data):
+        #bucket = 'foxtrot-snapshots'
+        #s3_folder = 'snapshot_bagfiles'+'/'+time.strftime("%Y%m%d")
+        #while self.rospyUp:
+            #if os.path.isdir(self.csvDir):
+                #for filename in os.listdir(self.csvDir):
+                    #fullPath = self.csvDir+'/'+filename
+                    #self.upload_to_aws(fullPath,bucket,s3_folder,filename)
+                    ##print(filename)
+            #else:
+                #pass
+                ##print("Dir does not exist")
+            #sleep(60)
 
 
     def listener(self):
@@ -272,11 +272,11 @@ class CsvWriterAVinterface:
         rospy.Subscriber('/driver_marker_button', Int16, self.DriverMarkerButtonCallback)
         #rospy.Subscriber('/CtrlStateFLGDummy', Int32MultiArray, self.dummyCallback)
         
-        #Start aws thread
-        self.rospyUp = True
-        thread = Thread(target = self.awsSessionStart, args = (self, ))
-        thread.daemon = True
-        thread.start()
+        ##Start aws thread
+        #self.rospyUp = True
+        #thread = Thread(target = self.awsSessionStart, args = (self, ))
+        #thread.daemon = True
+        #thread.start()
 
         while not rospy.is_shutdown():
             
@@ -285,9 +285,9 @@ class CsvWriterAVinterface:
             
             rospy.sleep(1)  # sleep for one second.
         
-        #Join aws thread
-        self.rospyUp = False
-        thread.join()
+        ##Join aws thread
+        #self.rospyUp = False
+        #thread.join()
         
 if __name__ == '__main__':
     print ('Running')
