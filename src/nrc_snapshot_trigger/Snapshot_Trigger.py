@@ -62,7 +62,7 @@ class CsvWriterAVinterface:
         self.s3Client = self.session.client('s3')
         self.rospyUp = False
 
-        Vehicle health publisher
+        # Vehicle health publisher
         self.pub = rospy.Publisher('health_status', DiagnosticArray, queue_size=10)
         
         rospy.init_node('Snapshot_Trigger')
@@ -91,8 +91,6 @@ class CsvWriterAVinterface:
             self.writeSnapshot = True
             self.prefixList.append(str(self.softwareEventName))
             self.softwareEventTimer += self.timerInterval
-            #self.softwareEventName = ''         # Reset the name of the event name to ''.
-            #print(self.softwareEventName)
 
 
         if self.avEngaged:
@@ -153,7 +151,15 @@ class CsvWriterAVinterface:
             self.ACC_OverrideTimer = 0
             self.snapButtonTimer = 0
             self.softwareEventTimer = 0
-    
+
+            # Reset the self.software_EVNT_trigger after the snapshot is recorded.
+            # This has to be done here explicitly as once the trigger is no longer present, the 
+            # codes (from other coders) will no longer publish the /software_event_trigger topic.
+            # So this code will no longer go into the corresponding callback function.
+            # Hence, making the self.software_EVNT_trigger false, will not be executed at all in 
+            # the callback function. Hence it has to be done here.
+            self.software_EVNT_trigger = False
+
             #Create a txt file for why snapshot was Running
             # When the event happened. Include the name of the event as a prefix into the text and bag file names.
             # State of the vehicle like x, y, z, speed
@@ -176,13 +182,6 @@ class CsvWriterAVinterface:
         #self.pub.publish(publishStr)
         
 
-    #def dummyCallback(self,data):
-        ##print('inside CtrlStateFLGcallback')
-        #self.BRK_Override = bool(data.data[0])
-        #self.ACC_Override = bool(data.data[1])
-        #self.avEngaged = bool(data.data[2])
-
-
     def DriverMarkerButtonCallback(self, data):
         '''
         The data in this callback has a value of 8 when the snapbutton is used 
@@ -203,6 +202,7 @@ class CsvWriterAVinterface:
         self.BRK_Override = bool(data.BRK_Override)
         self.ACC_Override = bool(data.ACC)
         self.avEngaged = bool(data.Engaged)
+        self.avEngaged = True
 
 
     def SoftwareEventTriggerCallback(self, data):
@@ -216,10 +216,9 @@ class CsvWriterAVinterface:
         made '' by the code creating the source of the trigger.
         '''
         self.softwareEventName = data.data
+        # print(self.softwareEventName)
         if self.softwareEventName != '':
             self.software_EVNT_trigger = True
-        else:
-            self.software_EVNT_trigger = False
         
 
         
@@ -230,19 +229,19 @@ class CsvWriterAVinterface:
             up_progress.start()
 
             def upload_progress(chunk):
-                up_progress.update(up_progress.currval + chunk)
+               up_progress.update(up_progress.currval + chunk)
 
             try:
-                print("Writing "+ s3_filename)
-                self.s3Client.upload_file(local_file, s3_bucket, s3_folder+"/"+s3_filename, Callback=upload_progress)
-                print("Upload Successful")
-                return True
+               print("Writing "+ s3_filename)
+               self.s3Client.upload_file(local_file, s3_bucket, s3_folder+"/"+s3_filename, Callback=upload_progress)
+               print("Upload Successful")
+               return True
             except FileNotFoundError:
-                print("The source file was not found")
-                return False
+               print("The source file was not found")
+               return False
             except NoCredentialsError:
-                print("Credentials not available")
-                return False
+               print("Credentials not available")
+               return False
         try:
             #print('bucket: ' + s3_bucket + ", key: " + s3_folder+s3_filename+'/')
             self.s3Client.head_object(Bucket=s3_bucket, Key=s3_folder+'/'+s3_filename)
