@@ -10,7 +10,7 @@ AgentConfigs:
   pose: [4852.11280000001, -2229.1606, 0, 1.1519]
 
 Subsystem:
-  LIDAR:
+  IV:
     Type: Sensor
     Description: command to start innovusion node
     Trigger: Startup, StartRequest, ARDX, or PMUX
@@ -22,7 +22,7 @@ Subsystem:
         NomWarnErrRate: 10, 7, 1
     Commands:
       - Name: Innovusion
-        Command: bash $HOME/projects/fvla-infrapod/nrc_ws/src/nrc_svcs/scripts/runInnovusionInfraPod.sh
+        Command: bash $HOME/projects/fvla-infrapod/nrc_ws/src/nrc_svcs/scripts/runInnovusionInfraPod.sh > /dev/null
         NodeName: innovusion_nodelet_manager
         Type: Software
         LaunchTime: 1
@@ -49,7 +49,7 @@ Subsystem:
         NomWarnErrRate: 10, 7, 1
     Commands:
       - Name: PCP
-        Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Foxtrot:=false Infra_Tripod:=true
+        Command: roslaunch nrc_pcp_svcs pc_processor.launch > /dev/null
         NodeName: pc_processor_ros_node
         Type: Algorithm
         LaunchTime: 1
@@ -60,7 +60,7 @@ Subsystem:
       - Launch: Innovusion
         Run:    
 
-  MQTT:
+  Bridge:
     Type: Software
     Description: ROS traffic over MQTT
     Trigger:
@@ -98,6 +98,7 @@ Subsystem:
       Timeout: 3
       Depends:
       - Launch:
+      - Launch:
         Run: 
 
   DATF:
@@ -119,6 +120,7 @@ Subsystem:
       Retry: 3
       Timeout: 3
       Depends:
+      - Launch:
       - Launch:
         Run:  
 
@@ -152,7 +154,7 @@ Subsystem:
       - Source: Startup
     Commands:
       - Name: Start Camera
-        Command: bash ${HOME}/projects/fvla-infrapod/start_camera.sh 
+        Command: cd ${HOME}/projects/fvla-infrapod/ && ./start_camera.sh 
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -169,7 +171,7 @@ Subsystem:
       - Source: Startup
     Commands:
       - Name: MQTT Telemetry
-        Command: bash ${HOME}/projects/fvla-infrapod/start_telemetry.sh 
+        Command: cd ${HOME}/projects/fvla-infrapod/ && ./start_telemetry.sh 
         Type: Software
         LaunchTime: 3.0
     Diagnostic:

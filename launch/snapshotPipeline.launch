@@ -75,7 +75,9 @@
   |/ailsv_osp_merge
   |/drive_plan
   |/autoGoals_debug
-  |/lead_vehicle"/>
+  |/lead_vehicle
+  |/prm/reference_path_data
+  |/prm/osp_constraints_lv_ids"/>
   
   <!--Run snapshot buffer shell script-->
   <group if="True">
