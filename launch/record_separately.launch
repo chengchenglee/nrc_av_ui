@@ -274,7 +274,7 @@
   <node if="$(arg record_system_other_cameras)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_system_other_cameras" output="screen"
   args="$(arg compression) -o $(arg prefix)_system_other_cameras -e $(arg system_other_cameras_topics)" machine="$(arg record_machine)"/>
   
-  <node if="$(arg record_system_lidar)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_system_lidar" output="screen"
+  <node if="$(arg record_system_lidar)" pkg="nrc_svcs" type="rosbagrecord_lz4.sh" name="rosbag_record_system_lidar" output="screen"
   args="$(arg compression) -o $(arg prefix)_system_lidar -e $(arg system_lidar_topics)" machine="$(arg record_machine)"/>
 
   <node if="$(arg record_system_main)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_for_system_main" output="screen"
