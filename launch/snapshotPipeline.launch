@@ -52,7 +52,8 @@
   <arg name="snapshot_pc_processor_all_topics" 
   default="/drivable_area_boundary_points
   |/pc_processor/multi_object_tracker/tracked_object_set
-  |/pc_processor/visible_space/visible_space_ray_points"/>
+  |/pc_processor/visible_space/visible_space_ray_points
+  |/bevfusion/tracked_object_set"/>
   
   <arg name="snapshot_wm_all_topics" 
   default="/tlStatus
