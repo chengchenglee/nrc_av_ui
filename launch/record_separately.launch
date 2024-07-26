@@ -29,7 +29,7 @@
   <arg name="prefix" default="autonomy_log" />
   <arg name="compression" default="false" /> <!--bz2 compression -->
 
-  <!--front_camera topic belongs to George. It's need here -->
+    <!--front_camera topic belongs to George. It's need here -->
   <arg name="system_front_tower_cameras_topics"
   default="/monitor_cam_front/image_stamped/compressed
   |/vehicle_state_ros
@@ -44,6 +44,8 @@
   |/humanising_autonomy_image_display_data_Echo/compressed
   |/humanising_autonomy_image_display_data_Bravo/compressed
   |/traffic_light_state/traffic_light_recognition_image/compressed
+  |/LucidCamFr/image_rect_color/compressed
+  |/zed2/(.*)
   |/trigger_signal"/>
   
   <arg name="system_other_cameras_topics"
@@ -125,7 +127,8 @@
   |/pc_processor/visible_space/visible_space_ray_points
   |/visible_space_data
   |/visible_space_fused_data
-  |/visible_space_peer_data"/>
+  |/visible_space_peer_data
+  |/bevfusion/tracked_object_set"/>
   
   <arg name="wm_all_topics" 
   default="/swm_node
@@ -181,7 +184,9 @@
   |/hazard_zone
   |/SpeedPlanOccGridPanel
   |/point_of_no_return
-  |/ailsv_osp_merge"/>
+  |/ailsv_osp_merge
+  |/prm/reference_path_data
+  |/prm/osp_constraints_lv_ids"/>
 
   <arg name="ralp_follower_topics"
   default="|/lane_follower_state
@@ -259,7 +264,7 @@
   |/gps_state/dynamic_global_pose_oxts
   |/gps_state/gps_state_oxts
   |/gps_state/gps_state_ariya"/>
-
+  
   <node if="$(arg record_ipt)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_ipt" output="screen"
   args="-o $(arg prefix)_ipt -e $(arg ipt_topics)"/>  
 
