@@ -21,3 +21,9 @@ Brokers:
     MQTT_USER: poza
     MQTT_PASSWORD: fvla
   
+  devel:
+    MQTT_SERVER: kitt
+    MQTT_PORT: 8883
+    MQTT_USER: sam_teleop
+    MQTT_PASSWORD: yg#eo5cbAksD82qt
+    PROTOCOL: ssl.PROTOCOL_TLSv1_2 
