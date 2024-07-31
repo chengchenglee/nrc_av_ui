@@ -10,9 +10,13 @@ from diagnostic_msgs.msg import *
 import numpy as np
 from nrc_msgs.msg import CtrlStateFLG
 #from nrc_msgs.msg import SnapShotTrigger
+from nrc_msgs.msg import DynamicPoseWithCovar
+
 import time
 import subprocess
 import os
+from collections import deque
+import numpy as np
 
 ## AWS boto3 implementation
 #import boto3
@@ -59,6 +63,17 @@ class CsvWriterAVinterface:
         self.csvDir = os.path.join(os.path.expanduser("~"), '/opt/data/snapshots/', time.strftime("%Y-%m-%d"))
         print("csvDir:",self.csvDir)
         dirExists = os.path.isdir(self.csvDir)
+
+        # Pose buffer to keep track of av distance and dynamically update the snapshot past horizon
+        self.buffer = deque(maxlen=2000)  # Adjust the size of the buffer as needed
+        self.lastPose = None
+        self.totalDist = 0
+        self.snapshotPastDistanceHorizon = 50 # meters
+        self.snapshotPastDistanceHorizonTimeDiff = 0.0 # How much time ago we moved more than snapshotPastDistanceHorizon
+        self.snapshotDefaultPastTimeHorizon = 10.0
+        # Record the past horizon at the time of trigger
+        self.startedRecordingSnapshot = False
+        self.triggerPastHorizon = self.snapshotDefaultPastTimeHorizon
         
         ## AWS variables
         #self.session = []
@@ -77,7 +92,30 @@ class CsvWriterAVinterface:
         # Create a ROS Timer for reading data
         rospy.Timer(rospy.Duration(self.timerInterval), self.timerCallback)
     
-    
+    def poseCallback(self, msg):
+        if self.lastPose is not None:
+            # Check the time difference
+            if (msg.header.stamp - self.lastPose.header.stamp).to_sec() < 0.1:
+                # If the time difference is less than 0.1 second, return without processing the message
+                return
+
+            dist = np.sqrt((msg.pose.position.x - self.lastPose.pose.position.x)**2 +
+                        (msg.pose.position.y - self.lastPose.pose.position.y)**2)
+            self.buffer.append((dist, msg.header.stamp))
+            self.totalDist += dist
+
+            # Remove elements from the buffer if the distance is more than self.distance_threshold meters
+            while self.totalDist > self.snapshotPastDistanceHorizon:
+                dist, _ = self.buffer.popleft()
+                self.totalDist -= dist
+
+            # Now the time difference is the time of the oldest message in the buffer
+            if len(self.buffer) > 0:  # Check if the buffer is not empty
+                time_diff = (self.buffer[-1][1] - self.buffer[0][1]).to_sec()
+                self.snapshotPastDistanceHorizonTimeDiff = time_diff
+
+        self.lastPose = msg
+
     def timerCallback(self, data):            # Interval decided by timerInterval.
         if self.avEngaged:
             if (not self.BRK_Override) and (not self.ACC_Override):
@@ -115,6 +153,11 @@ class CsvWriterAVinterface:
         self.prefixList = list(set(self.prefixList))      # This removes any duplicate trigger names in the prefix.
         
         if self.writeSnapshot:
+            # If just triggered the snapshot then record past horizon length
+            if self.startedRecordingSnapshot == False:
+                self.startedRecordingSnapshot = True
+                self.triggerPastHorizon = max(self.snapshotPastDistanceHorizonTimeDiff, self.snapshotDefaultPastTimeHorizon)
+
             self.writeTime += self.timerInterval
             
         # Create and publish health message
@@ -143,14 +186,32 @@ class CsvWriterAVinterface:
             timeStamp = time.strftime('%Y-%m-%d-%H-%M-%S')      # Used to create the filename to save txt and bag files.
             self.filename = '{}_{}'.format(timeStamp,prefix)
             try:
+                # Get the current ROS time
+                current_time = rospy.Time.now()
+                print(" Past Horizon of snapshot: ", self.triggerPastHorizon)
+                start_time = current_time -  rospy.Duration(self.writeTimeDuration) - rospy.Duration(self.triggerPastHorizon)
+                # Construct the YAML string for the rosservice call
+                yaml_string = """
+                                filename: '{}.bag'
+                                start_time: {{ secs: {}, nsecs: {} }}
+                                stop_time: {{ secs: {}, nsecs: {} }}
+                                """.format(self.filename, start_time.secs, start_time.nsecs, current_time.secs, current_time.nsecs)
+
+                # Properly escape the YAML string for shell execution
+                escaped_yaml_string = yaml_string.replace('"', '\\"')
+
+                # Construct the command
+                cmd = ("cd " + self.csvDir + ";rosservice call /trigger_snapshot \"" + escaped_yaml_string + "\"")
+
                 #cmd = "cd " + self.csvDir + ";rosrun rosbag_snapshot snapshot -t -n -O {}.bag".format(self.filename)
-                cmd = "cd " + self.csvDir + ";rosrun rosbag_snapshot snapshot -t -O {}.bag".format(self.filename)
+                # cmd = "cd " + self.csvDir + ";rosrun rosbag_snapshot snapshot -t -O {}.bag".format(self.filename)
                 subprocess.call(cmd, shell=True)
+                self.startedRecordingSnapshot = False
                 
                 # Now upload to AWS. UPDATE: Moved to a thread instead
                 #cmd = "cd " + self.csvDir + ";aws s3 sync . s3://foxtrot-snapshots/snapshot_bagfiles/" + time.strftime("%Y%m%d") +"  --profile foxtrot".format(self.filename) + "&"
                 #subprocess.call(cmd, shell=True)
-                
+
             except:
                 print("rosbag_snapshot package not found. Please install to record disengagement/override snapshot bagfiles")
                 
@@ -284,6 +345,7 @@ class CsvWriterAVinterface:
 
     def listener(self):
         rospy.Subscriber('/software_event_trigger', String, self.SoftwareEventTriggerCallback)
+        rospy.Subscriber('/dynamic_global_pose', DynamicPoseWithCovar, self.poseCallback)
         
         rospy.Subscriber('/CtrlStateFLG', CtrlStateFLG, self.CtrlStateFLGcallback)
         rospy.Subscriber('/ard_state', Int16MultiArray, self.DriverMarkerButtonCallback)

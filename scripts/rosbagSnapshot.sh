@@ -32,6 +32,5 @@ fi
 cd ${NRC_BAG_DIR}
 echo "Disengagement/override to directory: " $PWD
 topics=$(echo $@ | sed 's/|//g')
-rosrun rosbag_snapshot snapshot --topic ${topics} -d 30 #Change 20s for something else for longer/shorter bag files
-
+rosrun rosbag_snapshot snapshot --topic ${topics} -n -d 180 _compression:=LZ4 # Record maximum of 3 minutes of bagfile, real recording time dynamically updated
 #echo ${topics}
