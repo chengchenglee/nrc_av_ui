@@ -2,11 +2,9 @@
 
   <machine name="local" address="localhost"/>
   <machine name="node02" address="node02" env-loader="$(find nrc_svcs)/launch/env.sh" />
-  <arg name="record_machine" default="local" />
+  <arg name="snapshot_machine" default="local" />
   <arg name="suffix" default="" />
 
-  <arg name="record_disengagement_snapshots" default="true"/> <!-- turn this on for snapshot rosbags during disengagement/override-->
-  
   <arg name="prefix" default="autonomy_log" />
   <arg name="compression" default="false" /> <!--bz2 compression -->
 
@@ -14,9 +12,6 @@
   <arg name="snapshot_system_main_topics"
   default="|/CAN_V_reader
   |/CtrlStateFLG
-  |/ME3_LKA_left
-  |/ME3_LKA_right
-  |/ME3_ObjData
   |/ME5_Construction_Objects
   |/ME5_Lanes
   |/ME5_Lanes_rviz
@@ -31,15 +26,13 @@
   |/ME5_Semantic_Marks
   |/ME5_TFL_rviz
   |/ME5_TrafficLight
-  |/Mobileye5_CANData
   |/Pose_gps
   |/ailsv_av_status
+  |/ard_state
+  |/pmu_state
   |/controller_state
   |/driver_input
   |/dynamic_global_pose
-  |/dynamic_global_pose_conv
-  |/dynamic_global_pose_odo
-  |/dynamic_global_pose_odoGps
   |/gps_state/dynamic_global_pose_f9r
   |/gps_state/gps_state_f9r
   |/gps_state/dynamic_global_pose_oxts
@@ -47,13 +40,7 @@
   |/gps_state/gps_state_ariya"/>
   
   <arg name="snapshot_system_front_tower_cameras_topics"
-  default="|/monitor_cam_front/image_stamped/compressed
-  |/vehicle_state_ros
-  |/tower_cam_front/image_stamped/compressed
-  |/front_camera/image_color/compressed
-  |/lucid_cam_front/image_rect_color/compressed
-  |/lucid_cam_front_left/image_rect_color/compressed
-  |/lucid_cam_front_right/image_rect_color/compressed"/>
+  default="/snapshot/image/compressed"/>
   
   <arg name="snapshot_system_lidar_topics"
   default="/velodyne_packets
@@ -64,17 +51,12 @@
   
   <arg name="snapshot_pc_processor_all_topics" 
   default="/drivable_area_boundary_points
-  |/drivable_area_boundary_points_with_edge_points
-  |/drivable_area_boundary_points_raw
   |/pc_processor/multi_object_tracker/tracked_object_set
-  |/visible_space_data
-  |/visible_space_fused_data
-  |/visible_space_peer_data"/>
+  |/pc_processor/visible_space/visible_space_ray_points
+  |/bevfusion/tracked_object_set"/>
   
   <arg name="snapshot_wm_all_topics" 
-  default="/swm_node
-  |/tlStatus
-  |/drivable_area_filtered
+  default="/tlStatus
   |/master_filter/object_database
   |/dds_object_databse_fused_data
   |/ailsv_tracked_objects
@@ -93,13 +75,28 @@
   |/point_of_no_return
   |/ailsv_osp_merge
   |/drive_plan
-  |/autoGoals_debug"/>
+  |/autoGoals_debug
+  |/lead_vehicle
+  |/prm/reference_path_data
+  |/prm/osp_constraints_lv_ids"/>
   
   <!--Run snapshot buffer shell script-->
-  <node if="$(arg record_disengagement_snapshots)" pkg="nrc_svcs" type="rosbagSnapshot.sh" name="rosbag_snapshot" output="screen"
-  args="$(arg snapshot_system_front_tower_cameras_topics) $(arg snapshot_system_main_topics) $(arg snapshot_pc_processor_all_topics) $(arg snapshot_wm_all_topics) $(arg snapshot_ralp_all_topics)"/>
+  <group if="True">
+    <node pkg="nrc_av_ui" type="rosbagSnapshot.sh" name="rosbag_snapshot" output="screen"
+    args="$(arg snapshot_system_front_tower_cameras_topics) $(arg snapshot_system_main_topics) $(arg snapshot_pc_processor_all_topics) $(arg snapshot_wm_all_topics) $(arg snapshot_ralp_all_topics)"/>
 
-  <!--Run snapshot node-->
-  <node pkg="nrc_av_ui" type="Snapshot_Trigger.py" name="trigger_node" output="screen"/>
+    <!--Run snapshot node-->
+    <node pkg="nrc_av_ui" type="Snapshot_Trigger.py" name="snapshot_trigger_node" output="screen"/>
+    
+    <node name="snapshot" pkg="nodelet" type="nodelet"
+        args="standalone image_proc/resize" output="screen">
+        <remap from="image" to="/tower_cam_front/image_stamped" />
+        <remap from="camera_info" to="/tower_cam_front/camera_info" />
+        <param name="scale_width" value="0.4" />
+        <param name="scale_height" value="0.4" />
+    </node>
+  </group>
+  
+  <node pkg="nrc_av_ui" type="rosbagRecordMonitor.py" name="snapshot_monitor" args="-d ~/projects/disengagementData/bags/ -t SnapshotHealth -n SnapshotMonitor -m Trigger" machine="$(arg snapshot_machine)" output="screen"/>
 
 </launch>

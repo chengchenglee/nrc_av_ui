@@ -1,0 +1,182 @@
+Configuration:
+  Name: fvla-infrapod
+  agentType: infrapod
+  Map: Franklin.set
+  useGui: 0
+  sendWm: 1
+  broker: doris
+
+AgentConfigs:
+  pose: [4852.11280000001, -2229.1606, 0, 1.1519]
+
+Subsystem:
+  IV:
+    Type: Sensor
+    Description: command to start innovusion node
+    Trigger: Startup, StartRequest, ARDX, or PMUX
+      - Source: Startup
+    HealthTopics:
+      - HealthTopic: /iv_points
+        HealthName: IV
+        HealthTopicType: PointCloud2
+        NomWarnErrRate: 10, 7, 1
+    Commands:
+      - Name: Innovusion
+        Command: bash $HOME/projects/fvla-infrapod/nrc_ws/src/nrc_svcs/scripts/runInnovusionInfraPod.sh > /dev/null
+        NodeName: innovusion_nodelet_manager
+        Type: Software
+        LaunchTime: 1
+    Diagnostic:
+      Retry: 3
+      Timeout: 3
+    Depends:
+      - Launch:
+        Run:
+  
+  PCP:
+    Type: Algorithm
+    Description: command to start point cloud processor
+    Trigger:
+      - Source: Startup
+    HealthTopics:
+      - HealthTopic: /drivable_area_boundary_points
+        HealthName: DA
+        HealthTopicType: PointCloud2
+        NomWarnErrRate: 10, 7, 1
+      - HealthTopic: /pc_processor/multi_object_tracker/tracked_object_set
+        HealthName: TOS
+        HealthTopicType: TrackedObjectSet
+        NomWarnErrRate: 10, 7, 1
+    Commands:
+      - Name: PCP
+        Command: roslaunch nrc_pcp_svcs pc_processor.launch > /dev/null
+        NodeName: pc_processor_ros_node
+        Type: Algorithm
+        LaunchTime: 1
+    Diagnostic:
+      Retry: 3
+      Timeout: 3
+    Depends:
+      - Launch: Innovusion
+        Run:    
+
+  Bridge:
+    Type: Software
+    Description: ROS traffic over MQTT
+    Trigger:
+      - Source: Startup
+    Commands:
+      - Name: ROS-MQTT-Bridge
+        Command: bash $HOME/projects/fvla-infrapod/launch_mqtt.sh
+        NodeName: mqtt_client_local
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      Retry: 3
+      Timeout: 3
+      Depends:
+      - Launch:
+        Run:
+  
+  TOSTF:
+    Type: Algorithm
+    Description: Transform TOS to map frame
+    Trigger:
+      - Source: Startup
+    Commands:
+      - Name: TrackedObjectSinglePoint
+        Command: python ${HOME}/projects/fvla-infrapod/calibration_scripts/trackedobjsinglepoint.py
+        Type: Algorithm
+        LaunchTime: 3.0
+    HealthTopics:
+      - HealthTopic: /pc_processor/multi_object_tracker/tracked_object_set_calibrated
+        HealthName: TOSTF
+        HealthTopicType: TrackedObjectSet
+        NomWarnErrRate: 10, 7, 1
+    Diagnostic:
+      Retry: 3
+      Timeout: 3
+      Depends:
+      - Launch:
+      - Launch:
+        Run: 
+
+  DATF:
+    Type: Algorithm
+    Description: Transform drivable area to map frame
+    Trigger:
+      - Source: Startup
+    Commands:
+      - Name: DrivableArea
+        Command: python ${HOME}/projects/fvla-infrapod/calibration_scripts/get_drivable_points.py
+        Type: Algorithm
+        LaunchTime: 3.0
+    HealthTopics:
+      - HealthTopic: /drivable_area_boundary_points_map_frame
+        HealthName: DATF
+        HealthTopicType: PointCloud2
+        NomWarnErrRate: 10, 7, 1
+    Diagnostic:
+      Retry: 3
+      Timeout: 3
+      Depends:
+      - Launch:
+      - Launch:
+        Run:  
+
+  GPS:
+    Type: Sensor
+    Description: F9R
+    Trigger:
+      - Source: Startup
+    HealthTopics:
+      - HealthTopic: /dynamic_global_pose
+        HealthName: DGP
+        HealthTopicType: DynamicPoseWithCovar
+        NomWarnErrRate: 5, 2, 1
+    Commands:
+      - Name: F9R
+        Command: cd ${HOME}/projects/fvla-infrapod/ && ./start_gps.sh 36
+        NodeName: ublox_gps_F9R
+        Type: Software
+        LaunchTime: 3
+    Diagnostic:
+      Retry: 3
+      Timeout: 3
+    Depends:
+      - Launch:
+        Run:
+
+  CAM:
+    Type: Sensor
+    Description: Camera streaming
+    Trigger:
+      - Source: Startup
+    Commands:
+      - Name: Start Camera
+        Command: cd ${HOME}/projects/fvla-infrapod/ && ./start_camera.sh 
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      Retry: 3
+      Timeout: 3
+    Depends:
+      - Launch:
+        Run:
+
+  TEL:
+    Type: Software
+    Description: Telemetry over MQTT
+    Trigger:
+      - Source: Startup
+    Commands:
+      - Name: MQTT Telemetry
+        Command: cd ${HOME}/projects/fvla-infrapod/ && ./start_telemetry.sh 
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      Retry: 3
+      Timeout: 3
+    Depends:
+      - Launch:
+        Run:

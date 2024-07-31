@@ -1,0 +1,151 @@
+Configuration:
+  Name: sim
+  mapName: Franklin.set
+  printTimeDebug: 0
+  useGui: 1
+  sendWm: 1
+  sendSnapshots: 0
+  broker: ncal
+
+Subsystem:
+  Sim:
+    Type: Sensor
+    Description: command to start simulator
+    Trigger: Startup, StartRequest, ARDX, or PMUX
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /CtrlStateFLG
+        HealthName: CAR
+        HealthTopicType: CtrlStateFLG
+        NomWarnErrRate: 100, 70, 50
+      - HealthTopic: /dynamic_global_pose
+        HealthName: DGP
+        HealthTopicType: DynamicPoseWithCovar
+        NomWarnErrRate: 100, 80, 60
+    Commands:
+      - Name: Simulator
+        Command: rosrun nrc_sim SimpleatorSimNode __name:=SimpleSimNode
+        NodeName: SimpleSimNode
+        Type: Software
+        LaunchTime: 1
+      - Name: TfSys
+        Command: roslaunch nrc_svcs leaf_tf_subsystem.launch sanborn:=true
+        Type: Software
+        LaunchTime: 1
+    Diagnostic:
+      Retry: 3
+      Timeout: 3
+    Depends:
+      - Launch:
+        Run:
+    
+  WM:
+    Type: Algorithm
+    Description: World Model
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /object_tracker/health
+        HealthName: Fusion
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /traffic_light/detection/health
+        HealthName: TLR
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 1, 0.6, 0.3
+      - HealthTopic: /ailsv_virtual_objects
+        HealthName: Virtual
+        HealthTopicType: TrackedObjectSet
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /master_filter/health
+        HealthName: WOS
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: WM
+        Command: roslaunch nrc_wm2_svcs leaf_pred.launch
+        Type: Software
+        LaunchTime: 1.0
+    Diagnostic:
+      LED: 5
+      Retry: 3
+      Timeout: 5
+      File:
+    Depends:
+      - Launch: Sim
+        Run:
+
+
+  Route:
+    Type: Algorithm
+    Description: Route Planner
+    Trigger:
+      - Source: Manual
+    HealthTopics:
+      - HealthTopic: /modia/route_plan/health
+        HealthName: ROUTE
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 1, 0.5, 0.2
+    Commands:
+      - Name: Route
+        Command: roslaunch nrc_dm_svcs modia_all.launch autonomy_level:=ad5 use_modia_decisions:=false
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 6
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:
+
+
+  Goals:
+    Type: Algorithm
+    Description: AutoGoals
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /autoGoals/health
+        HealthName: GOALS
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: AutoGoals
+        Command: roslaunch nrc_wm2_svcs leaf_route.launch
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 6
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:
+
+  Plan:
+    Type: Algorithm
+    Description: Trajectory Planner/Follower
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /lane_planner_state
+        HealthName: TrajP
+        HealthTopicType: LanePlannerState
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /lane_follower_state
+        HealthName: TrajC
+        HealthTopicType: TrajectoryControllerState
+        NomWarnErrRate: 100, 60, 10
+    Commands:
+      - Name: Trajectory Planner
+        Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=LeafFS
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 7
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch: Goals
+        Run:

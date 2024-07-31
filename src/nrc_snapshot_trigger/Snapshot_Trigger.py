@@ -5,7 +5,8 @@ from std_msgs.msg import Empty
 from std_msgs.msg import String
 from std_msgs.msg import Int32MultiArray
 from std_msgs.msg import Int16
-from diagnostic_msgs.msg import DiagnosticArray
+from std_msgs.msg import Int16MultiArray
+from diagnostic_msgs.msg import *
 import numpy as np
 from nrc_msgs.msg import CtrlStateFLG
 #from nrc_msgs.msg import SnapShotTrigger
@@ -25,13 +26,13 @@ import os
 #from RosMsgMonitorForAVinterface import *
 
 class CsvWriterAVinterface:
-    def __init__(self):
+    def __init__(self, uploadToAws):
         self.csvFileName = 'trigger_node_default.csv'
         self.timerInterval = 0.1        # Interval at which the timer callback will run.
         
         self.avEngaged = False
         self.avEngagedTimer = 0
-        self.updateThisCycle = False
+        #self.updateThisCycle = False
 
         self.BRK_Override = False
         self.BRK_OverrideTimer = 0
@@ -54,17 +55,23 @@ class CsvWriterAVinterface:
         self.prefixList = []
         self.snapshotUpdated = False
         self.filename = ''
-        self.csvDir = os.path.join(os.path.expanduser("~"), 'projects/disengagementData/', time.strftime("%Y%m%d"),'bags')
+        #self.csvDir = os.path.join(os.path.expanduser("~"), 'projects/disengagementData/bags/', time.strftime("%Y-%m-%d"))
+        self.csvDir = os.path.join(os.path.expanduser("~"), '/opt/data/snapshots/', time.strftime("%Y-%m-%d"))
+        print("csvDir:",self.csvDir)
+        dirExists = os.path.isdir(self.csvDir)
         
         ## AWS variables
-        #self.session = boto3.Session(profile_name='foxtrot')
-        #self.s3 = self.session.resource('s3')
-        #self.s3Client = self.session.client('s3')
+        #self.session = []
+        #self.s3 = []
+        #self.s3Client = []
         #self.rospyUp = False
+        #if uploadToAws:
+          #self.session = boto3.Session(profile_name='foxtrot')
+          #self.s3 = self.session.resource('s3')
+          #self.s3Client = self.session.client('s3')
 
-        # Vehicle health publisher
-        self.pub = rospy.Publisher('health_status', DiagnosticArray, queue_size=10)
-        
+        #Vehicle health publisher
+        self.healthPub = rospy.Publisher('/snapshotTrigger/health_status', DiagnosticArray, queue_size=10)
         rospy.init_node('Snapshot_Trigger')
         
         # Create a ROS Timer for reading data
@@ -72,44 +79,54 @@ class CsvWriterAVinterface:
     
     
     def timerCallback(self, data):            # Interval decided by timerInterval.
-        if self.avEngaged and self.BRK_Override:
+        if self.avEngaged:
+            if (not self.BRK_Override) and (not self.ACC_Override):
+              self.avEngagedTimer += self.timerInterval
+        
+        wasAutonomous = self.avEngagedTimer > 2.0
+        
+        if wasAutonomous and self.BRK_Override:
             self.writeSnapshot = True
             self.prefixList.append('brkOverride')
             self.BRK_OverrideTimer += self.timerInterval
         
-        if self.avEngaged and self.ACC_Override:
+        if wasAutonomous and self.ACC_Override:
             self.writeSnapshot = True
             self.prefixList.append('accOverride')
             self.ACC_OverrideTimer += self.timerInterval
         
-        if self.avEngaged and self.snapButton == 8:
+        if wasAutonomous and self.snapButton == 2:
+            print('Snapshot triggered by button press.')
             self.writeSnapshot = True
             self.prefixList.append('snapButton')
             self.snapButtonTimer += self.timerInterval
             
-        if self.avEngaged and self.software_EVNT_trigger:
+        if wasAutonomous and self.software_EVNT_trigger:
             self.writeSnapshot = True
             self.prefixList.append(str(self.softwareEventName))
             self.softwareEventTimer += self.timerInterval
-
-
-        if self.avEngaged:
-            self.updateThisCycle = True
-            self.avEngagedTimer += self.timerInterval
         
-        if (not self.avEngaged) and self.updateThisCycle:
-            self.writeSnapshot = True
-            self.prefixList.append('avDisengaged')
+        #if (not self.avEngaged) and wasAutonomous:
+        #    self.writeSnapshot = True
+        #    self.prefixList.append('avDisengaged')
         
-            
         # Arranging the name of the prefix for saving files.
         #self.prefixList.sort()
         self.prefixList = list(set(self.prefixList))      # This removes any duplicate trigger names in the prefix.
         
-        
         if self.writeSnapshot:
             self.writeTime += self.timerInterval
             
+        # Create and publish health message
+        diagMsg = DiagnosticArray()
+        diagMsg.header.stamp = rospy.Time.now()
+        diagMsg.status.append(DiagnosticStatus())
+        sleepTime = 0.5
+        if self.writeSnapshot:
+            diagMsg.status[0].level = 5
+        else:
+            diagMsg.status[0].level = 3
+        self.healthPub.publish(diagMsg)
         
         if self.writeSnapshot and self.writeTime > self.writeTimeDuration:
             dirExists = os.path.isdir(self.csvDir)
@@ -142,7 +159,6 @@ class CsvWriterAVinterface:
                 
             self.writeSnapshot = False
             self.writeTime = 0
-            self.updateThisCycle = False
             self.prefixList = []
 
             # Reset all timers.
@@ -188,7 +204,8 @@ class CsvWriterAVinterface:
         to trigger recording a snapshot. The snapbutton has multiple usage, so 
         other values will be for other purposes.
         '''
-        self.snapButton = data.data
+        if len(data.data) > 1:
+          self.snapButton = data.data[1]
         #if self.snapButton > 0:
             #print('\n\n snapbutton value: {} \n\n'.format(self.snapButton))
         
@@ -269,14 +286,16 @@ class CsvWriterAVinterface:
         rospy.Subscriber('/software_event_trigger', String, self.SoftwareEventTriggerCallback)
         
         rospy.Subscriber('/CtrlStateFLG', CtrlStateFLG, self.CtrlStateFLGcallback)
-        rospy.Subscriber('/driver_marker_button', Int16, self.DriverMarkerButtonCallback)
+        rospy.Subscriber('/ard_state', Int16MultiArray, self.DriverMarkerButtonCallback)
         #rospy.Subscriber('/CtrlStateFLGDummy', Int32MultiArray, self.dummyCallback)
-        
+       
         ##Start aws thread
         #self.rospyUp = True
-        #thread = Thread(target = self.awsSessionStart, args = (self, ))
-        #thread.daemon = True
-        #thread.start()
+        #thread = []
+        #if uploadToAws:
+          #thread = Thread(target = self.awsSessionStart, args = (self, ))
+          #thread.daemon = True
+          #thread.start()
 
         while not rospy.is_shutdown():
             
@@ -284,14 +303,16 @@ class CsvWriterAVinterface:
             #print('\n\n snapbutton value: {} \n\n'.format(self.snapButton))
             
             rospy.sleep(1)  # sleep for one second.
-        
+       
         ##Join aws thread
         #self.rospyUp = False
-        #thread.join()
+        #if uploadToAws:
+          #thread.join()
         
 if __name__ == '__main__':
     print ('Running')
-    clsObj = CsvWriterAVinterface()
+    uploadToAws = False
+    clsObj = CsvWriterAVinterface(uploadToAws)
     clsObj.listener()
 
 
