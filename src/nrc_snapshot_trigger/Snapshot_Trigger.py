@@ -201,7 +201,7 @@ class CsvWriterAVinterface:
                 escaped_yaml_string = yaml_string.replace('"', '\\"')
 
                 # Construct the command
-                cmd = ("cd " + self.csvDir + ";rosservice call /trigger_snapshot \"" + escaped_yaml_string + "\"")
+                cmd = ("rosservice call /trigger_snapshot \"" + escaped_yaml_string + "\"")
 
                 #cmd = "cd " + self.csvDir + ";rosrun rosbag_snapshot snapshot -t -n -O {}.bag".format(self.filename)
                 # cmd = "cd " + self.csvDir + ";rosrun rosbag_snapshot snapshot -t -O {}.bag".format(self.filename)
