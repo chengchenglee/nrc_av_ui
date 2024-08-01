@@ -1,0 +1,99 @@
+Configuration:
+  Name: Lima
+  mapName: Franklin.set
+  printTimeDebug: 0
+  useGui: 1
+  sendWm: 1
+  sendSnapshots: 1
+  broker: ncal
+
+Subsystem:
+  CCM-CAR:
+    Type: Sensor
+    Description: Vehicle Network
+    Trigger: Startup, StartRequest, ARDX, or PMUX
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /CAN_V_reader
+        HealthName: CAN
+        HealthTopicType: CANVReader
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: CanReader
+        Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=2 CanLimaITS4Consumer:=true CanLimaITS4ConsumerCh:=0
+        Type: Software
+        LaunchTime: 5.0
+      - Name: EthRawReader
+        Command: sudo python ~/projects/nrc_ws/src/nrc_leaf/scripts/eth_raw.py
+        Type: Software
+        LaunchTime: 5.0
+      - Name: EthReader
+        Command: rosrun nrc_leaf consume_eth_can
+        Type: Software
+        LaunchTime: 5.0
+    Diagnostic:
+      LED: 0
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:
+
+  Pose:
+    Type: Sensor
+    Description: Raw GPS
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /gps_state
+        HealthName: GPS
+        HealthTopicType: DynamicPoseWithCovar
+        NomWarnErrRate: 100, 80, 60
+    Commands:
+      - Name: GPS_Raw
+        Command: roslaunch nrc_hw_svcs swiftnav_gps.launch
+        Type: Software
+        LaunchTime: 1.0
+      - Name: SwiftNavConv
+        Command: rosrun nrc_hw_svcs swiftnav_conv.py --node_name swiftnav_conv --map_shift_cfg=`rospack find nrc_hw_svcs`/scripts/cfg/demo2021_mapShift.json
+        NodeName: swiftnav_conv
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 1
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:
+
+  CCM:
+    Type: Algorithm
+    Description: CCM
+    Trigger:
+      - Source: StartRequest
+    HealthTopics: 
+      - HealthTopic: /notification
+        HealthName: CMD
+        HealthTopicType: String
+        NomWarnErrRate: 0.1, 0.01, 0.01
+    Commands:
+      - Name: ACC Trigger
+        Command: roslaunch ccm_acc_trigger ccm_acc_trigger.launch
+        NodeName: ccm_acc_trigger_node
+        Type: Software
+        LaunchTime: 3.0
+      - Name: CCM ACC CAR
+        Command: roslaunch ccm_cav_car ccm_cav_rl_acc_lima.launch veh_id:=ccm_cav-lima
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 6
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch: 
+        Run:
+
+
+
