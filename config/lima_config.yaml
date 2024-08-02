@@ -18,6 +18,10 @@ Subsystem:
         HealthName: CAN
         HealthTopicType: CANVReader
         NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /ME4_ObjData
+        HealthName: ME4
+        HealthTopicType: Mobileye4ObjectArray
+        NomWarnErrRate: 10, 6, 3 
     Commands:
       - Name: CanReader
         Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=2 CanLimaITS4Consumer:=true CanLimaITS4ConsumerCh:=0
@@ -47,7 +51,7 @@ Subsystem:
     HealthTopics:
       - HealthTopic: /gps_state
         HealthName: GPS
-        HealthTopicType: DynamicPoseWithCovar
+        HealthTopicType: GpsState
         NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: GPS_Raw
@@ -77,6 +81,10 @@ Subsystem:
         HealthName: CMD
         HealthTopicType: String
         NomWarnErrRate: 0.1, 0.01, 0.01
+      - HealthTopic: /ProPILOT_inputs
+        HealthName: PPI
+        HealthTopicType: ProPILOTInput
+        NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: ACC Trigger
         Command: roslaunch ccm_acc_trigger ccm_acc_trigger.launch
