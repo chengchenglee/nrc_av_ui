@@ -12,7 +12,7 @@ Subsystem:
     Type: Sensor
     Description: Vehicle Network
     Trigger: Startup, StartRequest, ARDX, or PMUX
-      - Source: StartRequest
+      - Source: Startup
     HealthTopics:
       - HealthTopic: /CAN_V_reader
         HealthName: CAN
@@ -43,12 +43,12 @@ Subsystem:
     Type: Sensor
     Description: Raw GPS
     Trigger:
-      - Source: StartRequest
+      - Source: Startup
     HealthTopics:
       - HealthTopic: /gps_state
         HealthName: GPS
         HealthTopicType: DynamicPoseWithCovar
-        NomWarnErrRate: 100, 80, 60
+        NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: GPS_Raw
         Command: roslaunch nrc_hw_svcs swiftnav_gps.launch
@@ -71,7 +71,7 @@ Subsystem:
     Type: Algorithm
     Description: CCM
     Trigger:
-      - Source: StartRequest
+      - Source: Startup
     HealthTopics: 
       - HealthTopic: /notification
         HealthName: CMD
