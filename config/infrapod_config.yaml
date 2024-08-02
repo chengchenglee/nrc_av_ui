@@ -74,7 +74,7 @@ Subsystem:
       - Launch:
         Run:
   
-  TOS-TF:
+  TOSTF:
     Type: Algorithm
     Description: Transform TOS to map frame
     Trigger:
@@ -86,7 +86,7 @@ Subsystem:
         LaunchTime: 3.0
     HealthTopics:
       - HealthTopic: /pc_processor/multi_object_tracker/tracked_object_set_calibrated
-        HealthName: TOS_TF
+        HealthName: TOSTF
         HealthTopicType: TrackedObjectSet
         NomWarnErrRate: 10, 7, 1
     Diagnostic:
@@ -94,9 +94,10 @@ Subsystem:
       Timeout: 3
       Depends:
       - Launch:
+      - Launch:
         Run: 
 
-  DA-TF:
+  DATF:
     Type: Algorithm
     Description: Transform drivable area to map frame
     Trigger:
@@ -115,6 +116,7 @@ Subsystem:
       Retry: 3
       Timeout: 3
       Depends:
+      - Launch:
       - Launch:
         Run:  
 
