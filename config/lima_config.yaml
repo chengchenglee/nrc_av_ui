@@ -28,7 +28,7 @@ Subsystem:
         Type: Software
         LaunchTime: 5.0
       - Name: EthRawReader
-        Command: sudo python ~/projects/nrc_ws/src/nrc_leaf/scripts/eth_raw.py
+        Command: python ~/projects/nrc_ws/src/nrc_leaf/scripts/eth_raw.py
         Type: Software
         LaunchTime: 5.0
       - Name: EthReader
