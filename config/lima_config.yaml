@@ -2,7 +2,7 @@ Configuration:
   Name: Lima
   mapName: Franklin.set
   printTimeDebug: 0
-  useGui: 1
+  useGui: 0
   sendWm: 1
   sendSnapshots: 1
   broker: ncal
@@ -103,16 +103,15 @@ Subsystem:
       - Launch: 
         Run:
 
-
   LTSWM:
     Type: Algorithm
     Description: LTSWM
     Trigger:
       - Source: StartRequest
     HealthTopics: 
-      - HealthTopic: /CAN_V_reader
-        HealthName: CAN
-        HealthTopicType: CANVReader
+      - HealthTopic: /probe_vehicle_pubblisher_health
+        HealthName: PVP
+        HealthTopicType: String
         NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: LTSWM pub
