@@ -194,6 +194,10 @@ Subsystem:
     Trigger:
       - Source: StartRequest
     HealthTopics:
+     - HealthTopic: /modia/route_plan/health
+        HealthName: ROUTE
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 1, 0.5, 0.2
       - HealthTopic: /autoGoals/health
         HealthName: GOALS
         HealthTopicType: DiagnosticArray
@@ -211,7 +215,7 @@ Subsystem:
         HealthTopicType: TrajectoryControllerState
         NomWarnErrRate: 100, 60, 10
     Commands:
-      - Name: RoutePlanner
+      - Name: Route
         Command: roslaunch nrc_dm_svcs modia_all.launch autonomy_level:=ad5 use_modia_decisions:=false
         Type: Software
         LaunchTime: 3.0
