@@ -93,6 +93,15 @@ class CsvWriterAVinterface:
         rospy.Timer(rospy.Duration(self.timerInterval), self.timerCallback)
     
     def poseCallback(self, msg):
+        '''
+        The idea is to record snapshots whenever there is any trigger or overrides. 
+        The code records the data upto 20 seconds after the trigger happens and upto 10 seconds, 
+        or the time interval in which the vehicle covered 50 meters, whichever is greater.
+        So if the vehicle is moving very fast and it covers 50 meters in 5 seconds, 
+        then when a trigger happens the code will record data from 10 seconds prior to the trigger upto 20 seconds after the trigger.
+        And if the vehicle is moving very slowly and it covers 50 meters in 15 seconds, 
+        then when a trigger happens the code will record data from 15 seconds prior to the trigger upto 20 seconds after the trigger.
+        '''
         if self.lastPose is not None:
             # Check the time difference
             if (msg.header.stamp - self.lastPose.header.stamp).to_sec() < 0.1:
