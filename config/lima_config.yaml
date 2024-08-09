@@ -109,7 +109,7 @@ Subsystem:
     Trigger:
       - Source: StartRequest
     HealthTopics: 
-      - HealthTopic: /probe_vehicle_pubblisher_health
+      - HealthTopic: /probe_vehicle_publisher_h
         HealthName: PVP
         HealthTopicType: String
         NomWarnErrRate: 10, 6, 3
