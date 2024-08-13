@@ -36,7 +36,7 @@ def parseMsgs(messages):
         agentName = msg['data'][0][1]        
         x = msg['data'][0][2]  # Parse x data
         y = msg['data'][0][3]  # Parse y data
-        print(f"Heartbeat received from agent {agentName}: x = {x}, y = {y}")
+        #print("Heartbeat received from agent {agentName}: x = {x}, y = {y}")
       
       else:
         agentName = msg['data'][0][1]
