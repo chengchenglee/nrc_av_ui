@@ -1,7 +1,7 @@
 Configuration:
   Name: NRC_Leaf_Hotel
+  agentType: AV1
   mapName: Franklin.set
-  agentType: leaf
   printTimeDebug: 0
   useGui: 0
   sendWm: 0

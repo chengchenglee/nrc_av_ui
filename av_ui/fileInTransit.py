@@ -108,7 +108,7 @@ class FileInTransit:
   
   def getPartialList(self):
     payload = ''
-    tempDir = self.pathToBags+'temp/'
+    tempDir = self.pathToBags
 
     # Check for unfinished files    
     if os.path.isdir(tempDir):
@@ -124,7 +124,7 @@ class FileInTransit:
     return payload
     
   def saveChunk(self,header,chunk):
-    tempDir = self.pathToBags+'temp/'
+    tempDir = self.pathToBags
     isDir = os.path.isdir(tempDir)
     if not isDir:
       os.makedirs(tempDir)

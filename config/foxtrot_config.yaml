@@ -1,5 +1,6 @@
 Configuration:
   Name: foxtrot
+  agentType: AV4
   mapName: Franklin.set
   printTimeDebug: 0
   useGui: 1
@@ -242,6 +243,10 @@ Subsystem:
     Trigger:
       - Source: StartRequest
     HealthTopics:
+      - HealthTopic: /modia/route_plan/health
+        HealthName: ROUTE
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 1, 0.5, 0.2
       - HealthTopic: /autoGoals/health
         HealthName: GOALS
         HealthTopicType: DiagnosticArray
@@ -259,6 +264,10 @@ Subsystem:
         HealthTopicType: TrajectoryControllerState
         NomWarnErrRate: 100, 60, 10
     Commands:
+      - Name: Route
+        Command: roslaunch nrc_dm_svcs modia_all.launch autonomy_level:=ad5 use_modia_decisions:=false
+        Type: Software
+        LaunchTime: 3.0
       - Name: AutoGoals
         Command: rosrun nrc_wm2_svcs auto_goals2 __name:=AutoGoals_node
         NodeName: AutoGoals_node

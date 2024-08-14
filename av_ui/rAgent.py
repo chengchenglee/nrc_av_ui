@@ -4,6 +4,7 @@ import json, ast
 from collections import OrderedDict
 import time
 from wmStatus import WmStatus
+from heartbeat_msg_defs import HeartbeatData
 
 class MonitoredProcess:
   def __init__(self):
@@ -73,6 +74,7 @@ class MonitoredAgent:
     self.tLastMsg = time.time()
     self.wmStatus = WmStatus()
     self.wmDisplayOn = 0
+    self.heartbeat = HeartbeatData()
   
   def update(self,latestSubsystems):
     foundSubsystem = False

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
+import argparse
 from std_msgs.msg import Empty
 from std_msgs.msg import String
 from std_msgs.msg import Int32MultiArray
@@ -9,7 +10,6 @@ from std_msgs.msg import Int16MultiArray
 from diagnostic_msgs.msg import *
 import numpy as np
 from nrc_msgs.msg import CtrlStateFLG
-#from nrc_msgs.msg import SnapShotTrigger
 from nrc_msgs.msg import DynamicPoseWithCovar
 
 import time
@@ -18,24 +18,14 @@ import os
 from collections import deque
 import numpy as np
 
-## AWS boto3 implementation
-#import boto3
-#import botocore
-#from botocore.errorfactory import ClientError
-#from threading import Thread
-#from time import sleep
-#import progressbar
-
-
-#from RosMsgMonitorForAVinterface import *
-
 class CsvWriterAVinterface:
-    def __init__(self, uploadToAws):
+    def __init__(self, checkEngaged):
         self.csvFileName = 'trigger_node_default.csv'
         self.timerInterval = 0.1        # Interval at which the timer callback will run.
         
         self.avEngaged = False
         self.avEngagedTimer = 0
+        self.checkEngaged = checkEngaged
         #self.updateThisCycle = False
 
         self.BRK_Override = False
@@ -77,16 +67,6 @@ class CsvWriterAVinterface:
         # Record the past horizon at the time of trigger
         self.startedRecordingSnapshot = False
         self.triggerPastHorizon = self.snapshotDefaultPastTimeHorizon
-        
-        ## AWS variables
-        #self.session = []
-        #self.s3 = []
-        #self.s3Client = []
-        #self.rospyUp = False
-        #if uploadToAws:
-          #self.session = boto3.Session(profile_name='foxtrot')
-          #self.s3 = self.session.resource('s3')
-          #self.s3Client = self.session.client('s3')
 
         #Vehicle health publisher
         self.healthPub = rospy.Publisher('/snapshotTrigger/health_status', DiagnosticArray, queue_size=10)
@@ -96,6 +76,15 @@ class CsvWriterAVinterface:
         rospy.Timer(rospy.Duration(self.timerInterval), self.timerCallback)
     
     def poseCallback(self, msg):
+        '''
+        The idea is to record snapshots whenever there is any trigger or overrides. 
+        The code records the data upto 20 seconds after the trigger happens and upto 10 seconds, 
+        or the time interval in which the vehicle covered 50 meters, whichever is greater.
+        So if the vehicle is moving very fast and it covers 50 meters in 5 seconds, 
+        then when a trigger happens the code will record data from 10 seconds prior to the trigger upto 20 seconds after the trigger.
+        And if the vehicle is moving very slowly and it covers 50 meters in 15 seconds, 
+        then when a trigger happens the code will record data from 15 seconds prior to the trigger upto 20 seconds after the trigger.
+        '''
         if self.lastPose is not None:
             # Check the time difference
             if (msg.header.stamp - self.lastPose.header.stamp).to_sec() < 0.1:
@@ -155,7 +144,6 @@ class CsvWriterAVinterface:
         #    self.prefixList.append('avDisengaged')
         
         # Arranging the name of the prefix for saving files.
-        #self.prefixList.sort()
         self.prefixList = list(set(self.prefixList))      # This removes any duplicate trigger names in the prefix.
         
         if self.writeSnapshot:
@@ -250,28 +238,6 @@ class CsvWriterAVinterface:
             # the callback function. Hence it has to be done here.
             self.software_EVNT_trigger = False
 
-            #Create a txt file for why snapshot was Running
-            # When the event happened. Include the name of the event as a prefix into the text and bag file names.
-            # State of the vehicle like x, y, z, speed
-            # 
-        
-        #if os.path.exists(os.path.join(self.csvDir, self.filename + '.bag')) and (not os.path.exists(os.path.join(self.csvDir, self.filename + '.bag.active'))):
-            #self.snapshotUpdated = True
-            #print('Snapshot file write complete.')
-            #self.filename = ''
-        #else:
-            #self.snapshotUpdated = False
-      
-        #Check if snapshot is still running and if there is a new trigger
-
-    #def callback(self, data):
-        #pass
-        ##print ('message received')
-    
-        #publishStr = 'Vehicle_Health'
-        #self.pub.publish(publishStr)
-        
-
     def DriverMarkerButtonCallback(self, data):
         '''
         The data in this callback has a value of 8 when the snapbutton is used 
@@ -280,9 +246,6 @@ class CsvWriterAVinterface:
         '''
         if len(data.data) > 1:
           self.snapButton = data.data[1]
-        #if self.snapButton > 0:
-            #print('\n\n snapbutton value: {} \n\n'.format(self.snapButton))
-        
         
     def CtrlStateFLGcallback(self, data):
         '''
@@ -292,9 +255,10 @@ class CsvWriterAVinterface:
         '''
         self.BRK_Override = bool(data.BRK_Override)
         self.ACC_Override = bool(data.ACC)
-        self.avEngaged = bool(data.Engaged)
-        self.avEngaged = True
-
+        if self.checkEngaged == True:
+          self.avEngaged = bool(data.Engaged)
+        else:
+          self.avEngaged = True
 
     def SoftwareEventTriggerCallback(self, data):
         '''
@@ -310,51 +274,6 @@ class CsvWriterAVinterface:
         # print(self.softwareEventName)
         if self.softwareEventName != '':
             self.software_EVNT_trigger = True
-        
-
-        
-    #def upload_to_aws(self, local_file, s3_bucket, s3_folder, s3_filename):
-        #def write_to_aws():
-            #statinfo = os.stat(local_file)
-            #up_progress = progressbar.progressbar.ProgressBar(maxval=statinfo.st_size)
-            #up_progress.start()
-
-            #def upload_progress(chunk):
-               #up_progress.update(up_progress.currval + chunk)
-
-            #try:
-               #print("Writing "+ s3_filename)
-               #self.s3Client.upload_file(local_file, s3_bucket, s3_folder+"/"+s3_filename, Callback=upload_progress)
-               #print("Upload Successful")
-               #return True
-            #except FileNotFoundError:
-               #print("The source file was not found")
-               #return False
-            #except NoCredentialsError:
-               #print("Credentials not available")
-               #return False
-        #try:
-            ##print('bucket: ' + s3_bucket + ", key: " + s3_folder+s3_filename+'/')
-            #self.s3Client.head_object(Bucket=s3_bucket, Key=s3_folder+'/'+s3_filename)
-            ##print(s3_filename + " exists already, not uploading")
-        #except ClientError as e:
-            #write_to_aws()
-        
-        
-    #def awsSessionStart(self, data):
-        #bucket = 'foxtrot-snapshots'
-        #s3_folder = 'snapshot_bagfiles'+'/'+time.strftime("%Y%m%d")
-        #while self.rospyUp:
-            #if os.path.isdir(self.csvDir):
-                #for filename in os.listdir(self.csvDir):
-                    #fullPath = self.csvDir+'/'+filename
-                    #self.upload_to_aws(fullPath,bucket,s3_folder,filename)
-                    ##print(filename)
-            #else:
-                #pass
-                ##print("Dir does not exist")
-            #sleep(60)
-
 
     def listener(self):
         rospy.Subscriber('/software_event_trigger', String, self.SoftwareEventTriggerCallback)
@@ -362,15 +281,6 @@ class CsvWriterAVinterface:
         
         rospy.Subscriber('/CtrlStateFLG', CtrlStateFLG, self.CtrlStateFLGcallback)
         rospy.Subscriber('/ard_state', Int16MultiArray, self.DriverMarkerButtonCallback)
-        #rospy.Subscriber('/CtrlStateFLGDummy', Int32MultiArray, self.dummyCallback)
-       
-        ##Start aws thread
-        #self.rospyUp = True
-        #thread = []
-        #if uploadToAws:
-          #thread = Thread(target = self.awsSessionStart, args = (self, ))
-          #thread.daemon = True
-          #thread.start()
 
         while not rospy.is_shutdown():
             
@@ -378,16 +288,23 @@ class CsvWriterAVinterface:
             #print('\n\n snapbutton value: {} \n\n'.format(self.snapButton))
             
             rospy.sleep(1)  # sleep for one second.
-       
-        ##Join aws thread
-        #self.rospyUp = False
-        #if uploadToAws:
-          #thread.join()
         
 if __name__ == '__main__':
-    print ('Running')
-    uploadToAws = False
-    clsObj = CsvWriterAVinterface(uploadToAws)
+    print ('Starting Snapshot Trigger node.')
+    
+    # Parse arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-e', '--checkEngaged', default=True)
+    args, uargs = parser.parse_known_args()
+    
+    if args.checkEngaged == "False" or args.checkEngaged == "false" or args.checkEngaged == "0":
+      print('Not checking if AV is engaged to trigger snapshots.')
+      args.checkEngaged = False
+    else:
+      print('Checking if AV is engaged to trigger snapshots.')
+      args.checkEngaged = True
+
+    clsObj = CsvWriterAVinterface(args.checkEngaged)
     clsObj.listener()
 
 

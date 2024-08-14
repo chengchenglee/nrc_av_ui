@@ -1,42 +1,33 @@
 Configuration:
-  Name: Echo
-  agentType: AV4
+  Name: Mike
+  agentType: AV2
   mapName: Franklin.set
   printTimeDebug: 0
   useGui: 1
   sendWm: 1
-  sendSnapshots: 1
-  Map: Franklin.set
+  sendSnapshots: 0
   broker: ncal
 
 Subsystem:
   CAR:
     Type: Sensor
-    Description: Vehicle CAN
+    Description: Vehicle CAN and EyeQ5
     Trigger: Startup, StartRequest, ARDX, or PMUX
       - Source: Startup
     HealthTopics:
-      - HealthTopic: /CtrlStateFLG
+      - HealthTopic: /CAN/health
         HealthName: CAR
-        HealthTopicType: CtrlStateFLG
+        HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /ard_state
-        HealthName: ARD
-        HealthTopicType: Int16MultiArray
-        NomWarnErrRate: 10, 8, 1
       - HealthTopic: /pmu_state
         HealthName: PMU
         HealthTopicType: Int16MultiArray
         NomWarnErrRate: 10, 8, 1
     Commands:
-      - Name: CanZe1SvConsumer
-        Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=4 CanZe1SvConsumer:=true CanZe1SvWriter:=true Eyeq3Prod:=true Eyeq3ProdCh:=1
+      - Name: CanAriyaSvITSConsumer
+        Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=5 CanAriyaSvITS3Consumer:=true CanAriyaSvITS3ConsumerCh:=0 CanAriyaSvITS4Consumer:=true CanAriyaSvITS4ConsumerCh:=1 CanAriyaSvITS5Consumer:=true CanAriyaSvITS5ConsumerCh:=3  CanAriyaSvWriter:=true CanAriyaSvWriterCh:=2 Eyeq5DevCh0:=true Eyeq5DevCh0Ch:=4 Eyeq5DevWrite:=true Eyeq5DevWriteCh:=4
         Type: Software
         LaunchTime: 5.0
-      - Name: ARD
-        Command: roslaunch nrc_hw_svcs leaf_interface_arduino.launch arduino_machine:=node04
-        Type: Software
-        LaunchTime: 1.0
     Diagnostic:
       LED: 0
       Retry: 3
@@ -47,33 +38,33 @@ Subsystem:
 
   Pose:
     Type: Sensor
-    Description: Raw GPS
+    Description: Ublox F9R gps and ntrip
     Trigger:
       - Source: StartRequest
     HealthTopics:
-      - HealthTopic: /gps_state/dynamic_global_pose_oxts
+      - HealthTopic: /gps_state/dynamic_global_pose_f9r_20hz
         HealthName: RAW
         HealthTopicType: DynamicPoseWithCovar
-        NomWarnErrRate: 100, 80, 60
+        NomWarnErrRate: 20, 10, 5
       - HealthTopic: /dynamic_global_pose
         HealthName: DGP
         HealthTopicType: DynamicPoseWithCovar
         NomWarnErrRate: 100, 80, 60
     Commands:
-      - Name: NTRIP
-        Command: rosrun nrc_hw_svcs ntripCommand-leaf2.sh
-        Type: Software
-        LaunchTime: 1.0
-      - Name: GPS_Raw
-        Command: roslaunch nrc_hw_svcs gps_leaf.launch sanborn:=true
+      - Name: f9r_raw
+        Command: roslaunch nrc_hw_svcs f9r_udev_rule.launch
         Type: Software
         LaunchTime: 1.0
       - Name: TF_Sys
         Command: roslaunch nrc_svcs leaf_tf_subsystem.launch sanborn:=true
         Type: Software
         LaunchTime: 1.0
+      - Name: f9r_conv
+        Command: rosrun nrc_hw_svcs ublox_f9r_conv --name ublox_conv
+        Type: Software
+        LaunchTime: 1.0
       - Name: MapMatch
-        Command: rosrun nrc_wm2_svcs map_match name:=MapMatch_node _useOxts:=true _useLaneMap:=true
+        Command: rosrun nrc_wm2_svcs map_match name:=MapMatch_node _useF9r:=true _useLaneMap:=true
         NodeName: MapMatch_node
         Type: Software
         LaunchTime: 3.0
@@ -85,29 +76,41 @@ Subsystem:
       - Launch:
         Run:
 
-  EYEQ5:
+  Cubtek:
     Type: Sensor
-    Description: Mobileye Camera
+    Description: Cubtek 4D imaging radars, left and right
     Trigger:
       - Source: StartRequest
     HealthTopics:
-      - HealthTopic: /ME5/health
+      - HealthTopic: /Cubtek/health
         HealthName: NOD
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /ME5_ObjData
+      - HealthTopic: /cubtek_raw_points
         HealthName: CAN
-        HealthTopicType: Mobileye5ObjectArray
-        NomWarnErrRate: 30, 20, 10
+        HealthTopicType: CubtekRadarArray
+        NomWarnErrRate: 15, 9, 3
     Commands:
-      - Name: Can_Com_Eyeq5
-        Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=2 Eyeq5DevCh0:=true Eyeq5DevCh0Ch:=0 Eyeq5DevWrite:=true Eyeq5DevWriteCh:=0 Eyeq5DevCh1:=true Eyeq5DevCh1Ch:=1 nodeName:=eyeq5_node machine:=node04
+      - Name: Cubtek_eth_raw_left
+        Command: sudo $HOME/projects/nrc_ws/devel/lib/nrc_hw_svcs/pcap eno1 45161 #Left cubtek radar
         Type: Software
         LaunchTime: 2.0
-      - Name: Me2Yolo
-        Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch
+      - Name: Cubtek_eth_raw_right
+        Command: sudo $HOME/projects/nrc_ws/devel/lib/nrc_hw_svcs/pcap eno2 45162 #Right cubtek radar
         Type: Software
-        LaunchTime: 1.0
+        LaunchTime: 2.0
+      - Name: Cubtek_eth_nodes_left
+        Command: rosrun nrc_hw_svcs consume_cubtek cubtek_L 45161
+        Type: Software
+        LaunchTime: 2.0
+      - Name: Cubtek_eth_nodes_right
+        Command: rosrun nrc_hw_svcs consume_cubtek cubtek_R 45162
+        Type: Software
+        LaunchTime: 2.0
+      - Name: Cubtek_fuse
+        Command: rosrun nrc_wm2_svcs cubtek_fuse
+        Type: Software
+        LaunchTime: 2.0
     Diagnostic:
       LED: 2
       Retry: 3
@@ -116,59 +119,12 @@ Subsystem:
       - Launch:
         Run:
 
-  LU-CAM:
-    Type: Sensor
-    Description: Lucid Cams
-    Trigger:
-      - Source: StartRequest
-    HealthTopics:
-      - HealthTopic: /lucid_cam_front/health_status
-        HealthName: LCF
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /lucid_cam_front_left/health_status
-        HealthName: LCL
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /lucid_cam_front_right/health_status
-        HealthName: LCR
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
-    Commands:
-      - Name: LucidCamDriver
-        Command: roslaunch nrc_hw_svcs lucid_gige_cameras.launch
-        Type: Software
-        LaunchTime: 3.0
-    Diagnostic:
-      LED: 3
-      Retry: 3
-      Timeout: 5
-    Depends:
-      - Launch:
-        Run:
-
-  LUMPCP:
+  InnovusionPCP:
     Type: Algorithm
     Description: Pointcloud_Processing
     Trigger:
       - Source: StartRequest
     HealthTopics:
-      - HealthTopic: /luminar_front/status
-        HealthName: FRNT
-        HealthTopicType: DiagnosticStatus
-        NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /luminar_back/status
-        HealthName: BACK
-        HealthTopicType: DiagnosticStatus
-        NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /luminar_left/status
-        HealthName: LFT
-        HealthTopicType: DiagnosticStatus
-        NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /luminar_right/status
-        HealthName: RGT
-        HealthTopicType: DiagnosticStatus
-        NomWarnErrRate: 10, 6, 3
       - HealthTopic: /pc_processor/multi_object_tracker/tracked_object_set
         HealthName: TOS
         HealthTopicType: TrackedObjectSet
@@ -178,12 +134,16 @@ Subsystem:
         HealthTopicType: PointCloud2
         NomWarnErrRate: 10, 7, 3
     Commands:
-      - Name: LuminarDriver
-        Command: roslaunch luminar_ros luminar_lidars.launch
+      - Name: InnovusionDriver
+        Command: rosrun nrc_svcs  runInnovusion.sh > /dev/null
         Type: Software
         LaunchTime: 1.0
       - Name: PCP
-        Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Echo:=true Leaf_Foxtrot:=false dynamic_global_pose_topic_name:=/dynamic_global_pose do_curb_detection:=false do_curb_points_accumulation:=false include_curb_points_for_drivable_area:=false include_lateral_curb_points_for_drivable_area:=false include_accumulated_curb_points_for_drivable_area:=false srcgs/cluster_height_threshold:=0.3 publish_labeled_points:=true
+        Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Foxtrot:=true do_curb_detection:=false do_curb_points_accumulation:=false include_curb_points_for_drivable_area:=false include_lateral_curb_points_for_drivable_area:=false include_accumulated_curb_points_for_drivable_area:=false srcgs/cluster_height_threshold:=0.3 dynamic_global_pose_topic_name:=/dynamic_global_pose
+        Type: Software
+        LaunchTime: 3.0
+      - Name: Me2Yolo
+        Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -235,6 +195,10 @@ Subsystem:
     Trigger:
       - Source: StartRequest
     HealthTopics:
+     - HealthTopic: /modia/route_plan/health
+        HealthName: ROUTE
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 1, 0.5, 0.2
       - HealthTopic: /autoGoals/health
         HealthName: GOALS
         HealthTopicType: DiagnosticArray
@@ -252,18 +216,16 @@ Subsystem:
         HealthTopicType: TrajectoryControllerState
         NomWarnErrRate: 100, 60, 10
     Commands:
-      - Name: RoutePlanner
-        Command: roslaunch nrc_dm_svcs modia_all.launch autonomy_level:=ad5 use_modia_decisions:=false
+      - Name: RouteWaypoints
+        Command: rosrun nrc_wm2_svcs multi_set_dest_repeater.py
         Type: Software
         LaunchTime: 3.0
-      - Name: RouteGoalGenerator
-        Command: rosrun nrc_dm_svcs 
       - Name: AutoGoals
-        Command: rosrun nrc_wm2_svcs auto_goals2 __name:=AutoGoals_node
-        NodeName: AutoGoals_node
+        Command: roslaunch nrc_wm2_svcs leaf_route.launch inclRoutePlanner:=true
+        NodeName: Route Planning
         Type: Software
         LaunchTime: 3.0
-      - Name: Trajectory Planner
+      - Name: Trajectory Planning
         Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=LeafFS
         Type: Software
         LaunchTime: 3.0
@@ -295,13 +257,13 @@ Subsystem:
         NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: BAG
-        Command: roslaunch nrc_av_ui record_separately.launch record_machine:=node02
+        Command: roslaunch nrc_av_ui record_separately_mike.launch
         Type: Software
         LaunchTime: 3.0
-      - Name: SNAP
-        Command: roslaunch nrc_av_ui snapshotPipeline.launch
-        Type: Software
-        LaunchTime: 3.0
+      #- Name: SNAP
+        #Command: roslaunch nrc_av_ui snapshotPipeline.launch
+        #Type: Software
+        #LaunchTime: 3.0
     Diagnostic:
       LED: 7
       Retry: 0
