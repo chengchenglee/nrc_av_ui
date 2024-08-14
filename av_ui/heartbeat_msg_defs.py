@@ -50,9 +50,9 @@ class HeartbeatData:
           for j in range(numVals):
             self.data[i][j].value = lineData[j]
     
-    #for i in range(len(self.data)):
-      #for j in range(1,len(self.data[i])):
-        #print(self.data[i][j].value)
-    
-    
-    
+    if False:
+      for i in range(len(self.data)):
+        lineData = ''
+        for j in range(1,len(self.data[i])):
+          lineData += str(self.data[i][j].value) +' '
+        print(lineData)

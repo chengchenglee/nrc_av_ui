@@ -39,10 +39,6 @@ class AvAgent:
     self.remoteWmDisplayLastReq = 0
     self.fixedPose = None
 
-    self.x_position = 0.0
-    self.y_position = 0.0
-    self.th_heading = 0.0
-
     # Load the agent configuration
     with open(self.filename, 'r') as file:
       text = file.read()
@@ -93,19 +89,24 @@ class AvAgent:
     self.cloud.subscribe(['snp/'+self.name+'/resPartList'])
 
   def pose_callback(self, msg):
-    self.x_position = msg.pose.position.x
-    self.y_position = msg.pose.position.y
+    #self.x_position = msg.pose.position.x
+    #self.y_position = msg.pose.position.y
     orientation_list = [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
     (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(orientation_list)
-    self.th_heading = yaw
+    #self.th_heading = yaw
+    
+    self.heartbeat.pos_x.value = msg.pose.position.x
+    self.heartbeat.pos_y.value = msg.pose.position.y
+    self.heartbeat.pos_th.value = yaw
     
   def pose10hz_callback(self, msg):
     self.poseSub.unregister()
-    self.x_position = msg.pose.position.x
-    self.y_position = msg.pose.position.y
     orientation_list = [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
     (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(orientation_list)
-    self.th_heading = yaw
+    
+    self.heartbeat.pos_x.value = msg.pose.position.x
+    self.heartbeat.pos_y.value = msg.pose.position.y
+    self.heartbeat.pos_th.value = yaw
 
   def sendStatusCsv(self):
     # Heartbeat message
