@@ -1,6 +1,6 @@
 Configuration:
   Name: fvla-infrapod
-  agentType: infrapod
+  agentType: RSU
   Map: Franklin.set
   useGui: 0
   sendWm: 1

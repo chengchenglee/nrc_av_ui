@@ -1,5 +1,6 @@
 Configuration:
   Name: Mike
+  agentType: AV2
   mapName: Franklin.set
   printTimeDebug: 0
   useGui: 1

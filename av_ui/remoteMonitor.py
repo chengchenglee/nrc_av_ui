@@ -31,17 +31,10 @@ def parseMsgs(messages):
     # Received heartbeat from an agent
     if "heartbeat" in msg['topic']:
       # Get agent name from message and see if we're already monitoring it
-      if len(msg['data']) > 2:
+      hb = HeartbeatData()
+      hb.fromMsg(msg)
+      agentName = hb.agentName.value
 
-        agentName = msg['data'][0][1]        
-        x = msg['data'][0][2]  # Parse x data
-        y = msg['data'][0][3]  # Parse y data
-        #print("Heartbeat received from agent {agentName}: x = {x}, y = {y}")
-      
-      else:
-        agentName = msg['data'][0][1]
-
-    
       newAgent = True
       for t in subscribedTopics:
         if agentName in t:

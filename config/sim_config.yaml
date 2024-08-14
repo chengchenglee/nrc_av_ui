@@ -1,5 +1,6 @@
 Configuration:
   Name: sim
+  agentType: AV4
   mapName: Franklin.set
   printTimeDebug: 0
   useGui: 1
