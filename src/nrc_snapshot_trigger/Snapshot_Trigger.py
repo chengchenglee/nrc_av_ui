@@ -55,7 +55,6 @@ class CsvWriterAVinterface:
         # Snapshot trigger.
         self.writeSnapshot = False
         self.writeTime = 0
-        self.writeTimeDuration = 20         # The buffering is done for 40 sec (location: ~/projects/nrc_ws/src/nrc_svcs/scripts/rosbagSnapshot.sh)
         self.prefixList = []
         self.snapshotUpdated = False
         self.filename = ''
@@ -70,7 +69,11 @@ class CsvWriterAVinterface:
         self.totalDist = 0
         self.snapshotPastDistanceHorizon = 50 # meters
         self.snapshotPastDistanceHorizonTimeDiff = 0.0 # How much time ago we moved more than snapshotPastDistanceHorizon
-        self.snapshotDefaultPastTimeHorizon = 10.0
+        self.snapshotDefaultPastTimeHorizon = 10.0 #seconds
+        self.snapshotFutureDistanceHorizon = 20 # meters
+        self.snapshotFutureDistanceTraveled = 0.0 # How much distance we traveled since the trigger
+        self.snapshotDefaultFutureTimeHorizon = 20.0 # seconds
+        self.snapshotMaxFutureTimeHorizon = 45.0 # seconds
         # Record the past horizon at the time of trigger
         self.startedRecordingSnapshot = False
         self.triggerPastHorizon = self.snapshotDefaultPastTimeHorizon
@@ -103,6 +106,9 @@ class CsvWriterAVinterface:
                         (msg.pose.position.y - self.lastPose.pose.position.y)**2)
             self.buffer.append((dist, msg.header.stamp))
             self.totalDist += dist
+            # Update the future distance traveled if snapshot started recording
+            if self.startedRecordingSnapshot:
+                self.snapshotFutureDistanceTraveled += dist
 
             # Remove elements from the buffer if the distance is more than self.distance_threshold meters
             while self.totalDist > self.snapshotPastDistanceHorizon:
@@ -157,6 +163,7 @@ class CsvWriterAVinterface:
             if self.startedRecordingSnapshot == False:
                 self.startedRecordingSnapshot = True
                 self.triggerPastHorizon = max(self.snapshotPastDistanceHorizonTimeDiff, self.snapshotDefaultPastTimeHorizon)
+                self.snapshotStartTime = rospy.Time.now() - rospy.Duration(self.triggerPastHorizon) # Where the snapshot starts from, not the trigger time
 
             self.writeTime += self.timerInterval
             
@@ -171,7 +178,12 @@ class CsvWriterAVinterface:
             diagMsg.status[0].level = 3
         self.healthPub.publish(diagMsg)
         
-        if self.writeSnapshot and self.writeTime > self.writeTimeDuration:
+        # Record the future at least snapshotDefaultFutureTimeHorizon seconds, at least snapshotFutureDistanceHorizon meters 
+        # upto snapshotMaxFutureTimeHorizon threshold
+        futureHorizonReached = ((self.writeTime > self.snapshotDefaultFutureTimeHorizon 
+                                and self.snapshotFutureDistanceTraveled > self.snapshotFutureDistanceHorizon)
+                                or self.writeTime > self.snapshotMaxFutureTimeHorizon)
+        if self.writeSnapshot and futureHorizonReached:
             dirExists = os.path.isdir(self.csvDir)
             if not dirExists:
                 os.makedirs(self.csvDir)
@@ -187,15 +199,15 @@ class CsvWriterAVinterface:
             self.filename = '{}_{}'.format(timeStamp,prefix)
             try:
                 # Get the current ROS time
-                current_time = rospy.Time.now()
+                currentTime = rospy.Time.now()
                 print(" Past Horizon of snapshot: ", self.triggerPastHorizon)
-                start_time = current_time -  rospy.Duration(self.writeTimeDuration) - rospy.Duration(self.triggerPastHorizon)
+                print(" Future Horizon of snapshot: ", ((currentTime-self.snapshotStartTime) - rospy.Duration(self.triggerPastHorizon)).to_sec())
                 # Construct the YAML string for the rosservice call
                 yaml_string = """
                                 filename: '{}.bag'
                                 start_time: {{ secs: {}, nsecs: {} }}
                                 stop_time: {{ secs: {}, nsecs: {} }}
-                                """.format(self.filename, start_time.secs, start_time.nsecs, current_time.secs, current_time.nsecs)
+                                """.format(self.filename, self.snapshotStartTime.secs, self.snapshotStartTime.nsecs, currentTime.secs, currentTime.nsecs)
 
                 # Properly escape the YAML string for shell execution
                 escaped_yaml_string = yaml_string.replace('"', '\\"')
@@ -205,8 +217,9 @@ class CsvWriterAVinterface:
 
                 #cmd = "cd " + self.csvDir + ";rosrun rosbag_snapshot snapshot -t -n -O {}.bag".format(self.filename)
                 # cmd = "cd " + self.csvDir + ";rosrun rosbag_snapshot snapshot -t -O {}.bag".format(self.filename)
-                subprocess.call(cmd, shell=True)
                 self.startedRecordingSnapshot = False
+                self.snapshotFutureDistanceTraveled = 0.0
+                subprocess.call(cmd, shell=True)
                 
                 # Now upload to AWS. UPDATE: Moved to a thread instead
                 #cmd = "cd " + self.csvDir + ";aws s3 sync . s3://foxtrot-snapshots/snapshot_bagfiles/" + time.strftime("%Y%m%d") +"  --profile foxtrot".format(self.filename) + "&"
