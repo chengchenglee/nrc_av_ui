@@ -188,8 +188,8 @@ class CsvWriterAVinterface:
             try:
                 # Get the current ROS time
                 currentTime = rospy.Time.now()
-                print(" Past Horizon of snapshot: ", self.triggerPastHorizon)
-                print(" Future Horizon of snapshot: ", ((currentTime-self.snapshotStartTime) - rospy.Duration(self.triggerPastHorizon)).to_sec())
+                # print(" Past Horizon of snapshot: ", self.triggerPastHorizon)
+                # print(" Future Horizon of snapshot: ", ((currentTime-self.snapshotStartTime) - rospy.Duration(self.triggerPastHorizon)).to_sec())
                 # Construct the YAML string for the rosservice call
                 yaml_string = """
                                 filename: '{}.bag'
