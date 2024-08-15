@@ -5,6 +5,7 @@ from collections import OrderedDict
 import time
 from wmStatus import WmStatus
 from heartbeat_msg_defs import HeartbeatData
+from waypoints_msg_defs import WaypointData
 
 class MonitoredProcess:
   def __init__(self):

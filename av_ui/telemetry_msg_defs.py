@@ -59,7 +59,7 @@ class TelemetryData:
   def fromMsg(self, msgIn):
     for lineData in msgIn['data']:
       for i in range(len(self.data)):
-        if lineData[0] == self.data[i][AGENT_LINE_HEADER].value:
+        if lineData[0] == self.data[i][0].value:
           if len(lineData) >= len(self.data[i]):
             for j in range(len(self.data[i])):
               self.data[i][j].value = lineData[j]

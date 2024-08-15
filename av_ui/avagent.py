@@ -6,6 +6,7 @@ import glob
 import rospy
 from heartbeat_msg_defs import HeartbeatData
 from telemetry_msg_defs import TelemetryData
+from waypoints_msg_defs import WaypointData
 from subsystem import Subsystem
 from wmStatus import WmStatus
 from fileInTransit import FileInTransit
@@ -87,6 +88,7 @@ class AvAgent:
     self.cloud.subscribe(['cmd/'+self.name+'/remote'])
     self.cloud.subscribe(['snp/remote_server/heartbeat'])
     self.cloud.subscribe(['snp/'+self.name+'/resPartList'])
+    self.cloud.subscribe(['wyp/'+self.name+'/remote'])
 
   def pose_callback(self, msg):
     #self.x_position = msg.pose.position.x
@@ -215,6 +217,7 @@ class AvAgent:
   def parseAgentMail(self):
     msgs = self.cloud.getMail()
     for m in msgs:
+      #print(m['topic'])
       # Command message from remote_monitor
       if 'cmd' in m['topic']:
         for lineData in m['data']:
@@ -245,6 +248,10 @@ class AvAgent:
               self.fileInTransit.state.append(['None',0])
             else:
               self.fileInTransit.state.append([str(lineData[1]),int(lineData[2])+1])
+              
+      elif 'wyp' in m['topic']:
+        wp = WaypointData()
+        wp.fromMsg(m)
         
   def setLaunchAll(self):
     for s in self.subsystems:
