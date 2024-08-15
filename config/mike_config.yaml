@@ -1,5 +1,6 @@
 Configuration:
   Name: Mike
+  agentType: AV2
   mapName: Franklin.set
   printTimeDebug: 0
   useGui: 1
@@ -44,7 +45,7 @@ Subsystem:
       - HealthTopic: /gps_state/dynamic_global_pose_f9r_20hz
         HealthName: RAW
         HealthTopicType: DynamicPoseWithCovar
-        NomWarnErrRate: 100, 80, 60
+        NomWarnErrRate: 20, 10, 5
       - HealthTopic: /dynamic_global_pose
         HealthName: DGP
         HealthTopicType: DynamicPoseWithCovar
@@ -95,7 +96,7 @@ Subsystem:
         Type: Software
         LaunchTime: 2.0
       - Name: Cubtek_eth_raw_right
-        Command: sudo $HOME/projects/nrc_ws/devel/lib/nrc_hw_svcs/pcap eno1 45162 #Right cubtek radar
+        Command: sudo $HOME/projects/nrc_ws/devel/lib/nrc_hw_svcs/pcap eno2 45162 #Right cubtek radar
         Type: Software
         LaunchTime: 2.0
       - Name: Cubtek_eth_nodes_left
@@ -134,7 +135,7 @@ Subsystem:
         NomWarnErrRate: 10, 7, 3
     Commands:
       - Name: InnovusionDriver
-        Command: rosrun nrc_svcs  runInnovusion.sh
+        Command: rosrun nrc_svcs  runInnovusion.sh > /dev/null
         Type: Software
         LaunchTime: 1.0
       - Name: PCP
@@ -215,18 +216,16 @@ Subsystem:
         HealthTopicType: TrajectoryControllerState
         NomWarnErrRate: 100, 60, 10
     Commands:
-      - Name: Route
-        Command: roslaunch nrc_dm_svcs modia_all.launch autonomy_level:=ad5 use_modia_decisions:=false
+      - Name: RouteWaypoints
+        Command: rosrun nrc_wm2_svcs multi_set_dest_repeater.py
         Type: Software
         LaunchTime: 3.0
-      - Name: RouteGoalGenerator
-        Command: rosrun nrc_dm_svcs 
       - Name: AutoGoals
-        Command: rosrun nrc_wm2_svcs auto_goals2 __name:=AutoGoals_node
-        NodeName: AutoGoals_node
+        Command: roslaunch nrc_wm2_svcs leaf_route.launch inclRoutePlanner:=true
+        NodeName: Route Planning
         Type: Software
         LaunchTime: 3.0
-      - Name: Trajectory Planner
+      - Name: Trajectory Planning
         Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=LeafFS
         Type: Software
         LaunchTime: 3.0

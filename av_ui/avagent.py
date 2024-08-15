@@ -4,6 +4,9 @@ from os.path import expanduser
 import os
 import glob
 import rospy
+from heartbeat_msg_defs import HeartbeatData
+from telemetry_msg_defs import TelemetryData
+from waypoints_msg_defs import WaypointData
 from subsystem import Subsystem
 from wmStatus import WmStatus
 from fileInTransit import FileInTransit
@@ -12,6 +15,7 @@ from nrc_msgs.msg import InterventionRequest
 from std_msgs.msg import Int16MultiArray
 from nrc_msgs.msg import TrackedObjectSet,DynamicPoseWithCovar
 import numpy as np
+import tf.transformations
 import time
 from cloud_connection import CloudConnection
 import json, ast
@@ -34,11 +38,7 @@ class AvAgent:
     self.wmStatus = WmStatus()
     self.remoteWmDisplayOn = 0
     self.remoteWmDisplayLastReq = 0
-    self.agentType = 'leaf'
     self.fixedPose = None
-
-    self.x_position = 0.0
-    self.y_position = 0.0
 
     # Load the agent configuration
     with open(self.filename, 'r') as file:
@@ -51,18 +51,15 @@ class AvAgent:
     self.sendWm  = int(Loader.getField(text,'sendWm',0))
     self.sendSnapshots  = int(Loader.getField(text,'sendSnapshots',0))
     self.broker = Loader.getField(text, 'broker', 'ncal')
-    self.agentType = Loader.getField(text, 'agentType', 'leaf')
-    print ("useGui: "+str(self.useGui))
-    print ("sendWm: "+str(self.sendWm))
-    print ("sendSnapshots: "+str(self.sendSnapshots))
-    print ("broker: "+str(self.broker))
-    print ("agent type: "+str(self.agentType))
+    self.agentType = Loader.getField(text, 'agentType', 'AV4')
+    self.agentUrdf = Loader.getField(text, 'agentUrdf', 'leaf')
     self.rosparams = Loader.getSubConfigs(text, 'ROSParams')
     self.printTimeDebug = max(int(Loader.getField(text,'printTimeDebug',0)), int(verbose))
-    print(self.printTimeDebug)
+    self.heartbeat = HeartbeatData(self.name,self.agentType)
+    self.telemetry = TelemetryData()
     
     #if infrapod, get fixed pose
-    if self.agentType == 'infrapod':
+    if self.agentType == 'RSU':
       self.fixedPose = Loader.getField(text,'pose',[])
 
     # Prepare cloud connection
@@ -81,7 +78,8 @@ class AvAgent:
     rospy.init_node('listener', anonymous=True)  # AvAgent Node
     Loader.subscribe_health_msgs(self.subsystems)
     self.avLedStatusPub = rospy.Publisher("ailsv_av_led",Int16MultiArray,queue_size=1)
-    self.poseSub = rospy.Subscriber("/dynamic_global_pose",DynamicPoseWithCovar,self.pose_callback,queue_size=1)
+    self.poseSub     = rospy.Subscriber("/dynamic_global_pose",     DynamicPoseWithCovar,self.pose_callback,queue_size=1)
+    self.pose10hzSub = rospy.Subscriber("/dynamic_global_pose_10Hz",DynamicPoseWithCovar,self.pose10hz_callback,queue_size=1)
     if self.sendWm == 1: 
       self.wmStatusSub = rospy.Subscriber("pc_processor/multi_object_tracker/tracked_object_set", TrackedObjectSet, self.wmStatus.updateObjs, queue_size = 1)
 
@@ -90,22 +88,42 @@ class AvAgent:
     self.cloud.subscribe(['cmd/'+self.name+'/remote'])
     self.cloud.subscribe(['snp/remote_server/heartbeat'])
     self.cloud.subscribe(['snp/'+self.name+'/resPartList'])
+    self.cloud.subscribe(['wyp/'+self.name+'/remote'])
 
   def pose_callback(self, msg):
-    self.x_position = msg.pose.position.x
-    self.y_position = msg.pose.position.y
+    #self.x_position = msg.pose.position.x
+    #self.y_position = msg.pose.position.y
+    orientation_list = [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
+    (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(orientation_list)
+    #self.th_heading = yaw
+    
+    self.heartbeat.pos_x.value = msg.pose.position.x
+    self.heartbeat.pos_y.value = msg.pose.position.y
+    self.heartbeat.pos_th.value = yaw
+    
+  def pose10hz_callback(self, msg):
+    self.poseSub.unregister()
+    orientation_list = [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
+    (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(orientation_list)
+    
+    self.heartbeat.pos_x.value = msg.pose.position.x
+    self.heartbeat.pos_y.value = msg.pose.position.y
+    self.heartbeat.pos_th.value = yaw
 
   def sendStatusCsv(self):
     # Heartbeat message
     qos = 0
     topic = "dt/agents/heartbeat"
-    data = ''
-    data +='a,'+self.name + ', '+ str(self.x_position) + ', ' + str(self.y_position)
-    # data +=  str(self.x_position)  
-    # data +=  str(self.y_position)  
-    # data +=  self.mapName  
-    # data += ',type,' + self.agent_type  
-    self.cloud.publishCsv(topic,data,qos)
+    csvStr = self.heartbeat.toMsg()
+    #data = ''
+    #data +='a,'+self.name + ','+ str(self.x_position) + ',' + str(self.y_position) + ',' + str(self.th_heading)
+    self.cloud.publishCsv(topic,csvStr,qos)
+    
+    # Telemetry message
+    qos = 0
+    topic = "dt/"+self.name+"/telemetry"
+    csvStr = self.telemetry.toMsg()
+    self.cloud.publishCsv(topic,csvStr,qos)
     
     # Subsystem status
     topic = "dt/"+self.name+"/status"
@@ -199,6 +217,7 @@ class AvAgent:
   def parseAgentMail(self):
     msgs = self.cloud.getMail()
     for m in msgs:
+      #print(m['topic'])
       # Command message from remote_monitor
       if 'cmd' in m['topic']:
         for lineData in m['data']:
@@ -229,6 +248,10 @@ class AvAgent:
               self.fileInTransit.state.append(['None',0])
             else:
               self.fileInTransit.state.append([str(lineData[1]),int(lineData[2])+1])
+              
+      elif 'wyp' in m['topic']:
+        wp = WaypointData()
+        wp.fromMsg(m)
         
   def setLaunchAll(self):
     for s in self.subsystems:
