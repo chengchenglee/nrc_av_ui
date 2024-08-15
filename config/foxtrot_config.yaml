@@ -51,14 +51,14 @@ Subsystem:
     Trigger:
       - Source: StartRequest
     HealthTopics:
-      - HealthTopic: /gps_state/dynamic_global_pose_oxts
+      - HealthTopic: /gps_state/dynamic_global_pose_oxts_10hz
         HealthName: RAW
         HealthTopicType: DynamicPoseWithCovar
-        NomWarnErrRate: 100, 80, 60
-      - HealthTopic: /dynamic_global_pose
+        NomWarnErrRate: 10, 8, 6
+      - HealthTopic: /dynamic_global_pose_10Hz
         HealthName: DGP
         HealthTopicType: DynamicPoseWithCovar
-        NomWarnErrRate: 100, 80, 60
+        NomWarnErrRate: 10, 8, 6
     Commands:
       - Name: NTRIP
         Command: rosrun nrc_hw_svcs ntripCommand-leaf2.sh
@@ -157,9 +157,9 @@ Subsystem:
         HealthName: VLDY
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /pc_processor/multi_object_tracker/tracked_object_set
-        HealthName: TOS
-        HealthTopicType: TrackedObjectSet
+      - HealthTopic: /pc_processor/timing/overall_processing_time
+        HealthName: PCP
+        HealthTopicType: Float64
         NomWarnErrRate: 10, 7, 3
       - HealthTopic: /drivable_area_boundary_points
         HealthName: DA
