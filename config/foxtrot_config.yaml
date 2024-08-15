@@ -114,26 +114,6 @@ Subsystem:
     Depends:
       - Launch:
         Run:
-
-  CAM:
-    Type: Algorithm
-    Description: Tower_Cams
-    HealthTopics:
-      - HealthTopic: /tower_cam_front/image_stamped
-        HealthName: TCF
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 7, 3
-    Commands:
-      - Name: CAM
-        Command: roslaunch nrc_hw_svcs pgr_gige_cameras.launch FrRCam:=true FrLCam:=true FrCam:=true BaRCam:=false BaLCam:=false BaCam:=false enableArduino:=true video_preprocess:=true leaf_foxtrot:=true
-        Type: Software
-        LaunchTime: 5.0
-    Diagnostic: 
-      LED: 
-      Retry: 5
-      Timeout: 5
-    Depends:
-        
         
   TCAM:
     Type: Sensor
@@ -263,12 +243,13 @@ Subsystem:
         HealthTopicType: TrajectoryControllerState
         NomWarnErrRate: 100, 60, 10
     Commands:
-      - Name: Route
-        Command: roslaunch nrc_dm_svcs modia_all.launch autonomy_level:=ad5 use_modia_decisions:=false
+      - Name: RouteWaypoints
+        Command: rosrun nrc_wm2_svcs multi_set_dest_repeater.py
+        NodeName: RouteWaypoints
         Type: Software
         LaunchTime: 3.0
       - Name: AutoGoals
-        Command: rosrun nrc_wm2_svcs auto_goals2 __name:=AutoGoals_node
+        Command: roslaunch nrc_wm2_svcs leaf_route.launch inclRoutePlanner:=true
         NodeName: AutoGoals_node
         Type: Software
         LaunchTime: 3.0
