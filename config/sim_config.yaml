@@ -91,6 +91,10 @@ Subsystem:
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
     Commands:
+      - Name: Waypoints
+        Command: rosrun nrc_wm2_svcs multi_set_dest_repeater.py
+        Type: Software
+        LaunchTime: 3.0
       - Name: AutoGoals
         Command: roslaunch nrc_wm2_svcs leaf_route.launch inclRoutePlanner:=true
         Type: Software
