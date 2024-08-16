@@ -33,7 +33,7 @@ fi
 cd ${NRC_BAG_DIR}
 echo "Disengagement/override to directory: " $PWD
 topics=$(echo $@ | sed 's/|//g')
-rosrun rosbag_snapshot snapshot --topic ${topics} -n -d 180 _compression:=BZ2 # Record maximum of 3 minutes of bagfile, real recording time dynamically updated
+rosrun rosbag_snapshot snapshot --topic ${topics} -n -d 180 _compression:=LZ4 # Record maximum of 3 minutes of bagfile, real recording time dynamically updated
 # -n for not clearing buffer after writing to a bag file
 # -d Maximum difference between newest and oldest buffered message per topic in seconds
 # _compression:=BZ2 compresses the bagfile while recording (LZ4 or BZ2. LZ4 is faster but compresses less)
