@@ -31,7 +31,10 @@ def parseMsgs(messages):
     # Received heartbeat from an agent
     if "heartbeat" in msg['topic']:
       # Get agent name from message and see if we're already monitoring it
-      agentName = msg['data'][0][1]
+      hb = HeartbeatData()
+      hb.fromMsg(msg)
+      agentName = hb.agentName.value
+
       newAgent = True
       for t in subscribedTopics:
         if agentName in t:
@@ -147,6 +150,19 @@ if True:
       for ma in monitoredAgents:
         qos=0
         cloud.publishCsv(ma.cmdTopic, ma.getCmdData(),qos)
+        
+        if False:
+          waypoints = []
+          waypoints.append([0,1,2])
+          waypoints.append([3,4,5])
+          waypoints.append([6,7,8])
+          
+          waypointsMsg = WaypointData(waypoints)
+          qos = 1
+          topic = "wyp/"+ma.name+"/remote"
+          csvStr = waypointsMsg.toMsg()
+          cloud.publishCsv(topic,csvStr,qos)
+          print('Publish waypoints...'+topic)
 
     time.sleep(0.01)
 

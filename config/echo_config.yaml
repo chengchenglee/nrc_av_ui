@@ -1,5 +1,6 @@
 Configuration:
   Name: Echo
+  agentType: AV4
   mapName: Franklin.set
   printTimeDebug: 0
   useGui: 1
@@ -182,7 +183,7 @@ Subsystem:
         Type: Software
         LaunchTime: 1.0
       - Name: PCP
-        Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Echo:=true Leaf_Foxtrot:=false dynamic_global_pose_topic_name:=/dynamic_global_pose do_curb_detection:=false do_curb_points_accumulation:=false include_curb_points_for_drivable_area:=false include_lateral_curb_points_for_drivable_area:=false include_accumulated_curb_points_for_drivable_area:=false srcgs/cluster_height_threshold:=0.3
+        Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Echo:=true Leaf_Foxtrot:=false dynamic_global_pose_topic_name:=/dynamic_global_pose do_curb_detection:=false do_curb_points_accumulation:=false include_curb_points_for_drivable_area:=false include_lateral_curb_points_for_drivable_area:=false include_accumulated_curb_points_for_drivable_area:=false srcgs/cluster_height_threshold:=0.3 publish_labeled_points:=true
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -251,6 +252,12 @@ Subsystem:
         HealthTopicType: TrajectoryControllerState
         NomWarnErrRate: 100, 60, 10
     Commands:
+      - Name: RoutePlanner
+        Command: roslaunch nrc_dm_svcs modia_all.launch autonomy_level:=ad5 use_modia_decisions:=false
+        Type: Software
+        LaunchTime: 3.0
+      - Name: RouteGoalGenerator
+        Command: rosrun nrc_dm_svcs 
       - Name: AutoGoals
         Command: rosrun nrc_wm2_svcs auto_goals2 __name:=AutoGoals_node
         NodeName: AutoGoals_node

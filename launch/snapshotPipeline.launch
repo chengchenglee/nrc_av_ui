@@ -7,6 +7,7 @@
 
   <arg name="prefix" default="autonomy_log" />
   <arg name="compression" default="false" /> <!--bz2 compression -->
+  <arg name="checkEngaged" default="True" />
 
   <!-- (.*) does not work with snapshot rosbag command. So added a seperate snapshot main topics-->
   <arg name="snapshot_system_main_topics"
@@ -40,8 +41,7 @@
   |/gps_state/gps_state_ariya"/>
   
   <arg name="snapshot_system_front_tower_cameras_topics"
-  default="/tower_cam_front/image_stamped/compressed
-  |/lucid_cam_front/image_rect_color/compressed"/>
+  default="/snapshot/image/compressed"/>
   
   <arg name="snapshot_system_lidar_topics"
   default="/velodyne_packets
@@ -53,7 +53,8 @@
   <arg name="snapshot_pc_processor_all_topics" 
   default="/drivable_area_boundary_points
   |/pc_processor/multi_object_tracker/tracked_object_set
-  |/pc_processor/visible_space/visible_space_ray_points"/>
+  |/pc_processor/visible_space/visible_space_ray_points
+  |/bevfusion/tracked_object_set"/>
   
   <arg name="snapshot_wm_all_topics" 
   default="/tlStatus
@@ -86,7 +87,15 @@
     args="$(arg snapshot_system_front_tower_cameras_topics) $(arg snapshot_system_main_topics) $(arg snapshot_pc_processor_all_topics) $(arg snapshot_wm_all_topics) $(arg snapshot_ralp_all_topics)"/>
 
     <!--Run snapshot node-->
-    <node pkg="nrc_av_ui" type="Snapshot_Trigger.py" name="snapshot_trigger_node" output="screen"/>
+    <node pkg="nrc_av_ui" type="Snapshot_Trigger.py" name="snapshot_trigger_node" output="screen" args="-e $(arg checkEngaged)"/>
+    
+    <node name="snapshot" pkg="nodelet" type="nodelet"
+        args="standalone image_proc/resize" output="screen">
+        <remap from="image" to="/tower_cam_front/image_stamped" />
+        <remap from="camera_info" to="/tower_cam_front/camera_info" />
+        <param name="scale_width" value="0.4" />
+        <param name="scale_height" value="0.4" />
+    </node>
   </group>
   
   <node pkg="nrc_av_ui" type="rosbagRecordMonitor.py" name="snapshot_monitor" args="-d ~/projects/disengagementData/bags/ -t SnapshotHealth -n SnapshotMonitor -m Trigger" machine="$(arg snapshot_machine)" output="screen"/>

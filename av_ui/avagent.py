@@ -4,14 +4,18 @@ from os.path import expanduser
 import os
 import glob
 import rospy
+from heartbeat_msg_defs import HeartbeatData
+from telemetry_msg_defs import TelemetryData
+from waypoints_msg_defs import WaypointData
 from subsystem import Subsystem
 from wmStatus import WmStatus
 from fileInTransit import FileInTransit
 import loader as Loader
 from nrc_msgs.msg import InterventionRequest
 from std_msgs.msg import Int16MultiArray
-from nrc_msgs.msg import TrackedObjectSet
+from nrc_msgs.msg import TrackedObjectSet,DynamicPoseWithCovar
 import numpy as np
+import tf.transformations
 import time
 from cloud_connection import CloudConnection
 import json, ast
@@ -19,11 +23,12 @@ from collections import OrderedDict
 import rospkg
 
 class AvAgent:
-  def __init__(self, agent_type, agent_name):
+  def __init__(self, agent_config, agent_name, verbose):
     self.name = agent_name
     home = expanduser("~")
-    self.filename = rospkg.RosPack().get_path('nrc_av_ui')+'/config/'+agent_type
+    self.filename = agent_config
     self.mapName = "Franklin.set"
+    # self.mapName = rospy.get_param('~map_name', 'Franklin.set') 
     self.subsystems = []
     self.avLedStatusPub = []
     self.pmuAvIdx = 3
@@ -33,24 +38,30 @@ class AvAgent:
     self.wmStatus = WmStatus()
     self.remoteWmDisplayOn = 0
     self.remoteWmDisplayLastReq = 0
+    self.fixedPose = None
 
     # Load the agent configuration
     with open(self.filename, 'r') as file:
       text = file.read()
-    printDebug = False
+    printDebug = int(verbose)
     self.subsystems = Loader.read_subsystems(text, printDebug)
     self.mapName = Loader.getField(text,'mapName','Franklin.set')
-    self.mqttConfig = Loader.getField(text,'mqttConfig','ncal')
+    self.mqttConfig = Loader.getField(text,'mqttConfig','local')
     self.useGui  = int(Loader.getField(text,'useGui',1))
     self.sendWm  = int(Loader.getField(text,'sendWm',0))
     self.sendSnapshots  = int(Loader.getField(text,'sendSnapshots',0))
     self.broker = Loader.getField(text, 'broker', 'ncal')
-    print ("useGui: "+str(self.useGui))
-    print ("sendWm: "+str(self.sendWm))
-    print ("sendSnapshots: "+str(self.sendSnapshots))
-    print ("broker: "+str(self.broker))
-    self.printTimeDebug = int(Loader.getField(text,'printTimeDebug',0))
+    self.agentType = Loader.getField(text, 'agentType', 'AV4')
+    self.agentUrdf = Loader.getField(text, 'agentUrdf', 'leaf')
+    self.rosparams = Loader.getSubConfigs(text, 'ROSParams')
+    self.printTimeDebug = max(int(Loader.getField(text,'printTimeDebug',0)), int(verbose))
+    self.heartbeat = HeartbeatData(self.name,self.agentType)
+    self.telemetry = TelemetryData()
     
+    #if infrapod, get fixed pose
+    if self.agentType == 'RSU':
+      self.fixedPose = Loader.getField(text,'pose',[])
+
     # Prepare cloud connection
     self.cloud = CloudConnection(self.name, self.broker)
     self.cloud.updateConfig(text)
@@ -67,22 +78,52 @@ class AvAgent:
     rospy.init_node('listener', anonymous=True)  # AvAgent Node
     Loader.subscribe_health_msgs(self.subsystems)
     self.avLedStatusPub = rospy.Publisher("ailsv_av_led",Int16MultiArray,queue_size=1)
+    self.poseSub     = rospy.Subscriber("/dynamic_global_pose",     DynamicPoseWithCovar,self.pose_callback,queue_size=1)
+    self.pose10hzSub = rospy.Subscriber("/dynamic_global_pose_10Hz",DynamicPoseWithCovar,self.pose10hz_callback,queue_size=1)
     if self.sendWm == 1: 
       self.wmStatusSub = rospy.Subscriber("pc_processor/multi_object_tracker/tracked_object_set", TrackedObjectSet, self.wmStatus.updateObjs, queue_size = 1)
-    
+
     # Setup mqtt publishers and subscribers
     self.cloud.init(self.mqttConfig)
     self.cloud.subscribe(['cmd/'+self.name+'/remote'])
     self.cloud.subscribe(['snp/remote_server/heartbeat'])
     self.cloud.subscribe(['snp/'+self.name+'/resPartList'])
+    self.cloud.subscribe(['wyp/'+self.name+'/remote'])
+
+  def pose_callback(self, msg):
+    #self.x_position = msg.pose.position.x
+    #self.y_position = msg.pose.position.y
+    orientation_list = [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
+    (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(orientation_list)
+    #self.th_heading = yaw
     
+    self.heartbeat.pos_x.value = msg.pose.position.x
+    self.heartbeat.pos_y.value = msg.pose.position.y
+    self.heartbeat.pos_th.value = yaw
+    
+  def pose10hz_callback(self, msg):
+    self.poseSub.unregister()
+    orientation_list = [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
+    (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(orientation_list)
+    
+    self.heartbeat.pos_x.value = msg.pose.position.x
+    self.heartbeat.pos_y.value = msg.pose.position.y
+    self.heartbeat.pos_th.value = yaw
+
   def sendStatusCsv(self):
     # Heartbeat message
     qos = 0
     topic = "dt/agents/heartbeat"
-    data = ''
-    data +='a,'+self.name
-    self.cloud.publishCsv(topic,data,qos)
+    csvStr = self.heartbeat.toMsg()
+    #data = ''
+    #data +='a,'+self.name + ','+ str(self.x_position) + ',' + str(self.y_position) + ',' + str(self.th_heading)
+    self.cloud.publishCsv(topic,csvStr,qos)
+    
+    # Telemetry message
+    qos = 0
+    topic = "dt/"+self.name+"/telemetry"
+    csvStr = self.telemetry.toMsg()
+    self.cloud.publishCsv(topic,csvStr,qos)
     
     # Subsystem status
     topic = "dt/"+self.name+"/status"
@@ -176,6 +217,7 @@ class AvAgent:
   def parseAgentMail(self):
     msgs = self.cloud.getMail()
     for m in msgs:
+      #print(m['topic'])
       # Command message from remote_monitor
       if 'cmd' in m['topic']:
         for lineData in m['data']:
@@ -206,6 +248,10 @@ class AvAgent:
               self.fileInTransit.state.append(['None',0])
             else:
               self.fileInTransit.state.append([str(lineData[1]),int(lineData[2])+1])
+              
+      elif 'wyp' in m['topic']:
+        wp = WaypointData()
+        wp.fromMsg(m)
         
   def setLaunchAll(self):
     for s in self.subsystems:
@@ -253,15 +299,20 @@ class AvAgent:
       
       # Subsystem specific stuff
       if s.name == 'CAR':
-        if s.pmuData[self.pmuAvIdx] == 2 and self.pmuState[self.pmuAvIdx] == 1:
-          print('PMU Start Request!')
-          self.pmuAvReqHist = 'Started'
-          self.setLaunchAll()
-          
-        if s.pmuData[self.pmuAvIdx] == 1 and self.pmuState[self.pmuAvIdx] == 2 and self.pmuAvReqHist == 'Started':
-          print('PMU Stop Request!')
-          self.pmuAvReqHist = 'None'
-          self.setStopRequested()
+        try:
+          if s.pmuData[self.pmuAvIdx] == 2 and self.pmuState[self.pmuAvIdx] == 1:
+            print('PMU Start Request!')
+            self.pmuAvReqHist = 'Started'
+            self.setLaunchAll()
+        except:
+          pass
+        try:
+          if s.pmuData[self.pmuAvIdx] == 1 and self.pmuState[self.pmuAvIdx] == 2 and self.pmuAvReqHist == 'Started':
+            print('PMU Stop Request!')
+            self.pmuAvReqHist = 'None'
+            self.setStopRequested()
+        except:
+          pass
           
         # Copy pmu and arduino data to AvAgent object
         self.pmuState = s.pmuData[:]
