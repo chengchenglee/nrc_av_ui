@@ -196,9 +196,9 @@ Subsystem:
         HealthName: TLR
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 1, 0.5, 0.2
-      - HealthTopic: /ailsv_virtual_objects
+      - HealthTopic: /VirtualVehs/health
         HealthName: VRT
-        HealthTopicType: TrackedObjectSet
+        HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
       - HealthTopic: /master_filter/health
         HealthName: WOS
@@ -235,13 +235,13 @@ Subsystem:
         HealthName: RSKFLD
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /lane_planner_state
+      - HealthTopic: /trajectory_planner/health
         HealthName: TRP
-        HealthTopicType: LanePlannerState
+        HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /lane_follower_state
+      - HealthTopic: /trajectory_follower/health
         HealthName: TRC
-        HealthTopicType: TrajectoryControllerState
+        HealthTopicType: DiagnosticArray
         NomWarnErrRate: 100, 60, 10
     Commands:
       - Name: RouteWaypoints
