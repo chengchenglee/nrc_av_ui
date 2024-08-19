@@ -58,6 +58,9 @@ class FileInTransit:
       self.fileOpen = 0
       self.fileread.close()
     self.state = ['Idle','Transfer cancelled']
+
+  def getPathToBags(self):
+    return repr(self.pathToBags)
   
   def getPayload(self):
     # Data

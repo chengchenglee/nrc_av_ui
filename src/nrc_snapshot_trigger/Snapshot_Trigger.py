@@ -10,6 +10,8 @@ from std_msgs.msg import Int16MultiArray
 from diagnostic_msgs.msg import *
 import numpy as np
 from nrc_msgs.msg import CtrlStateFLG
+from nrc_msgs.msg import CANVReader
+from nrc_msgs.msg import DriverInput
 from nrc_msgs.msg import DynamicPoseWithCovar
 
 import time
@@ -19,13 +21,14 @@ from collections import deque
 import numpy as np
 
 class CsvWriterAVinterface:
-    def __init__(self, checkEngaged):
+    def __init__(self, args):
         self.csvFileName = 'trigger_node_default.csv'
         self.timerInterval = 0.1        # Interval at which the timer callback will run.
         
         self.avEngaged = False
         self.avEngagedTimer = 0
-        self.checkEngaged = checkEngaged
+        self.checkEngaged = args.checkEngaged
+        self.car = args.car
         #self.updateThisCycle = False
 
         self.BRK_Override = False
@@ -161,9 +164,9 @@ class CsvWriterAVinterface:
         diagMsg.status.append(DiagnosticStatus())
         sleepTime = 0.5
         if self.writeSnapshot:
-            diagMsg.status[0].level = 5
+            diagMsg.status[0].level = 5 #pink
         else:
-            diagMsg.status[0].level = 3
+            diagMsg.status[0].level = 3 #green
         self.healthPub.publish(diagMsg)
         
         # Record the future at least snapshotDefaultFutureTimeHorizon seconds, at least snapshotFutureDistanceHorizon meters 
@@ -260,6 +263,25 @@ class CsvWriterAVinterface:
         else:
           self.avEngaged = True
 
+    def driverInputCallback(self,data):
+        '''
+        The data in this callback has some flags (like the following) which 
+        becomes some non-zero number when the override happens and then goes back to 
+        being zero when the trigger is no longer there.
+        '''
+        if self.car == "Mike":
+            self.BRK_Override = bool(data.is_driver_accel)
+            self.ACC_Override = bool(data.is_driver_brake)
+
+    def CAN_V_readerCallback(self,data):
+        '''
+        The data in this callback has some flags (like the following) which 
+        becomes some non-zero number when the override happens and then goes back to 
+        being zero when the trigger is no longer there.
+        '''
+        if self.car == "Mike":
+            self.avEngaged = bool(data.Switch_MAIN)
+
     def SoftwareEventTriggerCallback(self, data):
         '''
         This callback will be triggered by the /software_event_trigger topic, which 
@@ -281,10 +303,14 @@ class CsvWriterAVinterface:
         
         rospy.Subscriber('/CtrlStateFLG', CtrlStateFLG, self.CtrlStateFLGcallback)
         rospy.Subscriber('/ard_state', Int16MultiArray, self.DriverMarkerButtonCallback)
+        
+        if self.car == "Mike":
+            rospy.Subscriber('/CAN_V_reader', CANVReader, self.CAN_V_readerCallback)
+            rospy.Subscriber('/driver_input', DriverInput, self.driverInputCallback)
 
         while not rospy.is_shutdown():
             
-            #print(self.avEngaged, self.updateThisCycle, self.writeSnapshot, self.BRK_Override, self.ACC_Override)
+            # print(self.avEngaged, self.writeSnapshot, self.BRK_Override, self.ACC_Override)
             #print('\n\n snapbutton value: {} \n\n'.format(self.snapButton))
             
             rospy.sleep(1)  # sleep for one second.
@@ -295,6 +321,7 @@ if __name__ == '__main__':
     # Parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('-e', '--checkEngaged', default=True)
+    parser.add_argument('-c', '--car', default="Foxtrot")
     args, uargs = parser.parse_known_args()
     
     if args.checkEngaged == "False" or args.checkEngaged == "false" or args.checkEngaged == "0":
@@ -303,8 +330,9 @@ if __name__ == '__main__':
     else:
       print('Checking if AV is engaged to trigger snapshots.')
       args.checkEngaged = True
+    print("Running snapshot trigger for",args.car)
 
-    clsObj = CsvWriterAVinterface(args.checkEngaged)
+    clsObj = CsvWriterAVinterface(args)
     clsObj.listener()
 
 
