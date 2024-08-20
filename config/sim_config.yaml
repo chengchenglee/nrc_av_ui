@@ -6,7 +6,7 @@ Configuration:
   useGui: 1
   sendWm: 1
   sendSnapshots: 0
-  broker: ncal
+  broker: ccta_ads
 
 Subsystem:
   Sim:
