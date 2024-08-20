@@ -118,6 +118,8 @@ class CsvWriterAVinterface:
         if self.avEngaged:
             if (not self.BRK_Override) and (not self.ACC_Override):
               self.avEngagedTimer += self.timerInterval
+        else:
+            self.avEngagedTimer = 0.0
         
         wasAutonomous = self.avEngagedTimer > 2.0
         

@@ -126,17 +126,21 @@ Subsystem:
         HealthName: TCF
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /tower_cam_frontLeft/image_stamped/health_status
-        HealthName: TCFR
-        HealthTopicType: DiagnosticArray
+      - HealthTopic: /tower_cam_frontLeft/camera_info
+        HealthName: TCFL
+        HealthTopicType: CameraInfo
         NomWarnErrRate: 10, 6, 3
       - HealthTopic: /tower_cam_frontRight/image_stamped/health_status
-        HealthName: TCFL
+        HealthName: TCFR
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: TowerCam
         Command: roslaunch nrc_hw_svcs pgr_gige_cameras.launch FrRCam:=true FrLCam:=true FrCam:=true BaRCam:=false BaLCam:=false BaCam:=false enableArduino:=true video_preprocess:=true leaf_foxtrot:=true
+        Type: Software
+        LaunchTime: 3.0
+      - Name: Helm
+        Command: roslaunch nrc_perc_svcs helm_perc.launch
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
