@@ -1,0 +1,13 @@
+numpy
+pyyaml
+pycryptodome
+pycryptodomex
+gnupg
+rospkg
+scipy
+quaternion
+numpy-quaternion
+tqdm
+p_tqdm
+opencv-python-headless
+psycopg2
