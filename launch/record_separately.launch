@@ -33,7 +33,8 @@
   <arg name="system_front_tower_cameras_topics"
   default="/monitor_cam_front/image_stamped/compressed
   |/vehicle_state_ros
-  |/tower_cam_front/image_stamped/compressed
+  |/tower_cam_front/image_color/compressed
+  |/tower_cam_front/stream/ffmpeg
   |/front_camera/image_color/compressed
   |/lucid_cam_front/image_rect_color/compressed
   |/lucid_cam_front_left/image_rect_color/compressed
@@ -274,7 +275,7 @@
   <node if="$(arg record_system_other_cameras)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_system_other_cameras" output="screen"
   args="$(arg compression) -o $(arg prefix)_system_other_cameras -e $(arg system_other_cameras_topics)" machine="$(arg record_machine)"/>
   
-  <node if="$(arg record_system_lidar)" pkg="nrc_svcs" type="rosbagrecord_lz4.sh" name="rosbag_record_system_lidar" output="screen"
+  <node if="$(arg record_system_lidar)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_system_lidar" output="screen"
   args="$(arg compression) -o $(arg prefix)_system_lidar -e $(arg system_lidar_topics)" machine="$(arg record_machine)"/>
 
   <node if="$(arg record_system_main)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_for_system_main" output="screen"
