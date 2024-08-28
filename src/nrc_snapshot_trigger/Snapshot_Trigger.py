@@ -517,9 +517,25 @@ class CsvWriterAVinterface:
         becomes some non-zero number when the override happens and then goes back to 
         being zero when the trigger is no longer there.
         '''
+        #if self.car == "Mike":
+            #self.BRK_Override = bool(data.is_driver_accel)
+            #self.ACC_Override = bool(data.is_driver_brake)
+
         if self.car == "Mike":
-            self.BRK_Override = bool(data.is_driver_accel)
-            self.ACC_Override = bool(data.is_driver_brake)
+            if bool(data.is_driver_accel):
+                self.BRK_Override = True
+                self.BRK_Override_waitForTimerCallback = True
+            else:
+                if not self.BRK_Override_waitForTimerCallback:
+                    self.BRK_Override = False
+
+            if bool(data.is_driver_brake):
+                self.ACC_Override = True
+                self.ACC_Override_waitForTimerCallback = True
+            else:
+                if not self.ACC_Override_waitForTimerCallback:
+                    self.ACC_Override = False
+
 
     def CAN_V_readerCallback(self,data):
         '''
@@ -529,6 +545,7 @@ class CsvWriterAVinterface:
         '''
         if self.car == "Mike":
             self.avEngaged = bool(data.Switch_MAIN)
+
 
     def SoftwareEventTriggerCallback(self, data):
         '''
