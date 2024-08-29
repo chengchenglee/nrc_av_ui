@@ -94,7 +94,12 @@ if True:
       prevTime = time.time()
 
     remoteWmReq = agent.remoteWmDisplayOn == 1
-    remoteWmReq = remoteWmReq or (time.time()-agent.remoteWmDisplayLastReq < 3.0)
+    remoteWmReq = remoteWmReq or (time.time()-agent.remoteWmDisplayLastReq < 1.0)
+    if (remoteWmReq or agent.sendWm == 2) and agent.cloud.isConnected == True:
+      agent.passThroughWm = True
+    else:
+      agent.passThroughWm = False
+    
     if time.time() > nextWmSend and (remoteWmReq or agent.sendWm == 2):
       nextWmSend = time.time()+0.1
       if agent.sendWm > 0 and agent.cloud.isConnected == True:

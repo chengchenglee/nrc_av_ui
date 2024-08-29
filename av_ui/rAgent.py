@@ -6,6 +6,7 @@ import time
 from wmStatus import WmStatus
 from heartbeat_msg_defs import HeartbeatData
 from waypoints_msg_defs import WaypointData
+from ffmpeg_msg_defs import ImgStreamData
 
 class MonitoredProcess:
   def __init__(self):
@@ -76,6 +77,14 @@ class MonitoredAgent:
     self.wmStatus = WmStatus()
     self.wmDisplayOn = 0
     self.heartbeat = HeartbeatData()
+    self.imgStreamData = ImgStreamData()
+    
+    # Teleop cmds
+    self.lcLeftButton = []
+    self.gaLeftButton = []
+    self.gaRghtButton = []
+    self.lcRghtButton = []
+    
   
   def update(self,latestSubsystems):
     foundSubsystem = False
@@ -143,3 +152,7 @@ class MonitoredAgent:
         mon.status = (statusData-mon.msgCount)/1000
         subsystem.monitors.append(mon)
     self.subsystems.append(subsystem)
+
+  def updateImgFromMqtt(self,msgData):
+    self.imgStreamData.fromMsg(msgData)
+    

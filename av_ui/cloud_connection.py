@@ -112,7 +112,9 @@ class CloudConnection:
         
         if ('snp' in message.topic) and ('data' in message.topic):
           msg['data'] = message.payload
-          
+        elif 'imgStream' in message.topic:
+          msg['data'] = message.payload
+        
         else:
           # Parse csv data
           payloadCsv = message.payload
@@ -193,6 +195,7 @@ class CloudConnection:
       if status != 0:
         print("Failed to send msg to broker.")
       else:
+        #print('Sent msg:',topic,len(data))
         dt = time.time()-tStart
         dtms = round(dt*10000)/10
         rate = getsizeof(data)/(dt*1000)
@@ -201,9 +204,9 @@ class CloudConnection:
         self.avgTransferRate = 0.3*self.avgTransferRate + 0.7*rate
         
         dt = time.time() - self.lastUpdateTime
-        if dt > 1:
+        if dt > 2:
           msgsPerSec = self.msgsSinceLastUpdate / dt
-          #print('Mqtt stats (msg/sec, kbps):'+str(round(msgsPerSec))+', '+str(round(self.avgTransferRate*10)/10))
+          print('Mqtt stats (msg/sec, kbps):'+str(round(msgsPerSec))+', '+str(round(self.avgTransferRate*10)/10))
           self.lastUpdateTime = time.time()
           self.msgsSinceLastUpdate = 0
     else:

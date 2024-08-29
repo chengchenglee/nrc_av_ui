@@ -69,36 +69,56 @@ def parseMsgs(messages):
         if a.name in msg['topic']:
           a.wmStatus.updateFromMqtt(msg['data'])
           break
+        
+    elif "imgStream" in msg['topic']:
+      for a in monitoredAgents:
+        if a.name in msg['topic']:
+          a.updateImgFromMqtt(msg['data'])
+          break
 
 # Only subscribe to agent wmState if we've selected them on teleop tab
 def updateTeleopSubs():
   global cloud, gui, subscribedTopics
   
   # If teleop tab has no agent selected, unsubscribe from all wmState topics
+  # We rebuild the list of subscribed topics because python
   newSubscribedTopics = []
+  
+  # Remove wm and img stream topics
   if gui.selectedAgent == 'None':
     for topic in subscribedTopics:
       if 'wmState' in topic:
         cloud.unsubscribe([topic])
+      elif 'imgStream' in topic:
+        cloud.unsubscribe([topic])
       else:
         newSubscribedTopics.append(topic)
   
-  # Subscribe to the relevant wmState topics
+  # Add wm and img stream topics
   else:
     foundSub = False
     for topic in subscribedTopics:
-      if 'wmState' in topic:
+      
+      # Found a wm/img subscription
+      if ('wmState' in topic) or ('imgStream' in topic):
+        
+        # ... it is the one we want to monitor
         if gui.selectedAgent in topic:
           foundSub = True
+          
+        # ... but it's not the vehicle we want to monitor
         else:
           cloud.unsubscribe([topic])
+          
+      # Not a wm/img topic, so want to keep
       else:
         newSubscribedTopics.append(topic)
     
-    topic = 'dt/'+gui.selectedAgent+'/wmState'
-    if not foundSub:
-      cloud.subscribe([topic])
-    newSubscribedTopics.append(topic)
+    wmTopics = ['dt/'+gui.selectedAgent+'/wmState','dt/'+gui.selectedAgent+'/imgStream']
+    for wmTopic in wmTopics:
+      if not foundSub:
+        cloud.subscribe([wmTopic])
+      newSubscribedTopics.append(wmTopic)
   
   subscribedTopics = newSubscribedTopics[:]
 
@@ -141,7 +161,7 @@ if True:
         for a in monitoredAgents:
           if a.name == gui.selectedAgent:
             a.wmDisplayOn = 1
-            gui.updateCanvas(a.wmStatus)
+            gui.updateCanvas(a.wmStatus,a.imgStreamData)
     
     if time.time() > updatePubs:
       updatePubs = time.time() + 1.0

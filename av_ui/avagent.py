@@ -1,12 +1,16 @@
 #!/usr/bin/python
 
+# general stuffs
 from os.path import expanduser
 import os
 import glob
 import rospy
+
+# mqtt messages
 from heartbeat_msg_defs import HeartbeatData
 from telemetry_msg_defs import TelemetryData
 from waypoints_msg_defs import WaypointData
+
 from subsystem import Subsystem
 from wmStatus import WmStatus
 from fileInTransit import FileInTransit
@@ -14,6 +18,8 @@ import loader as Loader
 from nrc_msgs.msg import InterventionRequest
 from std_msgs.msg import Int16MultiArray
 from nrc_msgs.msg import TrackedObjectSet,DynamicPoseWithCovar
+from sensor_msgs.msg import CompressedImage
+
 import numpy as np
 import tf.transformations
 import time
@@ -21,6 +27,17 @@ from cloud_connection import CloudConnection
 import json, ast
 from collections import OrderedDict
 import rospkg
+
+# image resize
+import io
+from PIL import Image
+
+ffmpegTransportExists = True
+try:
+  from ffmpeg_image_transport_msgs.msg import FFMPEGPacket
+  from ffmpeg_msg_defs import ImgStreamData
+except ImportError:
+  ffmpegTransportExists = False
 
 class AvAgent:
   def __init__(self, agent_config, agent_name, verbose):
@@ -36,9 +53,11 @@ class AvAgent:
     self.pmuState = [0,0,0,0,0,0,0,0]
     self.ardState = [0,0,0,0,0,0,0,0]
     self.wmStatus = WmStatus()
+    self.passThroughWm = False
     self.remoteWmDisplayOn = 0
     self.remoteWmDisplayLastReq = 0
     self.fixedPose = None
+    self.tLastImgSent = 0
 
     # Load the agent configuration
     with open(self.filename, 'r') as file:
@@ -82,6 +101,12 @@ class AvAgent:
     self.pose10hzSub = rospy.Subscriber("/dynamic_global_pose_10Hz",DynamicPoseWithCovar,self.pose10hz_callback,queue_size=1)
     if self.sendWm == 1: 
       self.wmStatusSub = rospy.Subscriber("pc_processor/multi_object_tracker/tracked_object_set", TrackedObjectSet, self.wmStatus.updateObjs, queue_size = 1)
+    
+    if ffmpegTransportExists:
+      #self.imgStreamSub   = rospy.Subscriber("/tower_cam_front/stream/ffmpeg", FFMPEGPacket,              self.sendImgStreamPkt, queue_size = 1)
+      self.imgFrameSub    = rospy.Subscriber("/tower_cam_front/image_color/compressed", CompressedImage , self.sendImgFramePkt, queue_size = 1)
+      self.imgStreamData  = ImgStreamData()
+      print('Subscribed to ffmpeg packets.')
 
     # Setup mqtt publishers and subscribers
     self.cloud.init(self.mqttConfig)
@@ -112,7 +137,7 @@ class AvAgent:
 
   def sendStatusCsv(self):
     # Heartbeat message
-    qos = 0
+    qos = 1
     topic = "dt/agents/heartbeat"
     csvStr = self.heartbeat.toMsg()
     #data = ''
@@ -142,6 +167,47 @@ class AvAgent:
     payload = ''
     payload += self.wmStatus.getWmStr()+'\n'
     self.cloud.publishCsv(topic,payload,qos)
+  
+  def sendImgStreamPkt(self,msg):
+    if not self.passThroughWm: return
+    a = 1
+    qos = 0
+    topic = "dt/"+self.name+"/imgStream"
+    mqttData = self.imgStreamData.toMsg(msg)
+    self.cloud.publishCsv(topic,mqttData,qos)
+    
+  def sendImgFramePkt(self,msg):
+    if not self.passThroughWm: return
+    
+    #tNow = rospy.Time.now().to_sec()
+    #dt = tNow - self.tLastImgSent
+    #if dt < 0.4:
+      #return
+    #self.tLastImgSent = tNow
+    
+    # resize
+    image = Image.open(io.BytesIO(msg.data))
+    width, height = image.size
+    image = image.resize((int(0.15*width),int(0.15*height)))
+    
+    # crop
+    width, height = image.size
+    left = 0
+    right = width-1
+    top = height / 3
+    bottom = 3 * height / 4
+    image = image.crop((left, top, right, bottom))
+    width, height = image.size
+    
+    buffered = io.BytesIO()
+    image.save(buffered, format='jpeg')
+    msg.data = buffered.getvalue()
+    
+    a = 1
+    qos = 0
+    topic = "dt/"+self.name+"/imgStream"
+    mqttData = self.imgStreamData.toMsg(msg,width,height)
+    self.cloud.publishCsv(topic,mqttData,qos)
     
   def getFilenameToSend(self,partList):
     # Get list of all files in directory
