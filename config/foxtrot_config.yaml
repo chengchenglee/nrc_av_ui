@@ -122,21 +122,17 @@ Subsystem:
     Trigger:
       - Source: StartRequest
     HealthTopics:
-      - HealthTopic: /tower_cam_front/image_stamped/health_status
+      - HealthTopic: /tower_cam_front/camera_info
         HealthName: TCF
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /tower_cam_frontLeft/image_stamped/health_status
-        HealthName: TCFR
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /tower_cam_frontRight/image_stamped/health_status
-        HealthName: TCFL
-        HealthTopicType: DiagnosticArray
+        HealthTopicType: CameraInfo
         NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: TowerCam
-        Command: roslaunch nrc_hw_svcs pgr_gige_cameras.launch FrRCam:=true FrLCam:=true FrCam:=true BaRCam:=false BaLCam:=false BaCam:=false enableArduino:=true video_preprocess:=true leaf_foxtrot:=true
+        Command: roslaunch nrc_hw_svcs pgr_gige_cameras.launch FrRCam:=false FrLCam:=false FrCam:=true BaRCam:=false BaLCam:=false BaCam:=false enableArduino:=false leaf_foxtrot:=true
+        Type: Software
+        LaunchTime: 3.0
+      - Name: Helm
+        Command: roslaunch nrc_perc_svcs helm_perc.launch
         Type: Software
         LaunchTime: 3.0
     Diagnostic:

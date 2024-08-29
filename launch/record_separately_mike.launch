@@ -211,11 +211,11 @@
   default="/cubtek_PC_rviz_R
   |/cubtek_PC_rviz_L
   |/cubtek_trackedobjects_filter_out
-  |/milliwave_radar_rviz_L
-  |/milliwave_radar_rviz_R
   |/cubtek_raw_points
-  |/cubtek_radar_rviz_L
-  |/cubtek_radar_rviz_R"/>
+  |/cubtek_raw_PC
+  |/cubtek_dbscan_PC
+  |/dbscan_out
+  |/ariya_back_radar_tracked_objects"/>
 
   <arg name="ariya_messages"
   default="/AriyaBlindSpotRadar_L

@@ -139,6 +139,10 @@ Subsystem:
         Command: roslaunch nrc_hw_svcs lucid_gige_cameras.launch
         Type: Software
         LaunchTime: 3.0
+      - Name: Helm
+        Command: roslaunch nrc_perc_svcs helm_perc.launch helm_machine:=node02
+        Type: Software
+        LaunchTime: 3.0
     Diagnostic:
       LED: 3
       Retry: 3
@@ -208,9 +212,9 @@ Subsystem:
         HealthName: TLR
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 1, 0.5, 0.2
-      - HealthTopic: /ailsv_virtual_objects
-        HealthName: VRT
-        HealthTopicType: TrackedObjectSet
+      - HealthTopic: /VirtualVehs/health
+        HealthName: Virtual
+        HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
       - HealthTopic: /master_filter/health
         HealthName: WOS
@@ -243,24 +247,21 @@ Subsystem:
         HealthName: RSKFLD
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /lane_planner_state
-        HealthName: TRP
-        HealthTopicType: LanePlannerState
+      - HealthTopic: /trajectory_planner/health
+        HealthName: TrajP
+        HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /lane_follower_state
-        HealthName: TRC
-        HealthTopicType: TrajectoryControllerState
+      - HealthTopic: /trajectory_follower/health
+        HealthName: TrajC
+        HealthTopicType: DiagnosticArray
         NomWarnErrRate: 100, 60, 10
     Commands:
-      - Name: RoutePlanner
-        Command: roslaunch nrc_dm_svcs modia_all.launch autonomy_level:=ad5 use_modia_decisions:=false
+      - Name: Waypoints
+        Command: rosrun nrc_wm2_svcs multi_set_dest_repeater.py
         Type: Software
         LaunchTime: 3.0
-      - Name: RouteGoalGenerator
-        Command: rosrun nrc_dm_svcs 
       - Name: AutoGoals
-        Command: rosrun nrc_wm2_svcs auto_goals2 __name:=AutoGoals_node
-        NodeName: AutoGoals_node
+        Command: roslaunch nrc_wm2_svcs leaf_route.launch inclRoutePlanner:=true
         Type: Software
         LaunchTime: 3.0
       - Name: Trajectory Planner

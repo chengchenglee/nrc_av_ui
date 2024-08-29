@@ -39,6 +39,12 @@ def parseMsgs(messages):
       for t in subscribedTopics:
         if agentName in t:
           newAgent = False
+          #Check if the agent was initialized on a previous date
+          todaysDate = ''.join(time.strftime("%Y-%m-%d"))
+          if (snapshotStreams[agentName].getPathToBags().split('/'))[5] != todaysDate:
+            pathToBags = '/opt/data/snapshots/'+agentName+'/'+todaysDate+'/'
+            snapshotStreams[agentName] = FileInTransit(pathToBags)
+            print("Initializing snapshotStreams[agentName] again due to date change")
           break
       # If new agent, subscribe.  If not, update time stamp
       if newAgent == True:

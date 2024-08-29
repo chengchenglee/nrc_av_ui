@@ -178,7 +178,7 @@ Subsystem:
         NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: WM
-        Command: roslaunch nrc_wm2_svcs leaf_pred.launch
+        Command: roslaunch nrc_wm2_svcs leaf_pred.launch vehicleType:=SV_AiCC frontLidarOnly:=true
         Type: Software
         LaunchTime: 1.0
     Diagnostic:
@@ -207,13 +207,13 @@ Subsystem:
         HealthName: RSKFLD
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /lane_planner_state
+      - HealthTopic: /trajectory_planner/health
         HealthName: TRP
-        HealthTopicType: LanePlannerState
+        HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /lane_follower_state
+      - HealthTopic: /trajectory_follower/health
         HealthName: TRC
-        HealthTopicType: TrajectoryControllerState
+        HealthTopicType: DiagnosticArray
         NomWarnErrRate: 100, 60, 10
     Commands:
       - Name: RouteWaypoints
@@ -221,12 +221,12 @@ Subsystem:
         Type: Software
         LaunchTime: 3.0
       - Name: AutoGoals
-        Command: roslaunch nrc_wm2_svcs leaf_route.launch inclRoutePlanner:=true
-        NodeName: Route Planning
+        Command: roslaunch nrc_wm2_svcs leaf_route.launch inclRoutePlanner:=true configName:=SV_AiCC
+        NodeName: AutoGoals_node
         Type: Software
         LaunchTime: 3.0
       - Name: Trajectory Planning
-        Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=LeafFS
+        Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=AriyaFS
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -260,10 +260,10 @@ Subsystem:
         Command: roslaunch nrc_av_ui record_separately_mike.launch
         Type: Software
         LaunchTime: 3.0
-      #- Name: SNAP
-        #Command: roslaunch nrc_av_ui snapshotPipeline.launch
-        #Type: Software
-        #LaunchTime: 3.0
+      - Name: SNAP
+        Command: roslaunch nrc_av_ui snapshotPipeline.launch
+        Type: Software
+        LaunchTime: 3.0
     Diagnostic:
       LED: 7
       Retry: 0

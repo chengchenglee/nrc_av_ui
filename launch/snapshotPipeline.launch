@@ -8,6 +8,7 @@
   <arg name="prefix" default="autonomy_log" />
   <arg name="compression" default="false" /> <!--bz2 compression -->
   <arg name="checkEngaged" default="True" />
+  <arg name="car" default="Foxtrot" />
 
   <!-- (.*) does not work with snapshot rosbag command. So added a seperate snapshot main topics-->
   <arg name="snapshot_system_main_topics"
@@ -80,14 +81,21 @@
   |/lead_vehicle
   |/prm/reference_path_data
   |/prm/osp_constraints_lv_ids"/>
+
+  <arg name="cubtek_topics"
+  default="/cubtek_PC_rviz_R
+  |/cubtek_PC_rviz_L
+  |/cubtek_trackedobjects_filter_out
+  |/cubtek_raw_points
+  |/ariya_back_radar_tracked_objects"/>
   
   <!--Run snapshot buffer shell script-->
   <group if="True">
     <node pkg="nrc_av_ui" type="rosbagSnapshot.sh" name="rosbag_snapshot" output="screen"
-    args="$(arg snapshot_system_front_tower_cameras_topics) $(arg snapshot_system_main_topics) $(arg snapshot_pc_processor_all_topics) $(arg snapshot_wm_all_topics) $(arg snapshot_ralp_all_topics)"/>
+    args="$(arg snapshot_system_front_tower_cameras_topics) $(arg snapshot_system_main_topics) $(arg snapshot_pc_processor_all_topics) $(arg snapshot_wm_all_topics) $(arg snapshot_ralp_all_topics) $(arg cubtek_topics)"/>
 
     <!--Run snapshot node-->
-    <node pkg="nrc_av_ui" type="Snapshot_Trigger.py" name="snapshot_trigger_node" output="screen" args="-e $(arg checkEngaged)"/>
+    <node pkg="nrc_av_ui" type="Snapshot_Trigger.py" name="snapshot_trigger_node" output="screen" args="-e $(arg checkEngaged) -c $(arg car)"/>
     
     <node name="snapshot" pkg="nodelet" type="nodelet"
         args="standalone image_proc/resize" output="screen">
