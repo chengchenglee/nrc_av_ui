@@ -204,7 +204,7 @@ class CloudConnection:
         self.avgTransferRate = 0.3*self.avgTransferRate + 0.7*rate
         
         dt = time.time() - self.lastUpdateTime
-        if dt > 2:
+        if dt > 5:
           msgsPerSec = self.msgsSinceLastUpdate / dt
           print('Mqtt stats (msg/sec, kbps):'+str(round(msgsPerSec))+', '+str(round(self.avgTransferRate*10)/10))
           self.lastUpdateTime = time.time()

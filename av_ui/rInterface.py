@@ -61,6 +61,8 @@ class Interface:
     self.camPctIncr = 0.01
     self.tab2_img = []
     
+    self.mouseclick = [0,0,0,False]
+    
     self.buttonWidth = 7
     
     if ffmpegExists:
@@ -139,6 +141,8 @@ class Interface:
     self.tab2_frame2.grid(row=4,columnspan=10, sticky=Tkinter.W)
       
     self.windowOpen = True
+    
+    self.objsOfInterest = []
   
   def statusToColor(self,status):
     if status == 3:
@@ -174,7 +178,16 @@ class Interface:
     
     self.tab2_canvas = Tkinter.Canvas(self.tab2, bg="white", height=self.canvasHeight, width=self.canvasWidth)
     self.tab2_canvas.grid(column=0, row=3)
-
+    
+    # Determine the origin by clicking
+    def getorigin(eventorigin):
+        global x0,y0
+        x0 = eventorigin.x
+        y0 = eventorigin.y
+        self.mouseclick = [0,x0,y0,True]
+        print(x0,y0)
+    #mouseclick event
+    self.tab2_canvas.bind("<Button 1>",getorigin)
   
   def rpyToRot(self,ypr):
     rotZ = np.identity(3)
@@ -206,16 +219,32 @@ class Interface:
                                   None)
     bottom = []
     inRange = True
+    avgU = 0
+    avgV = 0
     for i in range(0,4):
       u = self.canvasWidth-corners2d[i,0,0]
-      if u < 0 or u > self.canvasWidth or corners2d[i,0,1] < 0 or corners2d[i,0,1] > self.canvasHeight:
+      v = corners2d[i,0,1]
+      if u < 0 or u > self.canvasWidth or v < 0 or v > self.canvasHeight:
         inRange = False
+        wmObj.avgU = 0
+        wmObj.avgV = 0
         break
       bottom.append([u])
-      bottom.append([corners2d[i,0,1]])
+      bottom.append([v])
+      avgU = avgU + u/4
+      avgV = avgV + v/4
     
     if inRange:
-      ship_id = self.tab2_canvas.create_polygon(bottom,  fill='red')
+      color = 'red'
+      for selected in self.objsOfInterest:
+        if selected[0] == wmObj.object_id:
+          color = selected[1]
+          
+      if wmObj.object_id == -1: color = 'grey'
+      
+      ship_id = self.tab2_canvas.create_polygon(bottom,  fill=color)
+      wmObj.avgU = avgU
+      wmObj.avgV = avgV
   
   def drawGrid(self,frame):
     gridSpacing = 5
@@ -346,11 +375,44 @@ class Interface:
     self.drawGrid(wmStatus.dgp)
     
     # Draw objects
+    #if len(self.objsOfInterest) > 0: print(self.objsOfInterest)
+  
     for obj in wmStatus.objs:
       self.drawBox(obj,wmStatus.dgp)
       
     # Draw ego
     self.drawBox(wmStatus.dgp,wmStatus.dgp)
+    
+    if self.mouseclick[3] == True:
+      print('Get nearest object.')
+      closestDist = 10000
+      closestBox  = -1
+      for i in range(len(wmStatus.objs)):
+        du = self.mouseclick[1]-wmStatus.objs[i].avgU
+        dv = self.mouseclick[2]-wmStatus.objs[i].avgV
+        dist = du*du + dv*dv
+        if dist < closestDist:
+          closestBox = i
+          closestDist = dist
+      
+      if closestBox >= 0 and closestDist < 10*10:
+        objExists = False
+        for obj in self.objsOfInterest:
+          if obj[0] == wmStatus.objs[closestBox].object_id:
+            print('Unmark object',obj[0])
+            obj[2] = 'remove'
+            objExists = True
+            break
+        if not objExists:
+          print('Mark object',wmStatus.objs[closestBox].object_id)
+          self.objsOfInterest.append([wmStatus.objs[closestBox].object_id,'blue','NA'])
+      self.mouseclick[3] = False
+      oldObjs = self.objsOfInterest
+      self.objsOfInterest = []
+      for obj in oldObjs:
+        if not obj[2] == 'remove':
+          self.objsOfInterest.append(obj)
+      
     
     # Update window
     self.window.update_idletasks()
@@ -466,10 +528,10 @@ class Interface:
           a.lcLeftButton = Tkinter.Button(self.tab2_frame2, text='LC-LFT', width=16, height=5, padx=1, pady=1, relief="raised")
           a.lcLeftButton.grid(column=0, row=0, sticky=Tkinter.W+Tkinter.E)
           
-          a.gaLeftButton = Tkinter.Button(self.tab2_frame2, text='GA-LFT', width=16, height=5, padx=1, pady=1, relief="raised")
+          a.gaLeftButton = Tkinter.Button(self.tab2_frame2, text='GA-LFT', width=16, height=5, padx=1, pady=1, relief="raised",command=self.gaLeft)
           a.gaLeftButton.grid(column=1, row=0, sticky=Tkinter.W+Tkinter.E)
           
-          a.gaRghtButton = Tkinter.Button(self.tab2_frame2, text='GA-RGT', width=16, height=5, padx=1, pady=1, relief="raised")
+          a.gaRghtButton = Tkinter.Button(self.tab2_frame2, text='GA-RGT', width=16, height=5, padx=1, pady=1, relief="raised",command=self.gaRght)
           a.gaRghtButton.grid(column=2, row=0, sticky=Tkinter.W+Tkinter.E)
           
           a.lcRghtButton = Tkinter.Button(self.tab2_frame2, text='LC-RGT', width=16, height=5, padx=1, pady=1, relief="raised")
@@ -484,3 +546,16 @@ class Interface:
     self.window.update_idletasks()
     self.window.update()
 
+  def gaLeft(self):
+    for obj in self.objsOfInterest:
+      if obj[1] == 'blue':
+        obj[1] = 'green'
+        obj[2] = 'gaLeft'
+    print('GA Left!')
+    
+  def gaRght(self):
+    for obj in self.objsOfInterest:
+      if obj[1] == 'blue':
+        obj[1] = 'green'
+        obj[2] = 'gaRght'
+    print('GA Right!')

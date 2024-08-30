@@ -40,6 +40,8 @@ class WmObject:
     self.object_id = objId
     self.data = data[:]
     self.update(self.data)
+    self.avgU = 0
+    self.avgV = 0
     
   @classmethod
   def from_trackedObject(cls, trObj):
@@ -112,6 +114,7 @@ class WmStatus:
     global xIdx,yIdx,thIdx,wIdx,lIdx,vIdx
     
     # Clear object list
+    oldObjs = self.objs
     self.objs = []
     
     # Parse new payload
