@@ -221,7 +221,7 @@ Subsystem:
         Type: Software
         LaunchTime: 3.0
       - Name: AutoGoals
-        Command: roslaunch nrc_wm2_svcs leaf_route.launch inclRoutePlanner:=true configName:=SV_AiCC
+        Command: roslaunch nrc_wm2_svcs leaf_route.launch
         NodeName: AutoGoals_node
         Type: Software
         LaunchTime: 3.0
@@ -261,7 +261,7 @@ Subsystem:
         Type: Software
         LaunchTime: 3.0
       - Name: SNAP
-        Command: roslaunch nrc_av_ui snapshotPipeline.launch
+        Command: roslaunch nrc_av_ui snapshotPipeline.launch car:=Mike
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
