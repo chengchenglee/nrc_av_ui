@@ -101,7 +101,10 @@ class ImgStreamData:
         character = chr(b)
         if character == ',':
           if commaCount < encIdx:
-            self.fields[commaCount] = int(headerStr)
+            try: self.fields[commaCount] = int(headerStr)
+            except ValueError:
+              self.fields[commaCount] = 0
+              print("ffmpeg_msg_defs.py: unable to convert string to int.")
           else:
             self.fields[encIdx] = headerStr
           commaCount += 1

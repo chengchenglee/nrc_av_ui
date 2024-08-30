@@ -72,18 +72,20 @@ if True:
   nextStSend = 0
   nextWmSend = 0
   nextSnapSend = time.time()+1
+  debugTiming = False
   while running:
     # Wait for updates
     prevTime = time.time()
     dtStamps = np.zeros(4)
     if time.time() > nextPollTime:
-      nextPollTime = time.time()+0.1
+      nextPollTime = time.time()+0.05
       agent.pollMonitors()
       agent.parseAgentMail()
       if (agent.useGui == 1):
         interface.updateSnpText(agent.fileInTransit)
         interface.update(agent.subsystems)
       dtStamps[0] = round((time.time() - prevTime)*1000)/1000
+      if debugTiming: print('Poll Monitors/Mail',dtStamps[0])
       prevTime = time.time()
 
     if time.time() > nextStSend:
@@ -91,6 +93,7 @@ if True:
       if agent.cloud.isConnected == True:
         agent.sendStatusCsv()
       dtStamps[1] = round((time.time() - prevTime)*1000)/1000
+      if debugTiming: print('Send status',dtStamps[1])
       prevTime = time.time()
 
     remoteWmReq = agent.remoteWmDisplayOn == 1
@@ -105,6 +108,7 @@ if True:
       if agent.sendWm > 0 and agent.cloud.isConnected == True:
         agent.sendWmStatus()
       dtStamps[2] = round((time.time() - prevTime)*1000)/1000
+      if debugTiming: print('Send WM',dtStamps[2])
       prevTime = time.time()
     
     if (time.time() > nextSnapSend) and (not remoteWmReq):
@@ -112,6 +116,7 @@ if True:
       if agent.cloud.dataInQueue == False and agent.cloud.isConnected == True:
         if (agent.sendSnapshots): agent.sendSnapshot()
       dtStamps[3] = round((time.time() - prevTime)*1000)/1000
+      if debugTiming: print('Send Snapshot',dtStamps[3])
     
     tTotal = np.sum(dtStamps)
     if (agent.printTimeDebug == 1 and tTotal > 0.08) or (tTotal > 0.9):

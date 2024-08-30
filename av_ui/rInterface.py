@@ -12,6 +12,8 @@ import io
 from PIL import Image, ImageTk
 #import av
 
+from msgs.teleop_msg_defs import TeleopEntry
+
 import fcntl
 
 ffmpegExists = True
@@ -142,7 +144,7 @@ class Interface:
       
     self.windowOpen = True
     
-    self.objsOfInterest = []
+    self.teleopCmds = []
   
   def statusToColor(self,status):
     if status == 3:
@@ -157,6 +159,7 @@ class Interface:
   def updateSelectedAgent(self, newVal):
     self.selectedAgent = newVal
     self.selectedAgentVal.set(newVal)
+    self.teleopCmds = []
   
   def initCanvas(self):
     self.agent_options = ['None']
@@ -236,12 +239,16 @@ class Interface:
     
     if inRange:
       color = 'red'
-      for selected in self.objsOfInterest:
-        if selected[0] == wmObj.object_id:
-          color = selected[1]
+      if wmObj.object_id == -1:
+        color = 'grey'
+      else:
+        for cmd in self.teleopCmds:
+          if cmd.objId() == wmObj.object_id:
+            if cmd.teleopType == 'ORU':
+              color = 'blue'
+            elif cmd.teleopType == 'GAL' or cmd.teleopType == 'GAR':
+              color = 'green'
           
-      if wmObj.object_id == -1: color = 'grey'
-      
       ship_id = self.tab2_canvas.create_polygon(bottom,  fill=color)
       wmObj.avgU = avgU
       wmObj.avgV = avgV
@@ -397,21 +404,28 @@ class Interface:
       
       if closestBox >= 0 and closestDist < 10*10:
         objExists = False
-        for obj in self.objsOfInterest:
-          if obj[0] == wmStatus.objs[closestBox].object_id:
-            print('Unmark object',obj[0])
-            obj[2] = 'remove'
-            objExists = True
-            break
+        
+        # Try to see if we're already tracking this object
+        for cmd in self.teleopCmds:
+          cmdIsOru = (cmd.teleopType == 'ORU' or cmd.teleopType == 'GAL' or cmd.teleopType == 'GAR')
+          if cmdIsOru:
+            if cmd.objId() == wmStatus.objs[closestBox].object_id:
+              cmd.setAction('remove')
+              objExists = True
+              break
+            
+        # If not, create possible teleop entry for this object
         if not objExists:
-          print('Mark object',wmStatus.objs[closestBox].object_id)
-          self.objsOfInterest.append([wmStatus.objs[closestBox].object_id,'blue','NA'])
+          newCmd = TeleopEntry.fromOru(wmStatus.objs[closestBox].object_id, wmStatus.objs[closestBox].xyth())
+          self.teleopCmds.append(newCmd)
+          
+      # Clear old entries
       self.mouseclick[3] = False
-      oldObjs = self.objsOfInterest
-      self.objsOfInterest = []
-      for obj in oldObjs:
-        if not obj[2] == 'remove':
-          self.objsOfInterest.append(obj)
+      oldTeleopCmds = self.teleopCmds
+      self.teleopCmds = []
+      for cmd in oldTeleopCmds:
+        if not cmd.teleopType == 'remove':
+          self.teleopCmds.append(cmd)
       
     
     # Update window
@@ -547,15 +561,17 @@ class Interface:
     self.window.update()
 
   def gaLeft(self):
-    for obj in self.objsOfInterest:
-      if obj[1] == 'blue':
-        obj[1] = 'green'
-        obj[2] = 'gaLeft'
-    print('GA Left!')
+    for cmd in self.teleopCmds:
+      if cmd.teleopType == 'ORU':
+        cmd.teleopType = 'GAL'
     
   def gaRght(self):
-    for obj in self.objsOfInterest:
-      if obj[1] == 'blue':
-        obj[1] = 'green'
-        obj[2] = 'gaRght'
-    print('GA Right!')
+    for cmd in self.teleopCmds:
+      if cmd.teleopType == 'ORU':
+        cmd.teleopType = 'GAR'
+    
+  def transferTeleopCmds(self,agent):
+    agent.teleopCmdData.commands = []
+    for cmd in self.teleopCmds:
+      if cmd.teleopType != 'ORU' and cmd.teleopType != 'remove':
+        agent.teleopCmdData.commands.append(cmd)

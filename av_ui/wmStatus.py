@@ -72,6 +72,9 @@ class WmObject:
   def toStr(self):
     return dataToStr(self.object_id,self.data)
   
+  def xyth(self):
+    return [self.data[xIdx],self.data[yIdx],self.data[thIdx]]
+  
   def cornersInFrame(self,frame):
     pose = np.dot(frame.poseInv,self.centerPose)
     

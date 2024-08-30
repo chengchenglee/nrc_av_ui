@@ -140,10 +140,11 @@ if True:
   
   updateSubs = 0
   updatePubs = 0
+  updateTeleopCmd = 0
   while running:
     # Update everything
     if time.time() > updateSubs:
-      nextUpdate = time.time()+0.05
+      updateSubs = time.time()+0.05
       
       # Update agent wmState subscriptions
       updateTeleopSubs()
@@ -157,11 +158,25 @@ if True:
       
       # Only update the teleop canvas if we've selected an agent
       isTeleopTab = gui.tab_control.tab(gui.tab_control.select(),"text") == 'Teleop'
-      if (not gui.selectedAgent == 'None') and isTeleopTab:
-        for a in monitoredAgents:
-          if a.name == gui.selectedAgent:
-            a.wmDisplayOn = 1
-            gui.updateCanvas(a.wmStatus,a.imgStreamData)
+      for ma in monitoredAgents:
+        if isTeleopTab and ma.name == gui.selectedAgent:
+          ma.wmDisplayOn = 1
+          gui.updateCanvas(ma.wmStatus,ma.imgStreamData)
+        else:
+          ma.wmDisplayOn = 0
+          ma.teleopCmdData.commands = []
+      if not isTeleopTab: gui.teleopCmds = []
+    
+    if time.time() > updateTeleopCmd:
+      updateTeleopCmd = time.time() + 0.1
+      
+      # Publish commands
+      isTeleopTab = gui.tab_control.tab(gui.tab_control.select(),"text") == 'Teleop'
+      for ma in monitoredAgents:
+        if isTeleopTab and ma.name == gui.selectedAgent:
+          gui.transferTeleopCmds(ma)
+          qos=0
+          cloud.publishCsv(ma.teleopTopic, ma.getTeleopCmd(),qos)
     
     if time.time() > updatePubs:
       updatePubs = time.time() + 1.0

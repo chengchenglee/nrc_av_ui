@@ -10,6 +10,7 @@ import rospy
 from heartbeat_msg_defs import HeartbeatData
 from telemetry_msg_defs import TelemetryData
 from waypoints_msg_defs import WaypointData
+from msgs.teleop_msg_defs import TeleopCmdData
 
 from subsystem import Subsystem
 from wmStatus import WmStatus
@@ -76,6 +77,7 @@ class AvAgent:
     self.printTimeDebug = max(int(Loader.getField(text,'printTimeDebug',0)), int(verbose))
     self.heartbeat = HeartbeatData(self.name,self.agentType)
     self.telemetry = TelemetryData()
+    self.teleopCmds = TeleopCmdData()
     
     #if infrapod, get fixed pose
     if self.agentType == 'RSU':
@@ -111,6 +113,7 @@ class AvAgent:
     # Setup mqtt publishers and subscribers
     self.cloud.init(self.mqttConfig)
     self.cloud.subscribe(['cmd/'+self.name+'/remote'])
+    self.cloud.subscribe(['cmd/'+self.name+'/teleop'])
     self.cloud.subscribe(['snp/remote_server/heartbeat'])
     self.cloud.subscribe(['snp/'+self.name+'/resPartList'])
     self.cloud.subscribe(['wyp/'+self.name+'/remote'])
@@ -285,9 +288,9 @@ class AvAgent:
     for m in msgs:
       #print(m['topic'])
       # Command message from remote_monitor
-      if 'cmd' in m['topic']:
+      if 'cmd' in m['topic'] and 'remote' in m['topic']:
         for lineData in m['data']:
-          if lineData[0] == 's':
+          if len(lineData) >= 3 and lineData[0] == 's':
             for s in self.subsystems:
               cmd = lineData[2]
               if s.name == lineData[1]:
@@ -295,10 +298,14 @@ class AvAgent:
                   if s.shouldBeStarted != int(cmd):
                     print("Remote cmd:",s.name, int(cmd))
                     s.shouldBeStarted = int(cmd)
-          elif lineData[0] == 'w':
+          elif len(lineData) >= 2 and lineData[0] == 'w':
             self.remoteWmDisplayOn = int(lineData[1])
             if self.remoteWmDisplayOn == 1:
               self.remoteWmDisplayLastReq = time.time()
+              
+      elif 'teleop' in m['topic']:
+        stamp = time.time()
+        self.teleopCmds.fromMsg(m['data'],stamp)
             
       # Heartbeat from remote snapshot database
       elif 'snp/remote_server/heartbeat' in m['topic']:
@@ -332,7 +339,6 @@ class AvAgent:
   def pollMonitors(self):
     # Check if subsystems should be running or stopped
     for s in self.subsystems:
-      
       # Should be started
       if s.shouldBeStarted > 0:
         readyToStart = s.status == 0 and s.timeStopped > 1

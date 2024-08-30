@@ -7,6 +7,7 @@ from wmStatus import WmStatus
 from heartbeat_msg_defs import HeartbeatData
 from waypoints_msg_defs import WaypointData
 from ffmpeg_msg_defs import ImgStreamData
+from msgs.teleop_msg_defs import TeleopEntry, TeleopCmdData
 
 class MonitoredProcess:
   def __init__(self):
@@ -78,14 +79,14 @@ class MonitoredAgent:
     self.wmDisplayOn = 0
     self.heartbeat = HeartbeatData()
     self.imgStreamData = ImgStreamData()
+    self.teleopCmdData = TeleopCmdData()
     
     # Teleop cmds
     self.lcLeftButton = []
     self.gaLeftButton = []
     self.gaRghtButton = []
     self.lcRghtButton = []
-    
-  
+
   def update(self,latestSubsystems):
     foundSubsystem = False
     for sNew in latestSubsystems:
@@ -133,12 +134,21 @@ class MonitoredAgent:
         data += 's,'+s.name+','+str(s.isRunning)+'\n'
     return data
   
+  def getTeleopCmd(self):
+    #if False:   # Can be used for testing
+      #newCmd = TeleopEntry.fromOru(10, [1,2,3])
+      #self.teleopCmdData.commands.append(newCmd)
+      #self.teleopCmdData.commands.append(newCmd)
+    
+    return self.teleopCmdData.toMsg()
+  
   def parseMsgPayloadCsv(self,data):
     subsystem = MonitoredSubsystem()
     for lineData in data:
       if lineData[0] == 'a':
         self.name = lineData[1]
         self.cmdTopic = 'cmd/'+self.name+'/remote'
+        self.teleopTopic = 'cmd/'+self.name+'/teleop'
       elif lineData[0] == 's':
         if subsystem.name != "": self.subsystems.append(subsystem)
         subsystem = MonitoredSubsystem()
