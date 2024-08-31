@@ -28,6 +28,7 @@ class ImgStreamData:
     self.fields.append(0)
     self.imgPkt    = []
     self.unprocessedFrame = False
+    self.msgCount = 0
   
   def width(self):
     return self.fields[widthIdx]
@@ -77,6 +78,9 @@ class ImgStreamData:
     return header+rosMsg.data
     
   def fromMsg(self, dataIn):
+    self.msgCount += 1
+    if self.msgCount >= 100: self.msgCount = 1
+    
     #print('\nParse img stream data')
     headerStr = ''
     headerVec = []

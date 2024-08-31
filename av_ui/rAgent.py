@@ -75,8 +75,10 @@ class MonitoredAgent:
     self.cmdsEnabledButton = []
     self.selected = False
     self.tLastMsg = time.time()
+    self.stateMsgCount = 0
     self.wmStatus = WmStatus()
     self.wmDisplayOn = 0
+    self.teleopOn = 0
     self.heartbeat = HeartbeatData()
     self.imgStreamData = ImgStreamData()
     self.teleopCmdData = TeleopCmdData()
@@ -104,6 +106,8 @@ class MonitoredAgent:
     
       if not foundSubsystem:
         self.subsystems.append(sNew)
+    self.stateMsgCount += 1
+    if self.stateMsgCount >= 100: self.stateMsgCount = 1
   
   def select(self):
     if self.selected:
@@ -129,6 +133,7 @@ class MonitoredAgent:
   def getCmdData(self):
     data = ''
     data += 'w,'+str(self.wmDisplayOn)+'\n'
+    data += 't,'+str(self.teleopOn)+'\n'
     if self.cmdsMode == 'Ctrl':
       for s in self.subsystems:
         data += 's,'+s.name+','+str(s.isRunning)+'\n'

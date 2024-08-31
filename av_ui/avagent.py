@@ -54,9 +54,12 @@ class AvAgent:
     self.pmuState = [0,0,0,0,0,0,0,0]
     self.ardState = [0,0,0,0,0,0,0,0]
     self.wmStatus = WmStatus()
-    self.passThroughWm = False
+    self.passThroughWm  = False
+    self.passThroughImg = False
     self.remoteWmDisplayOn = 0
     self.remoteWmDisplayLastReq = 0
+    self.remoteMonTeleoping = 0
+    self.remoteMonLastTeleopSignal = 0
     self.fixedPose = None
     self.tLastImgSent = 0
 
@@ -112,11 +115,12 @@ class AvAgent:
 
     # Setup mqtt publishers and subscribers
     self.cloud.init(self.mqttConfig)
-    self.cloud.subscribe(['cmd/'+self.name+'/remote'])
-    self.cloud.subscribe(['cmd/'+self.name+'/teleop'])
-    self.cloud.subscribe(['snp/remote_server/heartbeat'])
-    self.cloud.subscribe(['snp/'+self.name+'/resPartList'])
-    self.cloud.subscribe(['wyp/'+self.name+'/remote'])
+    qos = 1
+    self.cloud.subscribe(['cmd/'+self.name+'/remote'],qos)
+    self.cloud.subscribe(['cmd/'+self.name+'/teleop'],qos)
+    self.cloud.subscribe(['snp/remote_server/heartbeat'],qos)
+    self.cloud.subscribe(['snp/'+self.name+'/resPartList'],qos)
+    self.cloud.subscribe(['wyp/'+self.name+'/remote'],qos)
 
   def pose_callback(self, msg):
     #self.x_position = msg.pose.position.x
@@ -172,7 +176,8 @@ class AvAgent:
     self.cloud.publishCsv(topic,payload,qos)
   
   def sendImgStreamPkt(self,msg):
-    if not self.passThroughWm: return
+    if not self.passThroughImg: return
+    self.passThroughImg = False # Send once, will be reset by av_ui
     a = 1
     qos = 0
     topic = "dt/"+self.name+"/imgStream"
@@ -180,13 +185,8 @@ class AvAgent:
     self.cloud.publishCsv(topic,mqttData,qos)
     
   def sendImgFramePkt(self,msg):
-    if not self.passThroughWm: return
-    
-    #tNow = rospy.Time.now().to_sec()
-    #dt = tNow - self.tLastImgSent
-    #if dt < 0.4:
-      #return
-    #self.tLastImgSent = tNow
+    if not self.passThroughImg: return
+    self.passThroughImg = False # Send once, will be reset by av_ui
     
     # resize
     image = Image.open(io.BytesIO(msg.data))
@@ -299,9 +299,16 @@ class AvAgent:
                     print("Remote cmd:",s.name, int(cmd))
                     s.shouldBeStarted = int(cmd)
           elif len(lineData) >= 2 and lineData[0] == 'w':
-            self.remoteWmDisplayOn = int(lineData[1])
-            if self.remoteWmDisplayOn == 1:
+            if int(lineData[1]) == 1:
               self.remoteWmDisplayLastReq = time.time()
+            dt = time.time()-self.remoteWmDisplayLastReq
+            self.remoteWmDisplayOn = (dt < 1.0) # Some hysteresis
+              
+          elif len(lineData) >= 2 and lineData[0] == 't':
+            if int(lineData[1]) == 1:
+              self.remoteMonLastTeleopSignal = time.time()
+            dt = time.time() - self.remoteMonLastTeleopSignal
+            self.remoteMonTeleoping = (dt < 1.0) # Some hysteresis
               
       elif 'teleop' in m['topic']:
         stamp = time.time()

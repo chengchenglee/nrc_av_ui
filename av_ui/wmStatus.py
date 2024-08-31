@@ -96,6 +96,7 @@ class WmStatus:
     data = np.zeros(objDataLen)
     self.dgp = WmObject(-1,data)
     self.objs = []
+    self.msgCount = 0
   
   def setDgp(self,data):
     global lIdx, wIdx
@@ -140,6 +141,8 @@ class WmStatus:
         for i in range(len(objDataCsv)):
           objData[i] = float(objDataCsv[i])/dataRounder[i]
         self.objs.append(WmObject(objId,objData))
+    self.msgCount += 1
+    if self.msgCount >= 100: self.msgCount = 1
   
   def updateObjs(self,tosMsg):
     if False:
