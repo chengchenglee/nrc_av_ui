@@ -309,7 +309,7 @@ class Interface:
       new_image = new_image.resize((int(scale*imgStreamData.width()),int(scale*imgStreamData.height())), Image.BILINEAR)
       imgStreamData.unprocessedFrame = False
     
-    else:
+    elif ffmpegExists:
       self.ffmpegProcess.stdin.write(imgStreamData.ffmpegPkt) # Write stream content to the pipe
       #self.ffmpegProcess.wait()
       #print('Pipe length:',os.fstat(self.ffmpegProcess.stdin))
@@ -345,8 +345,7 @@ class Interface:
   def updateCanvas(self,wmStatus,imgStreamData):
     self.tab2_canvas.delete("all")
     
-    if ffmpegExists:
-      self.updateImg(imgStreamData)
+    self.updateImg(imgStreamData)
     
     # Define camera matrix
     fx = 800
