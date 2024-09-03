@@ -75,6 +75,7 @@ class MonitoredAgent:
     self.cmdsEnabledButton = []
     self.selected = False
     self.tLastMsg = time.time()
+    self.agentMsgCount = 0
     self.stateMsgCount = 0
     self.wmStatus = WmStatus()
     self.wmDisplayOn = 0
@@ -89,9 +90,9 @@ class MonitoredAgent:
     self.gaRghtButton = []
     self.lcRghtButton = []
 
-  def update(self,latestSubsystems):
+  def update(self,updatedAgentData):
     foundSubsystem = False
-    for sNew in latestSubsystems:
+    for sNew in updatedAgentData.subsystems:
       minStatus = 10
       for s in self.subsystems:
         if sNew.name == s.name:
@@ -134,13 +135,15 @@ class MonitoredAgent:
     data = ''
     data += 'w,'+str(self.wmDisplayOn)+'\n'
     data += 't,'+str(self.teleopOn)+'\n'
+    data += 'idx,'+str(self.agentMsgCount)+'\n'
     if self.cmdsMode == 'Ctrl':
       for s in self.subsystems:
         data += 's,'+s.name+','+str(s.isRunning)+'\n'
     return data
   
   def getTeleopCmd(self):
-    #if False:   # Can be used for testing
+    # Can be used for testing
+    #if False:
       #newCmd = TeleopEntry.fromOru(10, [1,2,3])
       #self.teleopCmdData.commands.append(newCmd)
       #self.teleopCmdData.commands.append(newCmd)
@@ -150,7 +153,7 @@ class MonitoredAgent:
   def parseMsgPayloadCsv(self,data):
     subsystem = MonitoredSubsystem()
     for lineData in data:
-      if lineData[0] == 'a':
+      if len(lineData) >= 2 and lineData[0] == 'a':
         self.name = lineData[1]
         self.cmdTopic = 'cmd/'+self.name+'/remote'
         self.teleopTopic = 'cmd/'+self.name+'/teleop'
@@ -167,6 +170,9 @@ class MonitoredAgent:
         mon.status = (statusData-mon.msgCount)/1000
         subsystem.monitors.append(mon)
     self.subsystems.append(subsystem)
+
+  def updateWmFromMqtt(self,msgData):
+    self.wmStatus.updateFromMqtt(msgData)
 
   def updateImgFromMqtt(self,msgData):
     self.imgStreamData.fromMsg(msgData)

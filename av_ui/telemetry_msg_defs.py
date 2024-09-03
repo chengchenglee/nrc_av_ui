@@ -6,6 +6,9 @@ class TelemetryEntry:
 class TelemetryData:
   def __init__(self):
     
+    ## NOTE: This setup (self.varName and append(HeartbeatEntry) allows
+    ## to get/set values in for-loops and also get/set values by name
+    
     # Define components of telemetry message
     # Base telemetry data
     self.engaged      = TelemetryEntry(0)

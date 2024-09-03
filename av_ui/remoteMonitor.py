@@ -48,26 +48,27 @@ def parseMsgs(messages):
         for a in monitoredAgents:
           if agentName in a.name:
             a.tLastMsg = time.time()
+            a.agentMsgCount = hb.msgCount.value
             
     # Received a status update from an agent
     elif "status" in msg['topic']:
-      agentData = MonitoredAgent()
-      agentData.parseMsgPayloadCsv(msg['data'])
+      updatedAgentData = MonitoredAgent()
+      updatedAgentData.parseMsgPayloadCsv(msg['data'])
   
       found = False
       for a in monitoredAgents:
-        if a.name == agentData.name:
+        if a.name == updatedAgentData.name:
           found = True
-          a.update(agentData.subsystems)
+          a.update(updatedAgentData)
       
       if not found:
-        monitoredAgents.append(agentData)
+        monitoredAgents.append(updatedAgentData)
         
     # Received a world model state from an agent
     elif "wmState" in msg['topic']:
       for a in monitoredAgents:
         if a.name in msg['topic']:
-          a.wmStatus.updateFromMqtt(msg['data'])
+          a.updateWmFromMqtt(msg['data'])
           break
         
     elif "imgStream" in msg['topic']:

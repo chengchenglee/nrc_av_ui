@@ -97,6 +97,7 @@ class WmStatus:
     self.dgp = WmObject(-1,data)
     self.objs = []
     self.msgCount = 0
+    self.agentMsgCount = 0
   
   def setDgp(self,data):
     global lIdx, wIdx
@@ -141,6 +142,9 @@ class WmStatus:
         for i in range(len(objDataCsv)):
           objData[i] = float(objDataCsv[i])/dataRounder[i]
         self.objs.append(WmObject(objId,objData))
+      
+      if len(lineData) >= 2 and lineData[0] == 'c':
+        self.agentMsgCount = int(lineData[1])
     self.msgCount += 1
     if self.msgCount >= 100: self.msgCount = 1
   

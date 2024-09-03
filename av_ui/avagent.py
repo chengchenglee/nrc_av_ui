@@ -46,7 +46,6 @@ class AvAgent:
     home = expanduser("~")
     self.filename = agent_config
     self.mapName = "Franklin.set"
-    # self.mapName = rospy.get_param('~map_name', 'Franklin.set') 
     self.subsystems = []
     self.avLedStatusPub = []
     self.pmuAvIdx = 3
@@ -62,6 +61,9 @@ class AvAgent:
     self.remoteMonLastTeleopSignal = 0
     self.fixedPose = None
     self.tLastImgSent = 0
+    self.mqttMsgCount = 0
+    self.msgCountTime = []
+    self.avgRndTripMsgTime = 0.5
 
     # Load the agent configuration
     with open(self.filename, 'r') as file:
@@ -123,11 +125,8 @@ class AvAgent:
     self.cloud.subscribe(['wyp/'+self.name+'/remote'],qos)
 
   def pose_callback(self, msg):
-    #self.x_position = msg.pose.position.x
-    #self.y_position = msg.pose.position.y
     orientation_list = [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
     (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(orientation_list)
-    #self.th_heading = yaw
     
     self.heartbeat.pos_x.value = msg.pose.position.x
     self.heartbeat.pos_y.value = msg.pose.position.y
@@ -141,12 +140,51 @@ class AvAgent:
     self.heartbeat.pos_x.value = msg.pose.position.x
     self.heartbeat.pos_y.value = msg.pose.position.y
     self.heartbeat.pos_th.value = yaw
+    
+  def nextMsgCount(self):
+    self.mqttMsgCount += 1
+    if self.mqttMsgCount >=1000: self.mqttMsgCount = 1
+    self.msgCountTime.append([self.mqttMsgCount,time.time(),5.0])
+    return self.mqttMsgCount
+  
+  def getTxTime(self,rxMsgCount):
+    for entry in self.msgCountTime:
+      if rxMsgCount == entry[0]:
+        dt = time.time() - entry[1]
+        if 0 < dt and dt < entry[2]:
+          entry[2] = dt
+    
+    oldList = self.msgCountTime
+    newList = []
+    for entry in self.msgCountTime:
+      dtMeas = time.time() - entry[1]
+      if dtMeas < 5:
+        #if entry[2] < 5.0:
+        #  print('Estimated round trip:',entry[2])
+        newList.append(entry)
+    
+  def updateAvgRndTripMsgTime(self):
+    updatedRndTripTime = 0.5
+    
+    avgTime = 0.
+    numCount = 0.
+    for entry in self.msgCountTime:
+      dtMeas = time.time() - entry[1]
+      if dtMeas < 5 and entry[2] < 5.0:
+        avgTime += entry[2]
+        numCount += 1.
+    
+    if numCount > 0:
+      updatedRndTripTime = avgTime/numCount
+      
+    # Update average
+    self.avgRndTripMsgTime = 0.7*self.avgRndTripMsgTime + 0.3*updatedRndTripTime
 
   def sendStatusCsv(self):
     # Heartbeat message
     qos = 1
     topic = "dt/agents/heartbeat"
-    csvStr = self.heartbeat.toMsg()
+    csvStr = self.heartbeat.toMsg(self.nextMsgCount())
     #data = ''
     #data +='a,'+self.name + ','+ str(self.x_position) + ',' + str(self.y_position) + ',' + str(self.th_heading)
     self.cloud.publishCsv(topic,csvStr,qos)
@@ -288,6 +326,7 @@ class AvAgent:
     for m in msgs:
       #print(m['topic'])
       # Command message from remote_monitor
+      receivedAgentMsgCount = -1
       if 'cmd' in m['topic'] and 'remote' in m['topic']:
         for lineData in m['data']:
           if len(lineData) >= 3 and lineData[0] == 's':
@@ -309,6 +348,9 @@ class AvAgent:
               self.remoteMonLastTeleopSignal = time.time()
             dt = time.time() - self.remoteMonLastTeleopSignal
             self.remoteMonTeleoping = (dt < 1.0) # Some hysteresis
+            
+          elif len(lineData) >=2 and lineData[0] == 'idx':
+            receivedAgentMsgCount = int(lineData[1])
               
       elif 'teleop' in m['topic']:
         stamp = time.time()
@@ -332,6 +374,10 @@ class AvAgent:
       elif 'wyp' in m['topic']:
         wp = WaypointData()
         wp.fromMsg(m)
+        
+      if receivedAgentMsgCount > -1:
+        dt = self.getTxTime(receivedAgentMsgCount)
+        self.updateAvgRndTripMsgTime()
         
   def setLaunchAll(self):
     for s in self.subsystems:
