@@ -276,7 +276,7 @@
   args="$(arg compression) -o $(arg prefix)_system_other_cameras -e $(arg system_other_cameras_topics)" machine="$(arg record_machine)"/>
   
   <node if="$(arg record_system_lidar)" pkg="nrc_av_ui" type="rosbagrecordLz4.sh" name="rosbag_record_system_lidar" output="screen"
-  args="--lz4 -o $(arg prefix)_system_lidar -e $(arg system_lidar_topics)" machine="$(arg record_machine)"/>
+  args="-o $(arg prefix)_system_lidar -e $(arg system_lidar_topics)" machine="$(arg record_machine)"/>
 
   <node if="$(arg record_system_main)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_for_system_main" output="screen"
   args="$(arg compression) -o $(arg prefix)_system_main -e $(arg system_main_topics)" machine="$(arg record_machine)"/>  

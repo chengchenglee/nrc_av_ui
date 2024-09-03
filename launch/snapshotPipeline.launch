@@ -42,7 +42,8 @@
   |/gps_state/gps_state_ariya"/>
   
   <arg name="snapshot_system_front_tower_cameras_topics"
-  default="/snapshot/image/compressed"/>
+  default="/snapshot/image/compressed
+  |/tower_cam_front/image_cropped2/compressed"/>
   
   <arg name="snapshot_system_lidar_topics"
   default="/velodyne_packets
@@ -97,7 +98,7 @@
     <!--Run snapshot node-->
     <node pkg="nrc_av_ui" type="Snapshot_Trigger.py" name="snapshot_trigger_node" output="screen" args="-e $(arg checkEngaged) -c $(arg car)"/>
     
-    <node name="snapshot" pkg="nodelet" type="nodelet"
+    <node if="False" name="snapshot" pkg="nodelet" type="nodelet"
         args="standalone image_proc/resize" output="screen">
         <remap from="image" to="/tower_cam_front/image_stamped" />
         <remap from="camera_info" to="/tower_cam_front/camera_info" />

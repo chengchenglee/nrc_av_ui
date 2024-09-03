@@ -47,9 +47,9 @@ class Interface:
     self.windowOpen = False
     self.launchAllReq = False
     self.windowWidth  = 550
-    self.windowHeight = 800
+    self.windowHeight = 900
     self.canvasWidth  = 550
-    self.imgHeight    = 200
+    self.imgHeight    = 268
     self.canvasHeight = 400
     
     self.tab1 = []
@@ -312,9 +312,9 @@ class Interface:
       
   def drawMsgStats(self,stateMsgCount,wmMsgCount,imgMsgCount,kbps):
     
-    kbpsStr = str(round(kbps*10)/10)
+    kbpsStr = str(round(kbps*10/8)/10)
     self.tab2_canvas.create_text(5,10,fill="darkblue",font="Helvetica 10 bold",
-                                 text='kbps: '+kbpsStr,anchor='w')
+                                 text='KBPS: '+kbpsStr,anchor='w')
     self.tab2_canvas.create_text(5,25,fill="darkblue",font="Helvetica 10 bold",
                                  text='STATE: '+str(stateMsgCount),anchor='w')
     self.tab2_canvas.create_text(5,40,fill="darkblue",font="Helvetica 10 bold",

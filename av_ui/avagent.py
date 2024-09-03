@@ -111,7 +111,7 @@ class AvAgent:
     
     if ffmpegTransportExists:
       #self.imgStreamSub   = rospy.Subscriber("/tower_cam_front/stream/ffmpeg", FFMPEGPacket,              self.sendImgStreamPkt, queue_size = 1)
-      self.imgFrameSub    = rospy.Subscriber("/tower_cam_front/image_color/compressed", CompressedImage , self.sendImgFramePkt, queue_size = 1)
+      self.imgFrameSub    = rospy.Subscriber("/tower_cam_front/image_cropped2/compressed", CompressedImage , self.sendImgFramePkt, queue_size = 1)
       self.imgStreamData  = ImgStreamData()
       print('Subscribed to ffmpeg packets.')
 
@@ -229,16 +229,17 @@ class AvAgent:
     # resize
     image = Image.open(io.BytesIO(msg.data))
     width, height = image.size
-    image = image.resize((int(0.15*width),int(0.15*height)))
-    
-    # crop
-    width, height = image.size
-    left = 0
-    right = width-1
-    top = height / 3
-    bottom = 3 * height / 4
-    image = image.crop((left, top, right, bottom))
-    width, height = image.size
+    if False:
+      image = image.resize((int(0.15*width),int(0.15*height)))
+        
+      # crop
+      width, height = image.size
+      left = 0
+      right = width-1
+      top = height / 3
+      bottom = 3 * height / 4
+      image = image.crop((left, top, right, bottom))
+      width, height = image.size
     
     buffered = io.BytesIO()
     image.save(buffered, format='jpeg')
@@ -315,7 +316,8 @@ class AvAgent:
       tStart = time.time()
       payload = self.fileInTransit.getPayload()
       topic = 'snp/'+self.name+'/data'
-      self.cloud.publishCsv(topic,payload)
+      qos = 2
+      self.cloud.publishCsv(topic,payload,qos)
       dt = time.time()-tStart
       self.fileInTransit.updateChunkSize(dt)
     

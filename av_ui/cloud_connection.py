@@ -49,9 +49,9 @@ class MsgStats:
       self.msgCount    = 0.
       self.kbitsTotal  = 0.
       self.printStr    = True
-      strOut = 'Mqtt '+self.typeStr+' stats (msg/sec, kbps): '\
+      strOut = 'Mqtt '+self.typeStr+' stats (msg/sec, KBps): '\
                     +str(round(self.msgsPerSec))+', '\
-                    +str(round(self.kbitsPerSec*10)/10)
+                    +str(round(self.kbitsPerSec*10/8)/10)
       print(strOut)
 
 class CloudConnection:
