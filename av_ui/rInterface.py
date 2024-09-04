@@ -94,23 +94,27 @@ class Interface:
           #'test.mp4'
           'pipe:',   # Goes to a pipe
         ]
-        print(command)
-        
-        self.ffmpegProcess = subprocess.Popen(command,
-                                              stdin=subprocess.PIPE,
-                                              stdout=subprocess.PIPE,
-                                              stderr=subprocess.STDOUT,
-                                              universal_newlines=True)
 
-      
-      # make pipe_stdout a non-blocking file
-      #fd = self.ffmpegProcess.stdout.fileno()
-      #fl = fcntl.fcntl(fd, fcntl.F_GETFL)
-      #fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
-      
-      #self.ffmpegOut, _ = self.ffmpegProcess.communicate()
-      
-      print('FFmpeg process created.')
+        try:
+          print(command)
+          
+          self.ffmpegProcess = subprocess.Popen(command,
+                                                stdin=subprocess.PIPE,
+                                                stdout=subprocess.PIPE,
+                                                stderr=subprocess.STDOUT,
+                                                universal_newlines=True)
+
+        
+          # make pipe_stdout a non-blocking file
+          #fd = self.ffmpegProcess.stdout.fileno()
+          #fl = fcntl.fcntl(fd, fcntl.F_GETFL)
+          #fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+          
+          #self.ffmpegOut, _ = self.ffmpegProcess.communicate()
+        
+          print('FFmpeg process created.')
+        except:
+          print('Cannot create FFmpeg process.')
   
   def onClosing(self):
     print("OnClosing")
