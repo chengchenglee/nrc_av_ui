@@ -4,6 +4,10 @@ import json, ast
 from collections import OrderedDict
 import time
 from wmStatus import WmStatus
+from heartbeat_msg_defs import HeartbeatData
+from waypoints_msg_defs import WaypointData
+from ffmpeg_msg_defs import ImgStreamData
+from msgs.teleop_msg_defs import TeleopEntry, TeleopCmdData
 
 class MonitoredProcess:
   def __init__(self):
@@ -71,12 +75,24 @@ class MonitoredAgent:
     self.cmdsEnabledButton = []
     self.selected = False
     self.tLastMsg = time.time()
+    self.agentMsgCount = 0
+    self.stateMsgCount = 0
     self.wmStatus = WmStatus()
     self.wmDisplayOn = 0
-  
-  def update(self,latestSubsystems):
+    self.teleopOn = 0
+    self.heartbeat = HeartbeatData()
+    self.imgStreamData = ImgStreamData()
+    self.teleopCmdData = TeleopCmdData()
+    
+    # Teleop cmds
+    self.lcLeftButton = []
+    self.gaLeftButton = []
+    self.gaRghtButton = []
+    self.lcRghtButton = []
+
+  def update(self,updatedAgentData):
     foundSubsystem = False
-    for sNew in latestSubsystems:
+    for sNew in updatedAgentData.subsystems:
       minStatus = 10
       for s in self.subsystems:
         if sNew.name == s.name:
@@ -91,6 +107,8 @@ class MonitoredAgent:
     
       if not foundSubsystem:
         self.subsystems.append(sNew)
+    self.stateMsgCount += 1
+    if self.stateMsgCount >= 100: self.stateMsgCount = 1
   
   def select(self):
     if self.selected:
@@ -116,17 +134,29 @@ class MonitoredAgent:
   def getCmdData(self):
     data = ''
     data += 'w,'+str(self.wmDisplayOn)+'\n'
+    data += 't,'+str(self.teleopOn)+'\n'
+    data += 'idx,'+str(self.agentMsgCount)+'\n'
     if self.cmdsMode == 'Ctrl':
       for s in self.subsystems:
         data += 's,'+s.name+','+str(s.isRunning)+'\n'
     return data
   
+  def getTeleopCmd(self):
+    # Can be used for testing
+    #if False:
+      #newCmd = TeleopEntry.fromOru(10, [1,2,3])
+      #self.teleopCmdData.commands.append(newCmd)
+      #self.teleopCmdData.commands.append(newCmd)
+    
+    return self.teleopCmdData.toMsg()
+  
   def parseMsgPayloadCsv(self,data):
     subsystem = MonitoredSubsystem()
     for lineData in data:
-      if lineData[0] == 'a':
+      if len(lineData) >= 2 and lineData[0] == 'a':
         self.name = lineData[1]
         self.cmdTopic = 'cmd/'+self.name+'/remote'
+        self.teleopTopic = 'cmd/'+self.name+'/teleop'
       elif lineData[0] == 's':
         if subsystem.name != "": self.subsystems.append(subsystem)
         subsystem = MonitoredSubsystem()
@@ -140,3 +170,10 @@ class MonitoredAgent:
         mon.status = (statusData-mon.msgCount)/1000
         subsystem.monitors.append(mon)
     self.subsystems.append(subsystem)
+
+  def updateWmFromMqtt(self,msgData):
+    self.wmStatus.updateFromMqtt(msgData)
+
+  def updateImgFromMqtt(self,msgData):
+    self.imgStreamData.fromMsg(msgData)
+    

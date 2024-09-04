@@ -58,6 +58,9 @@ class FileInTransit:
       self.fileOpen = 0
       self.fileread.close()
     self.state = ['Idle','Transfer cancelled']
+
+  def getPathToBags(self):
+    return repr(self.pathToBags)
   
   def getPayload(self):
     # Data
@@ -108,7 +111,7 @@ class FileInTransit:
   
   def getPartialList(self):
     payload = ''
-    tempDir = self.pathToBags+'temp/'
+    tempDir = self.pathToBags
 
     # Check for unfinished files    
     if os.path.isdir(tempDir):
@@ -124,7 +127,7 @@ class FileInTransit:
     return payload
     
   def saveChunk(self,header,chunk):
-    tempDir = self.pathToBags+'temp/'
+    tempDir = self.pathToBags
     isDir = os.path.isdir(tempDir)
     if not isDir:
       os.makedirs(tempDir)

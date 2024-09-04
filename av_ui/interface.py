@@ -4,6 +4,9 @@ import sys
 import os
 from nrc_msgs.msg import FailureModeRequest
 from subsystem import Subsystem
+import rospy
+from MultiSetDest import MultiSetDest
+from MultiSetDest import MULTI_DEST_LIST
 
 # Gui
 if sys.version_info[0] < 3:
@@ -38,6 +41,8 @@ class Interface:
     self.valStrSelect = []
     
     self.teleopMenu = []
+
+    self.MultiDestList = self.load_multi_destList(MULTI_DEST_LIST)
   
   def onClosing(self):
     print("OnClosing")
@@ -89,12 +94,12 @@ class Interface:
     #tab2 = Tkinter.Frame(tab_control)
     tab3 = Tkinter.Frame(tab_control)
     tab4 = Tkinter.Frame(tab_control)
-    #tab5 = Tkinter.Frame(tab_control)
+    tab5 = Tkinter.Frame(tab_control)
     tab_control.add(tab1, text='Status')
     #tab_control.add(tab2, text='Commands')
     tab_control.add(tab3, text='Validation')
     tab_control.add(tab4, text='Destinations')
-    #tab_control.add(tab5, text='Multi Destinations')
+    tab_control.add(tab5, text='Multi Destinations')
     tab_control.pack(expand=1, fill='both')
 
     buttonWidth = 7
@@ -140,12 +145,12 @@ class Interface:
     destFrame = Tkinter.Frame(tab4, width=400, height=50)
     destFrame.grid(row=2,columnspan=10, sticky=Tkinter.W)
     
-    #lbl_multi_dest = Tkinter.Label(tab5, text="Set Multi Dest")
-    #lbl_multi_dest.grid(row=1, sticky=Tkinter.W)
-    #multiDestFrame = Tkinter.Frame(tab5, width=400, height=50)
-    #multiDestFrame.grid(row=2,columnspan=10, sticky=Tkinter.W)
+    lbl_multi_dest = Tkinter.Label(tab5, text="Set Multi Dest")
+    lbl_multi_dest.grid(row=1, sticky=Tkinter.W)
+    multiDestFrame = Tkinter.Frame(tab5, width=400, height=50)
+    multiDestFrame.grid(row=2,columnspan=10, sticky=Tkinter.W)
     
-    vehValTitleRow = 1;
+    vehValTitleRow = 1
     vehValButtonsRow = vehValTitleRow + 1
     drvValTitleRow = vehValButtonsRow + 1
     drvValButtonsRow = drvValTitleRow + 1
@@ -179,8 +184,6 @@ class Interface:
     m=Tkinter.OptionMenu(allLaunchFrame, mapsel, *map_options, command=self.updateMap)
     m.grid(column=3, row=2, sticky=Tkinter.W+Tkinter.E)
 
-
-    
     #button5 = Tkinter.Button(setConfigFrame, text="Demo", width=buttonWidth*2, padx=1, relief="raised",command=demoConfig)
     #button5.grid(column=1, row=1, sticky=Tkinter.W+Tkinter.E)
     
@@ -215,6 +218,32 @@ class Interface:
     self.textBox.grid(column=0, row=0, columnspan=10)
       
     self.windowOpen = True
+
+    #enable multi-destinations buttons in destinations tab..
+    multiDestRow = 1
+    for d in self.MultiDestList:
+      d.label = Tkinter.Button(multiDestFrame, text=d.multiDestName, width=commandWidth*4, padx=1, relief="raised", command=d.command)
+      d.label.grid(column=0, row=multiDestRow, sticky=Tkinter.W+Tkinter.E)
+      multiDestRow = multiDestRow + 1
+
+  def load_multi_destList(self, multi_dest_list = None):
+
+    if multi_dest_list is None:
+      return []
+    
+    #load multi-destinations buttons in destinations tab..
+    numMultiDestinations = 0
+    MultiDestList = []
+    for e in multi_dest_list:
+      nameIn  = e["name"]
+      destsIn = e["dests"]
+
+      MultiDestList.append(MultiSetDest(nameIn, destsIn))
+      numMultiDestinations = numMultiDestinations + 1
+    
+    return MultiDestList
+
+
     
   def retrieve_valInput(self):  
     inputValue1=self.valSpdTextbox.get()
@@ -223,7 +252,7 @@ class Interface:
     inputValue4=self.valStrAngleTextbox.get()
     return float(inputValue1), float(inputValue2), float(inputValue3), float(inputValue4)
 
-  def retrieve_valTypeInput():
+  def retrieve_valTypeInput(self):
     inputValue1=self.valSpdSelect.get()
     inputValue2=self.valStrSelect.get()
     return inputValue1, inputValue2

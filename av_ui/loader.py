@@ -26,16 +26,42 @@ def getField(text,field,default):
     if field in line:
       value = line.split(': ')[1]
   
-  #print ("getField: "+field+" ==> "+value)
+  print ("Loader param: "+field+" ==> "+value)
   return value
+
+def getSubConfigs(text, config):
+  params = {}
+  config_indent = -1
+  config_found = False
+  lines = text.split('\n')
+  for line in lines:
+    if not line or line.startswith('#'):
+      continue
+    indent = len(line) - len(line.lstrip())
+    # print(rosparams_found, indent)
+    if config in line:
+      config_found = True
+      config_indent = indent
+      continue
+
+    if config_found and indent == config_indent:
+      config_found = False
+    
+    if config_found and indent > config_indent:
+      # print(line)
+      key, value = line.split(':')
+      key = key.strip()
+      value = value.strip() if value else None
+      if key:
+        params[key] = value
+  return params
 
 def getCloudConfig(text):
   configInfo = {
-    'MQTT_SERVER': 'mqtt-broker-ncal.nrcsv.com',
-    'MQTT_PORT': 8883,
-    'MQTT_USER': 'sam-teleop',
-    'MQTT_PASSWORD': 'yg#eo5cbAksD82qt',
-    'PROTOCOL': ssl.PROTOCOL_TLSv1_2,
+    'MQTT_SERVER': '127.0.0.1',
+    'MQTT_PORT': 1883,
+    'MQTT_USER': 'poza',
+    'MQTT_PASSWORD': 'fvla',
   }
   keys = configInfo.keys()
   lines = text.split('\n')

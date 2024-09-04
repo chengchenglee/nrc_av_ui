@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
+import argparse
 from std_msgs.msg import Empty
 from std_msgs.msg import String
 from std_msgs.msg import Int32MultiArray
@@ -9,50 +10,70 @@ from std_msgs.msg import Int16MultiArray
 from diagnostic_msgs.msg import *
 import numpy as np
 from nrc_msgs.msg import CtrlStateFLG
-#from nrc_msgs.msg import SnapShotTrigger
+from nrc_msgs.msg import CANVReader
+from nrc_msgs.msg import DriverInput
+from nrc_msgs.msg import DynamicPoseWithCovar
+
 import time
 import subprocess
 import os
-
-# AWS boto3 implementation
-import boto3
-import botocore
-from botocore.errorfactory import ClientError
-from threading import Thread
-from time import sleep
-import progressbar
-
-
-#from RosMsgMonitorForAVinterface import *
+from collections import deque
+import numpy as np
+import json
 
 class CsvWriterAVinterface:
-    def __init__(self, uploadToAws):
+    def __init__(self, args):
         self.csvFileName = 'trigger_node_default.csv'
         self.timerInterval = 0.1        # Interval at which the timer callback will run.
         
         self.avEngaged = False
+        self.prev_avEngaged = False     # Used for creating edge triggers when the flag changes value.
         self.avEngagedTimer = 0
-        self.updateThisCycle = False
+        self.avEngaged_startTimeList = []   # To keep records of when av was engaged.
+        self.avEngaged_stopTimeList = []    # To keep records of when av was disengaged.
+        self.checkEngaged = args.checkEngaged
+        self.car = args.car
 
         self.BRK_Override = False
+        self.prev_BRK_Override = False      # Used for creating edge triggers when the flag changes value.
+        self.BRK_Override_waitForTimerCallback = False
+        self.BRK_Override_wasAutonomousAtRisingEdge = False     # Flag to check if AV was engaged or was autonomous at rising edge of trigger.
+        self.BRK_Override_wasAutonomousAtFallingEdge = False    # Flag to check if AV was engaged or was autonomous at falling edge of trigger.
         self.BRK_OverrideTimer = 0
+        self.BRK_Override_startTime = 0
         self.brkTapDuration = 1         # If brake override is less than this time, it is classified as brake tap.
 
         self.ACC_Override = False
+        self.prev_ACC_Override = False      # Used for creating edge triggers when the flag changes value.
+        self.ACC_Override_waitForTimerCallback = False
+        self.ACC_Override_wasAutonomousAtRisingEdge = False     # Flag to check if AV was engaged or was autonomous at rising edge of trigger.
+        self.ACC_Override_wasAutonomousAtFallingEdge = False    # Flag to check if AV was engaged or was autonomous at falling edge of trigger.
         self.ACC_OverrideTimer = 0
+        self.ACC_Override_startTime = 0
         
-        self.snapButton = 0
-        self.snapButtonTimer = 0
+        self.snapButtonTrig = False
+        self.prev_snapButtonTrig = False    # Used for creating edge triggers when the flag changes value.
+        self.snapButtonTrig_waitForTimerCallback = False
+        self.snapButtonTrig_wasAutonomousAtRisingEdge = False     # Flag to check if AV was engaged or was autonomous at rising edge of trigger.
+        self.snapButtonTrig_wasAutonomousAtFallingEdge = False    # Flag to check if AV was engaged or was autonomous at falling edge of trigger.
+        self.snapButtonTrigTimer = 0
+        self.snapButtonTrig_startTime = 0
         
-        self.EVNT_trigger = False
-        self.eventTimer = 0
-        self.eventName = ''
+        self.softwareEventTrig = False
+        self.prev_softwareEventTrig = False     # Used for creating edge triggers when the flag changes value.
+        self.softwareEventTrig_waitForTimerCallback = False
+        self.softwareEventTrig_wasAutonomousAtRisingEdge = False     # Flag to check if AV was engaged or was autonomous at rising edge of trigger.
+        self.softwareEventTrig_wasAutonomousAtFallingEdge = False    # Flag to check if AV was engaged or was autonomous at falling edge of trigger.
+        self.softwareEventTrigTimer = 0
+        self.softwareEventTrig_startTime = 0
+        self.softwareEventTrigName = ''
 
         # Snapshot trigger.
         self.writeSnapshot = False
         self.writeTime = 0
-        self.writeTimeDuration = 20         # The buffering is done for 40 sec (location: ~/projects/nrc_ws/src/nrc_svcs/scripts/rosbagSnapshot.sh)
         self.prefixList = []
+        self.durationList = []
+        self.startTimeList = []
         self.snapshotUpdated = False
         self.filename = ''
         #self.csvDir = os.path.join(os.path.expanduser("~"), 'projects/disengagementData/bags/', time.strftime("%Y-%m-%d"))
@@ -60,64 +81,261 @@ class CsvWriterAVinterface:
         print("csvDir:",self.csvDir)
         dirExists = os.path.isdir(self.csvDir)
         
-        # AWS variables
-        self.session = []
-        self.s3 = []
-        self.s3Client = []
-        self.rospyUp = False
-        if uploadToAws:
-          self.session = boto3.Session(profile_name='foxtrot')
-          self.s3 = self.session.resource('s3')
-          self.s3Client = self.session.client('s3')
+        # Pose buffer to keep track of av distance and dynamically update the snapshot past horizon
+        self.buffer = deque(maxlen=2000)  # Adjust the size of the buffer as needed
+        self.lastPose = None
+        self.totalDist = 0
+        self.snapshotPastDistanceHorizon = 50 # meters
+        self.snapshotPastDistanceHorizonTimeDiff = 0.0 # How much time ago we moved more than snapshotPastDistanceHorizon
+        self.snapshotDefaultPastTimeHorizon = 10.0 #seconds
+        self.snapshotFutureDistanceHorizon = 20 # meters
+        self.snapshotFutureDistanceTraveled = 0.0 # How much distance we traveled since the trigger
+        self.snapshotDefaultFutureTimeHorizon = 20.0 # seconds
+        self.snapshotMaxFutureTimeHorizon = 45.0 # seconds
+        # Record the past horizon at the time of trigger
+        self.startedRecordingSnapshot = False
+        self.triggerPastHorizon = self.snapshotDefaultPastTimeHorizon
+
+
+        self.nACC_Override = 0
+        self.nBRK_Override = 0
 
         #Vehicle health publisher
         self.healthPub = rospy.Publisher('/snapshotTrigger/health_status', DiagnosticArray, queue_size=10)
-        
-        rospy.init_node('trigger_node')
+        rospy.init_node('Snapshot_Trigger')
         
         # Create a ROS Timer for reading data
         rospy.Timer(rospy.Duration(self.timerInterval), self.timerCallback)
     
-    
+    def poseCallback(self, msg):
+        '''
+        The idea is to record snapshots whenever there is any trigger or overrides. 
+        The code records the data upto 20 seconds after the trigger happens and upto 10 seconds, 
+        or the time interval in which the vehicle covered 50 meters, whichever is greater.
+        So if the vehicle is moving very fast and it covers 50 meters in 5 seconds, 
+        then when a trigger happens the code will record data from 10 seconds prior to the trigger upto 20 seconds after the trigger.
+        And if the vehicle is moving very slowly and it covers 50 meters in 15 seconds, 
+        then when a trigger happens the code will record data from 15 seconds prior to the trigger upto 20 seconds after the trigger.
+        '''
+        if self.lastPose is not None:
+            # Check the time difference
+            if (msg.header.stamp - self.lastPose.header.stamp).to_sec() < 0.1:
+                # If the time difference is less than 0.1 second, return without processing the message
+                return
+
+            dist = np.sqrt((msg.pose.position.x - self.lastPose.pose.position.x)**2 +
+                        (msg.pose.position.y - self.lastPose.pose.position.y)**2)
+            self.buffer.append((dist, msg.header.stamp))
+            self.totalDist += dist
+            # Update the future distance traveled if snapshot started recording
+            if self.startedRecordingSnapshot:
+                self.snapshotFutureDistanceTraveled += dist
+
+            # Remove elements from the buffer if the distance is more than self.distance_threshold meters
+            while self.totalDist > self.snapshotPastDistanceHorizon:
+                dist, _ = self.buffer.popleft()
+                self.totalDist -= dist
+
+            # Now the time difference is the time of the oldest message in the buffer
+            if len(self.buffer) > 0:  # Check if the buffer is not empty
+                time_diff = (self.buffer[-1][1] - self.buffer[0][1]).to_sec()
+                self.snapshotPastDistanceHorizonTimeDiff = time_diff
+
+        self.lastPose = msg
+
+
     def timerCallback(self, data):            # Interval decided by timerInterval.
+        
         if self.avEngaged:
             if (not self.BRK_Override) and (not self.ACC_Override):
-              self.avEngagedTimer += self.timerInterval
-        
+                self.avEngagedTimer += self.timerInterval
+        else:
+            self.avEngagedTimer = 0.0
+
+        if self.avEngaged != self.prev_avEngaged:
+            self.prev_avEngaged = self.avEngaged
+            
+            if self.prev_avEngaged:     # Rising edge.
+                self.avEngaged_startTimeList.append(rospy.Time.now())
+            else:                       # Falling edge.
+                self.avEngaged_stopTimeList.append(rospy.Time.now())
+
+        # When the av is just started and av is engaged, then at that time brake is kept pressed and then reseased.
+        # But this is a normal startup procedure to start the av and there is no need to record a brake override at 
+        # this instant. That is why the wasAutonomous timer is used to prevent this by delaying the recording for 2 sec, 
+        # by the end of which this brake override is no longer present.
         wasAutonomous = self.avEngagedTimer > 2.0
         
-        if wasAutonomous and self.BRK_Override:
-            self.writeSnapshot = True
-            self.prefixList.append('brkOverride')
-            self.BRK_OverrideTimer += self.timerInterval
+        # timerCallback function is running at 0.1 sec (10 Hz). And other callbacks are running at 0.01 sec (100 Hz).
+        # So, sometimes if the duration of the override is too small, then the override appears and then goes away 
+        # before the control passes to the timerCallback from the other callbacks. And hence they can be missed out.
+        # So, to take care of these overrides, the flags for the overrides if gets high in the respective callbacks, 
+        # then their waitForTimerCallback flag is also made high inside their respective callbacks. 
+        # But they are not made low when the override goes away. The control passes into the timerCallback where 
+        # the respective waitForTimerCallback flags are made low, and only after that the override flags are allowed 
+        # to go false. So, the waitForTimerCallback flags are set in the respective callback functions and reset in 
+        # the timerCallback function. This forces the override flags to stay high till the control reaches back to 
+        # the timerCallback function so that they can get recorded in the snapshots.
+        self.BRK_Override_waitForTimerCallback = False
+        self.ACC_Override_waitForTimerCallback = False
+        self.snapButtonTrig_waitForTimerCallback = False
+        self.softwareEventTrig_waitForTimerCallback = False
         
-        if wasAutonomous and self.ACC_Override:
+        # Only enter these 'if' statements a rising or a falling edge of the trigger is detected.
+        # Previous and current value of the trigger flag is false by start.
+        # When the trigger is true, current and previous values become different and these 'if' are executed.
+        # Once inside, the previous value is updated with the current value. Hence, this 'if' will not 
+        # executed again. 
+        # Then when the trigger is no longer there, the current value of the trigger is false, so the 
+        # previous and current values are again different and this 'if' is executed again.
+        # Then previous value is again made the same as current value (which is false now). So, both the 
+        # previous and current values of the trigger is again the same and again the 'if' will not be executed. 
+        # Until another trigger arrives.
+        # Rising edge of the trigger has current value as true and previous value as false.
+        # Falling edge of the trigger has current value as false and previous value as true.
+
+        #print('BK_O', self.BRK_Override, 'p_BK_O', self.prev_BRK_Override, 'AC_O', self.ACC_Override, 'p_AC_O', self.prev_ACC_Override, 'avEngaged', self.avEngaged, 'avEngagedTimer', self.avEngagedTimer)
+        #print('wasAutonomous', wasAutonomous, 'avEngaged', self.avEngaged, 'avEngagedTimer', self.avEngagedTimer)
+
+
+        #if wasAutonomous and (self.BRK_Override != self.prev_BRK_Override):
+        if self.BRK_Override != self.prev_BRK_Override:
             self.writeSnapshot = True
-            self.prefixList.append('accOverride')
-            self.ACC_OverrideTimer += self.timerInterval
+            self.prev_BRK_Override = self.BRK_Override
+            
+            if self.prev_BRK_Override:      # Rising edge.
+                self.BRK_Override_startTime = rospy.Time.now()
+                self.BRK_Override_wasAutonomousAtRisingEdge = wasAutonomous
+            else:                           # Falling edge.
+                self.BRK_OverrideTimer = (rospy.Time.now() - self.BRK_Override_startTime).to_sec()
+                self.BRK_Override_wasAutonomousAtFallingEdge = wasAutonomous
+                
+                # Sometimes av can get disengaged while an override is still active. If av was disengaged for the entire time of 
+                # the duration of the override, or if wasAutonomous (which is false if av is engaged for anything less than 2 sec), 
+                # then those overrides are ignored. So, only record this trigger if the av was engaged at atleast one of the 
+                # rising or falling edge of this trigger.
+                if self.BRK_Override_wasAutonomousAtRisingEdge or self.BRK_Override_wasAutonomousAtFallingEdge:
+                    if self.BRK_OverrideTimer <= self.brkTapDuration:
+                        self.prefixList.append('brkTap')
+                        self.durationList.append(self.BRK_OverrideTimer)
+                        self.startTimeList.append(self.BRK_Override_startTime)
+                        #print('brkTap')
+                    else:            # If a brake override only happens for less than 1 second, then it is called a brake tap.
+                        self.prefixList.append('brkOverride')
+                        self.durationList.append(self.BRK_OverrideTimer)
+                        self.startTimeList.append(self.BRK_Override_startTime)
+                        #print('brkOverride')
+
+                self.BRK_Override_startTime = 0         # Reinitialize.
+                self.BRK_OverrideTimer = 0
+                self.BRK_Override_wasAutonomousAtRisingEdge = False
+                self.BRK_Override_wasAutonomousAtFallingEdge = False
         
-        if wasAutonomous and self.snapButton == 2:
+        #if wasAutonomous and (self.ACC_Override != self.prev_ACC_Override):
+        if self.ACC_Override != self.prev_ACC_Override:
+            self.writeSnapshot = True
+            self.prev_ACC_Override = self.ACC_Override
+
+            if self.prev_ACC_Override:      # Rising edge.
+                self.ACC_Override_startTime = rospy.Time.now()
+                self.ACC_Override_wasAutonomousAtRisingEdge = wasAutonomous
+            else:                           # Falling edge.
+                self.ACC_OverrideTimer = (rospy.Time.now() - self.ACC_Override_startTime).to_sec()
+                self.ACC_Override_wasAutonomousAtFallingEdge = wasAutonomous
+
+                # Sometimes av can get disengaged while an override is still active. If av was disengaged for the entire time of 
+                # the duration of the override, or if wasAutonomous (which is false if av is engaged for anything less than 2 sec), 
+                # then those overrides are ignored. So, only record this trigger if the av was engaged at atleast one of the 
+                # rising or falling edge of this trigger.
+                if self.ACC_Override_wasAutonomousAtRisingEdge or self.ACC_Override_wasAutonomousAtFallingEdge:
+                    self.prefixList.append('accOverride')
+                    self.durationList.append(self.ACC_OverrideTimer)
+                    self.startTimeList.append(self.ACC_Override_startTime)
+                    #print('accOverride')
+
+                self.ACC_Override_startTime = 0         # Reinitialize.
+                self.ACC_OverrideTimer = 0
+                self.ACC_Override_wasAutonomousAtRisingEdge = False
+                self.ACC_Override_wasAutonomousAtFallingEdge = False
+        
+        #if wasAutonomous and (self.snapButtonTrig != self.prev_snapButtonTrig):
+        if self.snapButtonTrig != self.prev_snapButtonTrig:
             print('Snapshot triggered by button press.')
             self.writeSnapshot = True
-            self.prefixList.append('snapButton')
-            self.snapButtonTimer += self.timerInterval
+            self.prev_snapButtonTrig = self.snapButtonTrig
             
-        if wasAutonomous and self.EVNT_trigger:
+            if self.prev_snapButtonTrig:    # Rising edge.
+                self.snapButtonTrig_startTime = rospy.Time.now()
+                self.snapButtonTrig_wasAutonomousAtRisingEdge = wasAutonomous
+            else:                           # Falling edge.
+                self.snapButtonTrigTimer = (rospy.Time.now() - self.snapButtonTrig_startTime).to_sec()
+                self.snapButtonTrig_wasAutonomousAtFallingEdge = wasAutonomous
+                
+                # Sometimes av can get disengaged while an override is still active. If av was disengaged for the entire time of 
+                # the duration of the override, or if wasAutonomous (which is false if av is engaged for anything less than 2 sec), 
+                # then those overrides are ignored. So, only record this trigger if the av was engaged at atleast one of the 
+                # rising or falling edge of this trigger.
+                if self.snapButtonTrig_wasAutonomousAtRisingEdge or self.snapButtonTrig_wasAutonomousAtFallingEdge:
+                    self.prefixList.append('snapButton')
+                    self.durationList.append(self.snapButtonTrigTimer)
+                    self.startTimeList.append(self.snapButtonTrig_startTime)
+
+                self.snapButtonTrig_startTime = 0           # Reinitialize.
+                self.snapButtonTrigTimer = 0
+                self.snapButtonTrig_wasAutonomousAtRisingEdge = False
+                self.snapButtonTrig_wasAutonomousAtFallingEdge = False
+            
+        #if wasAutonomous and (self.softwareEventTrig != self.prev_softwareEventTrig):
+        if self.softwareEventTrig != self.prev_softwareEventTrig:
             self.writeSnapshot = True
-            self.prefixList.append(str(self.eventName))
-            self.eventTimer += self.timerInterval
-            self.eventName = ''         # Reset the name of the event name to ''.
+            self.prev_softwareEventTrig = self.softwareEventTrig
+
+            if prev_softwareEventTrig:  # Rising edge.
+                self.softwareEventTrig_startTime = rospy.Time.now()
+                self.softwareEventTrig_wasAutonomousAtRisingEdge = wasAutonomous
+            else:                           # Falling edge.
+                self.softwareEventTrigTimer = (rospy.Time.now() - self.softwareEventTrig_startTime).to_sec()
+                self.softwareEventTrig_wasAutonomousAtFallingEdge = wasAutonomous
+
+                # Sometimes av can get disengaged while an override is still active. If av was disengaged for the entire time of 
+                # the duration of the override, or if wasAutonomous (which is false if av is engaged for anything less than 2 sec), 
+                # then those overrides are ignored. So, only record this trigger if the av was engaged at atleast one of the 
+                # rising or falling edge of this trigger.
+                if self.softwareEventTrig_wasAutonomousAtRisingEdge or self.softwareEventTrig_wasAutonomousAtFallingEdge:
+                    self.prefixList.append(str(self.softwareEventTrigName))
+                    self.durationList.append(self.softwareEventTrigTimer)
+                    self.startTimeList.append(self.softwareEventTrig_startTime)
+
+                self.softwareEventTrig_startTime = 0        # Reinitialize.
+                self.softwareEventTrigTimer = 0
+                self.softwareEventTrig_wasAutonomousAtRisingEdge = False
+                self.softwareEventTrig_wasAutonomousAtFallingEdge = False
         
-        if (not self.avEngaged) and wasAutonomous:
-            self.writeSnapshot = True
-            self.prefixList.append('avDisengaged')
         
-        # Arranging the name of the prefix for saving files.
-        #self.prefixList.sort()
-        self.prefixList = list(set(self.prefixList))      # This removes any duplicate trigger names in the prefix.
-        
+        # Calculating the start time for this snapshot.
         if self.writeSnapshot:
+            # If just triggered the snapshot then record past horizon length
+            if self.startedRecordingSnapshot == False:
+                self.startedRecordingSnapshot = True
+                self.triggerPastHorizon = max(self.snapshotPastDistanceHorizonTimeDiff, self.snapshotDefaultPastTimeHorizon)
+                self.snapshotStartTime = rospy.Time.now() - rospy.Duration(self.triggerPastHorizon) # Where the snapshot starts from, not the trigger time
+                
             self.writeTime += self.timerInterval
+
+            # Checking if there is any existing trigger still active. 
+            # If no trigger is active, then start calculating the writeTime and snapshotFutureDistanceTraveled, and when they reach their desired 
+            # threshold, i.e. the future horizon is reached, and then write the snapshot.
+            # If there is any trigger then becomes active suddenly while the writeTime and snapshotFutureDistanceTraveled are still getting calculated, and 
+            # the future horizon is not yet reached, then reset them to 0 and then restart calculating them, after all the triggers are inactive again.
+            # This way the writeTime and future horizon will get extended beyond the last trigger that happened.
+            # Basically, if any trigger happens within the future horizon, then the future horizon is reinitialized and then recalculated when there is 
+            # no active trigger anymore.
+            anyTriggersStillActive = bool(self.BRK_Override or self.ACC_Override or self.snapButtonTrig or self.softwareEventTrig)
+
+            if anyTriggersStillActive:
+                self.writeTime = 0
+                self.snapshotFutureDistanceTraveled = 0.0
+            
             
         # Create and publish health message
         diagMsg = DiagnosticArray()
@@ -125,91 +343,135 @@ class CsvWriterAVinterface:
         diagMsg.status.append(DiagnosticStatus())
         sleepTime = 0.5
         if self.writeSnapshot:
-            diagMsg.status[0].level = 5
+            diagMsg.status[0].level = 5 #pink
         else:
-            diagMsg.status[0].level = 3
+            diagMsg.status[0].level = 3 #green
         self.healthPub.publish(diagMsg)
         
-        if self.writeSnapshot and self.writeTime > self.writeTimeDuration:
+        # Record the future at least snapshotDefaultFutureTimeHorizon seconds, at least snapshotFutureDistanceHorizon meters 
+        # upto snapshotMaxFutureTimeHorizon threshold
+        futureHorizonReached = ((self.writeTime > self.snapshotDefaultFutureTimeHorizon 
+                                and self.snapshotFutureDistanceTraveled > self.snapshotFutureDistanceHorizon)
+                                or self.writeTime > self.snapshotMaxFutureTimeHorizon)
+        
+        if self.writeSnapshot and futureHorizonReached:
+        #if self.writeSnapshot and futureHorizonReached:
             dirExists = os.path.isdir(self.csvDir)
             if not dirExists:
                 os.makedirs(self.csvDir)
-                
-            prefix = '_'.join(self.prefixList)                  # Used to create the filename to save txt and bag files.
+            
         
-            # If a brake override only happens for less than 1 second, then it is called a brake tap.
-            # Replacing those 'brkOverride' prefixes with 'brkTap' prefix.
-            if 'brkOverride' in prefix and self.BRK_OverrideTimer <= self.brkTapDuration:
-                prefix = prefix.replace('brkOverride', 'brkTap' )
-
             timeStamp = time.strftime('%Y-%m-%d-%H-%M-%S')      # Used to create the filename to save txt and bag files.
-            self.filename = '{}_{}'.format(timeStamp,prefix)
+            #prefix = '_'.join(self.prefixList)
+            #self.filename = '{}_{}'.format(timeStamp, prefix)
+            self.filename = '{}_snapshot'.format(timeStamp)
+
             try:
+                # Get the current ROS time
+                currentTime = rospy.Time.now()
+                # print(" Past Horizon of snapshot: ", self.triggerPastHorizon)
+                # print(" Future Horizon of snapshot: ", ((currentTime-self.snapshotStartTime) - rospy.Duration(self.triggerPastHorizon)).to_sec())
+                # Construct the YAML string for the rosservice call
+                yaml_string = """
+                                filename: '{}.bag'
+                                start_time: {{ secs: {}, nsecs: {} }}
+                                stop_time: {{ secs: {}, nsecs: {} }}
+                                """.format(self.filename, self.snapshotStartTime.secs, self.snapshotStartTime.nsecs, currentTime.secs, currentTime.nsecs)
+
+                # Properly escape the YAML string for shell execution
+                escaped_yaml_string = yaml_string.replace('"', '\\"')
+
+                # Construct the command
+                #cmd = ("rosservice call /trigger_snapshot \"" + escaped_yaml_string + "\"")
+                cmd = ("rosservice call /trigger_snapshot \"" + escaped_yaml_string + "\"" + " &")
+
                 #cmd = "cd " + self.csvDir + ";rosrun rosbag_snapshot snapshot -t -n -O {}.bag".format(self.filename)
-                cmd = "cd " + self.csvDir + ";rosrun rosbag_snapshot snapshot -t -O {}.bag".format(self.filename)
+                # cmd = "cd " + self.csvDir + ";rosrun rosbag_snapshot snapshot -t -O {}.bag".format(self.filename)
+                self.startedRecordingSnapshot = False
+                self.snapshotFutureDistanceTraveled = 0.0
                 subprocess.call(cmd, shell=True)
-                
-                # Now upload to AWS. UPDATE: Moved to a thread instead
-                #cmd = "cd " + self.csvDir + ";aws s3 sync . s3://foxtrot-snapshots/snapshot_bagfiles/" + time.strftime("%Y%m%d") +"  --profile foxtrot".format(self.filename) + "&"
-                #subprocess.call(cmd, shell=True)
                 
             except:
                 print("rosbag_snapshot package not found. Please install to record disengagement/override snapshot bagfiles")
                 
-            with open(os.path.join(self.csvDir, '{}.txt'.format(self.filename)), 'w') as txtFile:
-                txtFile.write('Event happened at: {}'.format(timeStamp))
+            with open(os.path.join(self.csvDir, '{}.json'.format(self.filename)), 'w') as infoFile:
+                infoDict = {'snapshotStartTime': '{} secs {} nsecs'.format(self.snapshotStartTime.secs, self.snapshotStartTime.nsecs),
+                            'totalEventCount': len(self.prefixList)}
+
+                for avEnSt in self.avEngaged_startTimeList:
+                    timeSinceSnapshotStartTime = (avEnSt - self.snapshotStartTime).to_sec()
+                    if timeSinceSnapshotStartTime > 0:      # av was engaged while snapshot was in progress. Only then record this entry in the snapshot file.
+                        eventName = 'avEngaged'
+                        if eventName not in infoDict:       # Durations are not recorded for avEngaged or avDisengaged events, because those may extend beyond the snapshot duration.
+                            infoDict[eventName] = {'count': 1, 'startTime': [(avEnSt).to_sec()], 'timeSinceSnapshotStartTime': [timeSinceSnapshotStartTime], 'duration': []}
+                        else:
+                            infoDict[eventName]['count'] += 1
+                            infoDict[eventName]['startTime'].append((avEnSt).to_sec())
+                            infoDict[eventName]['timeSinceSnapshotStartTime'].append(timeSinceSnapshotStartTime)
+                            infoDict[eventName]['duration'].append([])
+                        
+                for avEnSt in self.avEngaged_stopTimeList:
+                    timeSinceSnapshotStartTime = (avEnSt - self.snapshotStartTime).to_sec()
+                    if timeSinceSnapshotStartTime > 0:      # av was disengaged while snapshot was in progress. Only then record this entry in the snapshot file.
+                        eventName = 'avDisengaged'
+                        if eventName not in infoDict:       # Durations are not recorded for avEngaged or avDisengaged events, because those may extend beyond the snapshot duration.
+                            infoDict[eventName] = {'count': 1, 'startTime': [(avEnSt).to_sec()], 'timeSinceSnapshotStartTime': [timeSinceSnapshotStartTime], 'duration': []}
+                        else:
+                            infoDict[eventName]['count'] += 1
+                            infoDict[eventName]['startTime'].append((avEnSt).to_sec())
+                            infoDict[eventName]['timeSinceSnapshotStartTime'].append(timeSinceSnapshotStartTime)
+                            infoDict[eventName]['duration'].append([])
+
+                for cc in range(len(self.prefixList)):
+                    eventName = self.prefixList[cc]
+                    eventDuration = self.durationList[cc]
+                    eventStartTime = self.startTimeList[cc]
+                    timeSinceSnapshotStartTime = (eventStartTime - self.snapshotStartTime).to_sec()
+                    
+                    if eventName not in infoDict:
+                        infoDict[eventName] = {'count': 1, 'startTime': [(eventStartTime).to_sec()], 'timeSinceSnapshotStartTime': [timeSinceSnapshotStartTime], 'duration': [eventDuration]}
+                    else:
+                        infoDict[eventName]['count'] += 1
+                        infoDict[eventName]['startTime'].append((eventStartTime).to_sec())
+                        infoDict[eventName]['timeSinceSnapshotStartTime'].append(timeSinceSnapshotStartTime)
+                        infoDict[eventName]['duration'].append(eventDuration)
+
+                json.dump(infoDict, infoFile, indent=4, separators=(',', ': '))
                 
             self.writeSnapshot = False
             self.writeTime = 0
             self.prefixList = []
+            self.startTimeList = []
+            self.durationList = []
+            self.avEngaged_startTimeList = []
+            self.avEngaged_stopTimeList = []
 
-            # Reset all timers.
-            self.avEngagedTimer = 0
-            self.BRK_OverrideTimer = 0
-            self.ACC_OverrideTimer = 0
-            self.snapButtonTimer = 0
-            self.eventTimer = 0
-    
-            #Create a txt file for why snapshot was Running
-            # When the event happened. Include the name of the event as a prefix into the text and bag file names.
-            # State of the vehicle like x, y, z, speed
-            # 
-        
-        #if os.path.exists(os.path.join(self.csvDir, self.filename + '.bag')) and (not os.path.exists(os.path.join(self.csvDir, self.filename + '.bag.active'))):
-            #self.snapshotUpdated = True
-            #print('Snapshot file write complete.')
-            #self.filename = ''
-        #else:
-            #self.snapshotUpdated = False
-      
-        #Check if snapshot is still running and if there is a new trigger
+            ## Reset all timers.
+            #self.avEngagedTimer = 0
 
-    #def callback(self, data):
-        #pass
-        ##print ('message received')
-    
-        #publishStr = 'Vehicle_Health'
-        #self.pub.publish(publishStr)
-        
-
-    #def dummyCallback(self,data):
-        ##print('inside CtrlStateFLGcallback')
-        #self.BRK_Override = bool(data.data[0])
-        #self.ACC_Override = bool(data.data[1])
-        #self.avEngaged = bool(data.data[2])
-
+            # Reset the self.softwareEventTrig after the snapshot is recorded.
+            # This has to be done here explicitly as once the trigger is no longer present, the 
+            # codes (from other coders) will no longer publish the /software_event_trigger topic.
+            # So this code will no longer go into the corresponding callback function.
+            # Hence, making the self.softwareEventTrig false, will not be executed at all in 
+            # the callback function. Hence it has to be done here.
+            self.softwareEventTrig = False
+            
 
     def DriverMarkerButtonCallback(self, data):
         '''
-        The data in this callback has a value of 8 when the snapbutton is used 
+        The data in this callback has a value of 2 when the snapbutton is used 
         to trigger recording a snapshot. The snapbutton has multiple usage, so 
         other values will be for other purposes.
         '''
         if len(data.data) > 1:
-          self.snapButton = data.data[1]
-        #if self.snapButton > 0:
-            #print('\n\n snapbutton value: {} \n\n'.format(self.snapButton))
-        
+            if data.data[1] == 2:
+                self.snapButtonTrig = True
+                self.snapButtonTrig_waitForTimerCallback = True
+            else:
+                if not self.snapButtonTrig_waitForTimerCallback:
+                    self.snapButtonTrig = False
+                    
         
     def CtrlStateFLGcallback(self, data):
         '''
@@ -217,95 +479,130 @@ class CsvWriterAVinterface:
         becomes some non-zero number when the override happens and then goes back to 
         being zero when the trigger is no longer there.
         '''
-        self.BRK_Override = bool(data.BRK_Override)
-        self.ACC_Override = bool(data.ACC)
-        self.avEngaged = bool(data.Engaged)
+        #if self.BRK_Override != bool(data.BRK_Override) and self.BRK_Override == False:
+            #self.nBRK_Override += 1
+            #print('BRK_Override: {}'.format(self.nBRK_Override))
 
+        if bool(data.BRK_Override):
+            self.BRK_Override = True
+            self.BRK_Override_waitForTimerCallback = True
+        else:
+            if not self.BRK_Override_waitForTimerCallback:
+                self.BRK_Override = False
 
-    def EventTriggerCallback(self, data):
+        #self.BRK_Override = bool(data.BRK_Override)
+
+        #if self.ACC_Override != bool(data.ACC) and self.ACC_Override == False:
+            #self.nACC_Override += 1
+            #print('ACC_Override: {}'.format(self.nACC_Override))
+
+        if bool(data.ACC):
+            self.ACC_Override = True
+            self.ACC_Override_waitForTimerCallback = True
+        else:
+            if not self.ACC_Override_waitForTimerCallback:
+                self.ACC_Override = False
+
+        #self.ACC_Override = bool(data.ACC)
+
+        if self.checkEngaged == True:
+            self.avEngaged = bool(data.Engaged)
+        else:
+            self.avEngaged = True
+            
+
+    def driverInputCallback(self,data):
         '''
-        This callback will be triggered by the /snapshot_event_trigger topic, which 
+        The data in this callback has some flags (like the following) which 
+        becomes some non-zero number when the override happens and then goes back to 
+        being zero when the trigger is no longer there.
+        '''
+        #if self.car == "Mike":
+            #self.BRK_Override = bool(data.is_driver_accel)
+            #self.ACC_Override = bool(data.is_driver_brake)
+
+        if self.car == "Mike":
+            if bool(data.is_driver_accel):
+                self.BRK_Override = True
+                self.BRK_Override_waitForTimerCallback = True
+            else:
+                if not self.BRK_Override_waitForTimerCallback:
+                    self.BRK_Override = False
+
+            if bool(data.is_driver_brake):
+                self.ACC_Override = True
+                self.ACC_Override_waitForTimerCallback = True
+            else:
+                if not self.ACC_Override_waitForTimerCallback:
+                    self.ACC_Override = False
+
+
+    def CAN_V_readerCallback(self,data):
+        '''
+        The data in this callback has some flags (like the following) which 
+        becomes some non-zero number when the override happens and then goes back to 
+        being zero when the trigger is no longer there.
+        '''
+        if self.car == "Mike":
+            self.avEngaged = bool(data.Switch_MAIN)
+
+
+    def SoftwareEventTriggerCallback(self, data):
+        '''
+        This callback will be triggered by the /software_event_trigger topic, which 
         can be generated by several different sources. The details of the reason for 
         this trigger will be present in the string data of this topic which should be 
-        included in the name of the corresponding recorded snapshot.
+        included in the name of the corresponding recorded snapshot. 
+        The source of the trigger event should publish the string with the data as 
+        long as the trigger event is there and then after that the string should be 
+        made '' by the code creating the source of the trigger.
         '''
-        self.EVNT_trigger = True
-        self.eventName = data.data
-        pass
-
-        
-    def upload_to_aws(self, local_file, s3_bucket, s3_folder, s3_filename):
-        def write_to_aws():
-            statinfo = os.stat(local_file)
-            up_progress = progressbar.progressbar.ProgressBar(maxval=statinfo.st_size)
-            up_progress.start()
-
-            def upload_progress(chunk):
-                up_progress.update(up_progress.currval + chunk)
-
-            try:
-                print("Writing "+ s3_filename)
-                self.s3Client.upload_file(local_file, s3_bucket, s3_folder+"/"+s3_filename, Callback=upload_progress)
-                print("Upload Successful")
-                return True
-            except FileNotFoundError:
-                print("The source file was not found")
-                return False
-            except NoCredentialsError:
-                print("Credentials not available")
-                return False
-        try:
-            #print('bucket: ' + s3_bucket + ", key: " + s3_folder+s3_filename+'/')
-            self.s3Client.head_object(Bucket=s3_bucket, Key=s3_folder+'/'+s3_filename)
-            #print(s3_filename + " exists already, not uploading")
-        except ClientError as e:
-            write_to_aws()
-        
-    def awsSessionStart(self, data):
-        bucket = 'foxtrot-snapshots'
-        s3_folder = 'snapshot_bagfiles'+'/'+time.strftime("%Y%m%d")
-        while self.rospyUp:
-            if os.path.isdir(self.csvDir):
-                for filename in os.listdir(self.csvDir):
-                    fullPath = self.csvDir+'/'+filename
-                    self.upload_to_aws(fullPath,bucket,s3_folder,filename)
-                    #print(filename)
-            else:
-                pass
-                #print("Dir does not exist")
-            sleep(60)
+        self.softwareEventTrigName = data.data
+        # print(self.softwareEventTrigName)
+        if self.softwareEventTrigName != '':
+            self.softwareEventTrig = True
+            self.softwareEventTrig_waitForTimerCallback = True
+        else:
+            if not self.softwareEventTrig_waitForTimerCallback:
+                self.softwareEventTrig = False
+            
 
     def listener(self):
-        rospy.Subscriber('/snapshot_event_trigger', String, self.EventTriggerCallback)
+        rospy.Subscriber('/software_event_trigger', String, self.SoftwareEventTriggerCallback)
+        rospy.Subscriber('/dynamic_global_pose', DynamicPoseWithCovar, self.poseCallback)
         
         rospy.Subscriber('/CtrlStateFLG', CtrlStateFLG, self.CtrlStateFLGcallback)
         rospy.Subscriber('/ard_state', Int16MultiArray, self.DriverMarkerButtonCallback)
-        #rospy.Subscriber('/CtrlStateFLGDummy', Int32MultiArray, self.dummyCallback)
         
-        #Start aws thread
-        self.rospyUp = True
-        thread = []
-        if uploadToAws:
-          thread = Thread(target = self.awsSessionStart, args = (self, ))
-          thread.daemon = True
-          thread.start()
+        if self.car == "Mike":
+            rospy.Subscriber('/CAN_V_reader', CANVReader, self.CAN_V_readerCallback)
+            rospy.Subscriber('/driver_input', DriverInput, self.driverInputCallback)
 
         while not rospy.is_shutdown():
             
-            #print(self.avEngaged, self.updateThisCycle, self.writeSnapshot, self.BRK_Override, self.ACC_Override)
+            # print(self.avEngaged, self.writeSnapshot, self.BRK_Override, self.ACC_Override)
             #print('\n\n snapbutton value: {} \n\n'.format(self.snapButton))
             
             rospy.sleep(1)  # sleep for one second.
         
-        #Join aws thread
-        self.rospyUp = False
-        if uploadToAws:
-          thread.join()
-        
 if __name__ == '__main__':
-    print ('Running')
-    uploadToAws = False
-    clsObj = CsvWriterAVinterface(uploadToAws)
+    print ('Starting Snapshot Trigger node.')
+    
+    # Parse arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-e', '--checkEngaged', default=True)
+    parser.add_argument('-c', '--car', default="Foxtrot")
+    args, uargs = parser.parse_known_args()
+    
+    if args.checkEngaged == "False" or args.checkEngaged == "false" or args.checkEngaged == "0":
+      print('Not checking if AV is engaged to trigger snapshots.')
+      args.checkEngaged = False
+    else:
+      print('Checking if AV is engaged to trigger snapshots.')
+      args.checkEngaged = True
+    print("Running snapshot trigger for",args.car)
+
+    clsObj = CsvWriterAVinterface(args)
     clsObj.listener()
 
 

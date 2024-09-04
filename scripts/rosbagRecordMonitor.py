@@ -32,7 +32,11 @@ if __name__ == '__main__':
       activeFiles = glob.glob(pathToBags+"*.active")
       currentMaxFileSize = 0
       for filename in activeFiles:
-        currentMaxFileSize = max(currentMaxFileSize, os.path.getsize(filename))
+        try:
+          currentMaxFileSize = max(currentMaxFileSize, os.path.getsize(filename))
+        except:
+          a = 1
+          # Do nothing, it means maybe the file was renamed
 
       # Create and publish health message
       diagMsg = DiagnosticArray()

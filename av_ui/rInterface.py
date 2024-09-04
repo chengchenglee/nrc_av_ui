@@ -1,12 +1,33 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
-import sys
+import sys, os, subprocess
 from subsystem import Subsystem
 import time
 import numpy as np
 import cv2
 #from scipy.spatial.transform import Rotation
 
+# Display images
+import io
+try:
+  from PIL import Image, ImageTk
+except:
+  print("Install ImageTk with: sudo apt-get install python3-pil python3-pil.imagetk")
+
+#import av
+
+from msgs.teleop_msg_defs import TeleopEntry
+
+import fcntl
+
+ffmpegExists = True
+try:
+  import ffmpeg  # pip install ffmpeg-python
+  print('rinterface.py: ffmpeg imported.')
+except ImportError:
+  print('rinterface.py: Could not import ffmpeg.')
+  ffmpegExists = False
+  
 # Gui
 if sys.version_info[0] < 3:
   import Tkinter
@@ -26,24 +47,70 @@ class Interface:
     self.windowOpen = False
     self.launchAllReq = False
     self.windowWidth  = 550
-    self.windowHeight = 700
-    self.canvasWidth = 550
+    self.windowHeight = 900
+    self.canvasWidth  = 550
+    self.imgHeight    = 268
     self.canvasHeight = 400
     
     self.tab1 = []
     self.tab2 = []
     self.tab1_frame1 = []
     self.tab2_frame1 = []
+    self.tab2_frame2 = []
     
     self.selectedAgent = 'None'
+    self.isTeleop = False
     #self.canvasDrawn = False
     self.tab2_canvas = []
     self.canvasTime = 0
     self.canvasIncr = 1
     self.camPctTop = 0
     self.camPctIncr = 0.01
+    self.tab2_img = []
+    
+    self.mouseclick = [0,0,0,False]
     
     self.buttonWidth = 7
+    
+    if ffmpegExists:
+      if False:
+        print('Initialize ffmpeg from python wrapper.')
+        self.ffmpegProcess = (ffmpeg
+          .input('-')
+          .video
+          .output('frame_%d.png', vframes=5,pix_fmt='rgb24')
+          .run_async(pipe_stdin=True, pipe_stdout=True)
+        )
+      else:
+        command = ['ffmpeg',
+          # Input
+          #'-s', str(960) + 'x' + str(700),
+          '-f','h264',
+          '-i','-',  # Comes from a pipe
+          # Output
+          '-c', 'copy',
+          #'-s', str(960) + 'x' + str(700),
+          #'-pix_fmt', 'bgr24',
+          #'test.mp4'
+          'pipe:',   # Goes to a pipe
+        ]
+        print(command)
+        
+        self.ffmpegProcess = subprocess.Popen(command,
+                                              stdin=subprocess.PIPE,
+                                              stdout=subprocess.PIPE,
+                                              stderr=subprocess.STDOUT,
+                                              universal_newlines=True)
+
+      
+      # make pipe_stdout a non-blocking file
+      #fd = self.ffmpegProcess.stdout.fileno()
+      #fl = fcntl.fcntl(fd, fcntl.F_GETFL)
+      #fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+      
+      #self.ffmpegOut, _ = self.ffmpegProcess.communicate()
+      
+      print('FFmpeg process created.')
   
   def onClosing(self):
     print("OnClosing")
@@ -55,7 +122,7 @@ class Interface:
     self.window = Tkinter.Tk(className='ailsvwindow')
     windowTitle = "SV Remote Interface"
     self.window.title(windowTitle)
-    self.window.geometry('550x700')
+    self.window.geometry(str(self.windowWidth)+'x'+str(self.windowHeight))
     self.window.protocol("WM_DELETE_WINDOW", self.onClosing)  # Bind action when window closes
 
   # Tab def
@@ -76,8 +143,13 @@ class Interface:
     tab2_label1.grid(row=1, stick=Tkinter.W)
     self.tab2_frame1 = Tkinter.Frame(self.tab2, width=400, height=50)
     self.tab2_frame1.grid(row=1,columnspan=10, sticky=Tkinter.W)
+    
+    self.tab2_frame2 = Tkinter.Frame(self.tab2, width=400, height=50)
+    self.tab2_frame2.grid(row=4,columnspan=10, sticky=Tkinter.W)
       
     self.windowOpen = True
+    
+    self.teleopCmds = []
   
   def statusToColor(self,status):
     if status == 3:
@@ -92,15 +164,45 @@ class Interface:
   def updateSelectedAgent(self, newVal):
     self.selectedAgent = newVal
     self.selectedAgentVal.set(newVal)
+    self.teleopCmds = []
+    self.isTeleop = 0
   
   def initCanvas(self):
     self.agent_options = ['None']
     self.selectedAgentVal = Tkinter.StringVar(self.tab2);
     self.tab2_agentSel = Tkinter.OptionMenu(self.tab2, self.selectedAgentVal, *self.agent_options, command=self.updateSelectedAgent)
     self.tab2_agentSel.grid(column=0, row=1, sticky=Tkinter.W+Tkinter.E)
+
+    widthIn  = self.canvasWidth
+    heightIn = 200
+    
+    pathToDefaultImg = os.path.expanduser('~')+'/projects/nrc_ws/src/nrc_av_ui/av_ui/test1.png'
+    self.image = Image.open(pathToDefaultImg)
+    self.image2 = self.image.resize((self.canvasWidth,self.imgHeight),Image.ANTIALIAS)
+    self.tkImage = ImageTk.PhotoImage(self.image2)
+    
+    self.tab2_img = Tkinter.Label(self.tab2, image=self.tkImage, height=self.imgHeight, width=self.canvasWidth)
+    self.tab2_img.grid(column=0, row=2)
     
     self.tab2_canvas = Tkinter.Canvas(self.tab2, bg="white", height=self.canvasHeight, width=self.canvasWidth)
-    self.tab2_canvas.grid(column=0, row=2)
+    self.tab2_canvas.grid(column=0, row=3)
+    
+    self.lcLeftButton = Tkinter.Button(self.tab2_frame2, text='LC-LFT', width=16, height=4, padx=1, pady=1, relief="raised")
+    self.gaLeftButton = Tkinter.Button(self.tab2_frame2, text='GA-LFT', width=16, height=4, padx=1, pady=1, relief="raised",command=self.gaLeft)
+    self.gaRghtButton = Tkinter.Button(self.tab2_frame2, text='GA-RGT', width=16, height=4, padx=1, pady=1, relief="raised",command=self.gaRght)
+    self.lcRghtButton = Tkinter.Button(self.tab2_frame2, text='LC-RGT', width=16, height=4, padx=1, pady=1, relief="raised")
+    self.enTeleop     = Tkinter.Button(self.tab2_frame2, text='ENABLE TELEOP', width=70, height=2, padx=1, pady=1, relief="raised", command=self.setTeleop)
+    self.enTeleop.grid(row=0, columnspan=4, sticky=Tkinter.W+Tkinter.E)
+    
+    # Determine the origin by clicking
+    def getorigin(eventorigin):
+        global x0,y0
+        x0 = eventorigin.x
+        y0 = eventorigin.y
+        self.mouseclick = [0,x0,y0,True]
+        print(x0,y0)
+    #mouseclick event
+    self.tab2_canvas.bind("<Button 1>",getorigin)
   
   def rpyToRot(self,ypr):
     rotZ = np.identity(3)
@@ -132,59 +234,67 @@ class Interface:
                                   None)
     bottom = []
     inRange = True
+    avgU = 0
+    avgV = 0
     for i in range(0,4):
       u = self.canvasWidth-corners2d[i,0,0]
-      if u < 0 or u > self.canvasWidth or corners2d[i,0,1] < 0 or corners2d[i,0,1] > self.canvasHeight:
+      v = corners2d[i,0,1]
+      if u < 0 or u > self.canvasWidth or v < 0 or v > self.canvasHeight:
         inRange = False
+        wmObj.avgU = 0
+        wmObj.avgV = 0
         break
       bottom.append([u])
-      bottom.append([corners2d[i,0,1]])
+      bottom.append([v])
+      avgU = avgU + u/4
+      avgV = avgV + v/4
     
     if inRange:
-      ship_id = self.tab2_canvas.create_polygon(bottom,  fill='red')
-  
-  def drawGrid1(self):
-    behind = -10
-    ahead = 50
-    beside = 10
-    x_range = np.linspace(behind,ahead,num=ahead-behind)
-    y_range = np.linspace(-beside,beside,num=2*beside-1)
-    for x in x_range:
-      for y in y_range:
-        point = np.array([[[x,y,0]]], np.float32)
-        point2d,_ = cv2.projectPoints(point,
-                                      self.rvec,self.tvec.reshape(-1,1),
-                                      self.cMtx,
-                                      None)
-        r = 2
-        self.tab2_canvas.create_oval(point2d[0,0,0]-r,point2d[0,0,1]-r,point2d[0,0,0]+r,point2d[0,0,1]+r)
-
+      color = 'red'
+      if wmObj.object_id == -1:
+        color = 'grey'
+      else:
+        for cmd in self.teleopCmds:
+          if cmd.objId() == wmObj.object_id:
+            if cmd.teleopType == 'ORU':
+              color = 'blue'
+            elif cmd.teleopType == 'GAL' or cmd.teleopType == 'GAR':
+              color = 'green'
+          
+      ship_id = self.tab2_canvas.create_polygon(bottom,  fill=color)
+      wmObj.avgU = avgU
+      wmObj.avgV = avgV
   
   def drawGrid(self,frame):
-    xOffset = frame.centerPose[0,2] - round(frame.centerPose[0,2]/10)*10
-    yOffset = frame.centerPose[1,2] - round(frame.centerPose[1,2]/10)*10
+    gridSpacing = 5
+    numGrids = 5
     
-    gridRange = np.linspace(-80,80,15)
-    numPoints = len(gridRange)*len(gridRange)
-    gridVec = np.empty((numPoints,3))
+    centerGridX = frame.centerPose[0,2] - (frame.centerPose[0,2] % gridSpacing)
+    centerGridY = frame.centerPose[1,2] - (frame.centerPose[1,2] % gridSpacing)
     
+    grid_range = np.linspace(-gridSpacing*5,gridSpacing*5,numGrids*2+1)
+    numPoints = len(grid_range)**2
+    
+    # Grey fades farther from AV 
     blkVal = 0
     whtVal = 255
     blkDist = 60
     whtDist = 80
-    
     m = (blkVal-whtVal)/(blkDist-whtDist)
     b = blkVal-blkDist*m
     
     points3d   = np.empty((numPoints,3))
     pointAlpha = np.empty((numPoints))
     k=0
-    for i in range(len(gridRange)):
-      for j in range(len(gridRange)):
-        points3d[k,0] = gridRange[i] - xOffset
-        points3d[k,1] = gridRange[j] - yOffset
-        points3d[k,2] = 0
-        d = gridRange[i]*gridRange[i] + gridRange[j]*gridRange[j]
+    for i in range(len(grid_range)):
+      for j in range(len(grid_range)):
+        ptX_global = grid_range[i]+centerGridX
+        ptY_global = grid_range[j]+centerGridY
+        pt_carFrame = np.dot(frame.poseInv,[ptX_global,ptY_global,1])
+        points3d[k,:] = pt_carFrame
+        points3d[k,2] = 0.0
+
+        d = points3d[i,0]*points3d[i,0] + points3d[i,1]*points3d[i,1]
         pointAlpha[k] = min(whtVal, max(blkVal, m*np.sqrt(d)+b))
         k += 1
     
@@ -192,16 +302,111 @@ class Interface:
                                    self.rvec,self.tvec.reshape(-1,1),
                                    self.cMtx,
                                    None)
-    r=2
+    dotRadius=2
     for i in range(len(pointAlpha)):
       intVal = int(pointAlpha[i])
       colorval = "#%02x%02x%02x" % (intVal, intVal, intVal)
       x = self.windowWidth-points2d[i,0,0]
       y = points2d[i,0,1]
-      self.tab2_canvas.create_oval(x-r,y-r,x+r,y+r,outline=colorval)
+      self.tab2_canvas.create_oval(x-dotRadius,y-dotRadius,x+dotRadius,y+dotRadius,outline=colorval)
+      
+  def drawMsgStats(self,stateMsgCount,wmMsgCount,imgMsgCount,kbps):
+    
+    kbpsStr = str(round(kbps*10/8)/10)
+    self.tab2_canvas.create_text(5,10,fill="darkblue",font="Helvetica 10 bold",
+                                 text='KBPS: '+kbpsStr,anchor='w')
+    self.tab2_canvas.create_text(5,25,fill="darkblue",font="Helvetica 10 bold",
+                                 text='STATE: '+str(stateMsgCount),anchor='w')
+    self.tab2_canvas.create_text(5,40,fill="darkblue",font="Helvetica 10 bold",
+                                 text='WM: '+str(wmMsgCount),anchor='w')
+    self.tab2_canvas.create_text(5,55,fill="darkblue",font="Helvetica 10 bold",
+                                 text='IMG: '+str(imgMsgCount),anchor='w')
+      
+  def updateImg(self,imgStreamData):
+    if not imgStreamData.unprocessedFrame:
+      return
+    
+    new_image = ''
+    if not imgStreamData.isFfmpeg():
+      new_image = Image.open(io.BytesIO(imgStreamData.imgPkt))
+      scale = float(self.canvasWidth) / float(imgStreamData.width())
+      new_image = new_image.resize((int(scale*imgStreamData.width()),int(scale*imgStreamData.height())), Image.BILINEAR)
+      imgStreamData.unprocessedFrame = False
+    
+    elif ffmpegExists:
+      self.ffmpegProcess.stdin.write(imgStreamData.ffmpegPkt) # Write stream content to the pipe
+      #self.ffmpegProcess.wait()
+      #print('Pipe length:',os.fstat(self.ffmpegProcess.stdin))
+      #self.ffmpegProcess.stdin.close() # close stdin (flush and send EOF)
+      #self.ffmpegProcess.stdin.wait() # close stdin (flush and send EOF)
+      #time.sleep(0.2)
+      print('Done process frame: ', len(imgStreamData.ffmpegPkt))
+      
+      in_bytes = ''
+      try:
+        #in_bytes = self.ffmpegProcess.stdout.readline()
+        in_bytes = self.ffmpegProcess.stdout.read(imgStreamData.width() * imgStreamData.height() * 3)
+        print('in_bytes: ',len(in_bytes))
+      except:
+        return
+    
+      if not in_bytes:
+        return
+    
+      if len(in_bytes) != imgStreamData.width()*imgStreamData.height()*3:
+        #print('Wrong image dims.')
+        return
+    
+      in_frame = (
+        np
+        .frombuffer(in_bytes,np.uint8)
+        .reshape([imgStreamData.width(),imgStreamData.height(),3])
+      )
   
-  def updateCanvas(self,wmStatus):
+    self.tkImage = ImageTk.PhotoImage(new_image)
+    self.tab2_img.configure(image=self.tkImage)
+    
+  def processClick(self,wmStatus):
+    print('Get nearest object.')
+    closestDist = 10000
+    closestBox  = -1
+    for i in range(len(wmStatus.objs)):
+      du = self.mouseclick[1]-wmStatus.objs[i].avgU
+      dv = self.mouseclick[2]-wmStatus.objs[i].avgV
+      dist = du*du + dv*dv
+      if dist < closestDist:
+        closestBox = i
+        closestDist = dist
+    
+    if closestBox >= 0 and closestDist < 10*10:
+      objExists = False
+      
+      # Try to see if we're already tracking this object
+      for cmd in self.teleopCmds:
+        cmdIsOru = (cmd.teleopType == 'ORU' or cmd.teleopType == 'GAL' or cmd.teleopType == 'GAR')
+        if cmdIsOru:
+          if cmd.objId() == wmStatus.objs[closestBox].object_id:
+            cmd.setAction('remove')
+            objExists = True
+            break
+          
+      # If not, create possible teleop entry for this object
+      if not objExists:
+        newCmd = TeleopEntry.fromOru(wmStatus.objs[closestBox].object_id, wmStatus.objs[closestBox].xyth())
+        self.teleopCmds.append(newCmd)
+        
+    # Clear old entries
+    self.mouseclick[3] = False
+    oldTeleopCmds = self.teleopCmds
+    self.teleopCmds = []
+    for cmd in oldTeleopCmds:
+      if not cmd.teleopType == 'remove':
+        self.teleopCmds.append(cmd)
+  
+  def updateCanvas(self,wmStatus,imgStreamData,stateMsgCount,kbps):
     self.tab2_canvas.delete("all")
+    
+    self.updateImg(imgStreamData)
     
     # Define camera matrix
     fx = 800
@@ -237,11 +442,19 @@ class Interface:
     self.drawGrid(wmStatus.dgp)
     
     # Draw objects
+    #if len(self.objsOfInterest) > 0: print(self.objsOfInterest)
+  
     for obj in wmStatus.objs:
       self.drawBox(obj,wmStatus.dgp)
       
     # Draw ego
     self.drawBox(wmStatus.dgp,wmStatus.dgp)
+    
+    # Draw messaging stats
+    self.drawMsgStats(stateMsgCount,wmStatus.msgCount,imgStreamData.msgCount,kbps)
+    
+    if self.mouseclick[3] == True:
+      self.processClick(wmStatus)
     
     # Update window
     self.window.update_idletasks()
@@ -352,9 +565,45 @@ class Interface:
             s.button.configure(bg=self.statusToColor(0))
           else:
             s.button.configure(bg=self.statusToColor(minStatus))
+          
+        a.drawn = True
+        rowIdx += 1
+      
+    # Teleop Window
+    if self.isTeleop:
+      self.lcLeftButton.grid(column=0, row=1, sticky=Tkinter.W+Tkinter.E)
+      self.gaLeftButton.grid(column=1, row=1, sticky=Tkinter.W+Tkinter.E)
+      self.gaRghtButton.grid(column=2, row=1, sticky=Tkinter.W+Tkinter.E)
+      self.lcRghtButton.grid(column=3, row=1, sticky=Tkinter.W+Tkinter.E)
+    else:
+      self.lcLeftButton.grid_forget()
+      self.gaLeftButton.grid_forget()
+      self.gaRghtButton.grid_forget()
+      self.lcRghtButton.grid_forget()
 
-      a.drawn = True
-      rowIdx += 1
     self.window.update_idletasks()
     self.window.update()
 
+  def setTeleop(self):
+    if self.isTeleop:
+      self.isTeleop = 0
+      self.enTeleop.configure(text='ENABLE TELEOP')
+    else:
+      self.isTeleop = 1
+      self.enTeleop.configure(text='DISABLE TELEOP')
+
+  def gaLeft(self):
+    for cmd in self.teleopCmds:
+      if cmd.teleopType == 'ORU':
+        cmd.teleopType = 'GAL'
+    
+  def gaRght(self):
+    for cmd in self.teleopCmds:
+      if cmd.teleopType == 'ORU':
+        cmd.teleopType = 'GAR'
+    
+  def transferTeleopCmds(self,agent):
+    agent.teleopCmdData.commands = []
+    for cmd in self.teleopCmds:
+      if cmd.teleopType != 'ORU' and cmd.teleopType != 'remove':
+        agent.teleopCmdData.commands.append(cmd)

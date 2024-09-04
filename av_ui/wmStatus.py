@@ -40,6 +40,8 @@ class WmObject:
     self.object_id = objId
     self.data = data[:]
     self.update(self.data)
+    self.avgU = 0
+    self.avgV = 0
     
   @classmethod
   def from_trackedObject(cls, trObj):
@@ -70,6 +72,9 @@ class WmObject:
   def toStr(self):
     return dataToStr(self.object_id,self.data)
   
+  def xyth(self):
+    return [self.data[xIdx],self.data[yIdx],self.data[thIdx]]
+  
   def cornersInFrame(self,frame):
     pose = np.dot(frame.poseInv,self.centerPose)
     
@@ -91,6 +96,8 @@ class WmStatus:
     data = np.zeros(objDataLen)
     self.dgp = WmObject(-1,data)
     self.objs = []
+    self.msgCount = 0
+    self.agentMsgCount = 0
   
   def setDgp(self,data):
     global lIdx, wIdx
@@ -112,6 +119,7 @@ class WmStatus:
     global xIdx,yIdx,thIdx,wIdx,lIdx,vIdx
     
     # Clear object list
+    oldObjs = self.objs
     self.objs = []
     
     # Parse new payload
@@ -134,6 +142,11 @@ class WmStatus:
         for i in range(len(objDataCsv)):
           objData[i] = float(objDataCsv[i])/dataRounder[i]
         self.objs.append(WmObject(objId,objData))
+      
+      if len(lineData) >= 2 and lineData[0] == 'c':
+        self.agentMsgCount = int(lineData[1])
+    self.msgCount += 1
+    if self.msgCount >= 100: self.msgCount = 1
   
   def updateObjs(self,tosMsg):
     if False:

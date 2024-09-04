@@ -1,5 +1,6 @@
 Configuration:
   Name: foxtrot
+  agentType: AV4
   mapName: Franklin.set
   printTimeDebug: 0
   useGui: 1
@@ -15,7 +16,7 @@ Subsystem:
     Trigger: Startup, StartRequest, ARDX, or PMUX
       - Source: Startup
     HealthTopics:
-      - HealthTopic: /CtrlStateFLG
+      - HealthTopic: /CtrlStateFLG_10hz
         HealthName: CAR
         HealthTopicType: CtrlStateFLG
         NomWarnErrRate: 10, 6, 3
@@ -36,6 +37,11 @@ Subsystem:
         Command: roslaunch nrc_hw_svcs leaf_interface_arduino.launch arduino_machine:=node02
         Type: Software
         LaunchTime: 1.0
+      - Name: CSF_Throttle
+        Command: rosrun topic_tools throttle messages /CtrlStateFLG 10.0 /CtrlStateFLG_10hz
+        NodeName: CSF_Throttle
+        Type: Software
+        LaunchTime: 1
     Diagnostic:
       LED: 0
       Retry: 3
@@ -50,14 +56,14 @@ Subsystem:
     Trigger:
       - Source: StartRequest
     HealthTopics:
-      - HealthTopic: /gps_state/dynamic_global_pose_oxts
+      - HealthTopic: /gps_state/dynamic_global_pose_oxts_10hz
         HealthName: RAW
         HealthTopicType: DynamicPoseWithCovar
-        NomWarnErrRate: 100, 80, 60
-      - HealthTopic: /dynamic_global_pose
+        NomWarnErrRate: 10, 8, 6
+      - HealthTopic: /dynamic_global_pose_10Hz
         HealthName: DGP
         HealthTopicType: DynamicPoseWithCovar
-        NomWarnErrRate: 100, 80, 60
+        NomWarnErrRate: 10, 8, 6
     Commands:
       - Name: NTRIP
         Command: rosrun nrc_hw_svcs ntripCommand-leaf2.sh
@@ -114,26 +120,6 @@ Subsystem:
     Depends:
       - Launch:
         Run:
-
-  CAM:
-    Type: Algorithm
-    Description: Tower_Cams
-    HealthTopics:
-      - HealthTopic: /tower_cam_front/image_stamped
-        HealthName: TCF
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 7, 3
-    Commands:
-      - Name: CAM
-        Command: roslaunch nrc_hw_svcs pgr_gige_cameras.launch FrRCam:=true FrLCam:=true FrCam:=true BaRCam:=false BaLCam:=false BaCam:=false enableArduino:=true video_preprocess:=true leaf_foxtrot:=true
-        Type: Software
-        LaunchTime: 5.0
-    Diagnostic: 
-      LED: 
-      Retry: 5
-      Timeout: 5
-    Depends:
-        
         
   TCAM:
     Type: Sensor
@@ -141,21 +127,17 @@ Subsystem:
     Trigger:
       - Source: StartRequest
     HealthTopics:
-      - HealthTopic: /tower_cam_front/image_stamped/health_status
+      - HealthTopic: /tower_cam_front/camera_info
         HealthName: TCF
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /tower_cam_frontLeft/image_stamped/health_status
-        HealthName: TCFR
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /tower_cam_frontRight/image_stamped/health_status
-        HealthName: TCFL
-        HealthTopicType: DiagnosticArray
+        HealthTopicType: CameraInfo
         NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: TowerCam
-        Command: roslaunch nrc_hw_svcs pgr_gige_cameras.launch FrRCam:=true FrLCam:=true FrCam:=true BaRCam:=false BaLCam:=false BaCam:=false enableArduino:=true video_preprocess:=true leaf_foxtrot:=true
+        Command: roslaunch nrc_hw_svcs pgr_gige_cameras.launch FrRCam:=false FrLCam:=false FrCam:=true BaRCam:=false BaLCam:=false BaCam:=false enableArduino:=false leaf_foxtrot:=true
+        Type: Software
+        LaunchTime: 3.0
+      - Name: Helm
+        Command: roslaunch nrc_perc_svcs helm_perc.launch
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -176,9 +158,9 @@ Subsystem:
         HealthName: VLDY
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /pc_processor/multi_object_tracker/tracked_object_set
-        HealthName: TOS
-        HealthTopicType: TrackedObjectSet
+      - HealthTopic: /pc_processor/timing/overall_processing_time
+        HealthName: PCP
+        HealthTopicType: Float64
         NomWarnErrRate: 10, 7, 3
       - HealthTopic: /drivable_area_boundary_points
         HealthName: DA
@@ -190,7 +172,7 @@ Subsystem:
         Type: Software
         LaunchTime: 1.0
       - Name: PCP
-        Command: roslaunch nrc_pcp_svcs pc_processor.launch dynamic_global_pose_topic_name:=/dynamic_global_pose do_road_surf_change_detection:=true include_road_surf_change_boundary_pts_for_drivable_area:=true Leaf_Foxtrot:=true
+        Command: roslaunch nrc_pcp_svcs pc_processor.launch dynamic_global_pose_topic_name:=/dynamic_global_pose do_road_surf_change_detection:=true include_road_surf_change_boundary_pts_for_drivable_area:=true Leaf_Foxtrot:=true publish_labeled_points:=true
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -215,9 +197,9 @@ Subsystem:
         HealthName: TLR
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 1, 0.5, 0.2
-      - HealthTopic: /ailsv_virtual_objects
+      - HealthTopic: /VirtualVehs/health
         HealthName: VRT
-        HealthTopicType: TrackedObjectSet
+        HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
       - HealthTopic: /master_filter/health
         HealthName: WOS
@@ -242,6 +224,10 @@ Subsystem:
     Trigger:
       - Source: StartRequest
     HealthTopics:
+      - HealthTopic: /modia/route_plan/health
+        HealthName: ROUTE
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 1, 0.5, 0.2
       - HealthTopic: /autoGoals/health
         HealthName: GOALS
         HealthTopicType: DiagnosticArray
@@ -250,22 +236,27 @@ Subsystem:
         HealthName: RSKFLD
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /lane_planner_state
+      - HealthTopic: /trajectory_planner/health
         HealthName: TRP
-        HealthTopicType: LanePlannerState
+        HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /lane_follower_state
+      - HealthTopic: /trajectory_follower/health
         HealthName: TRC
-        HealthTopicType: TrajectoryControllerState
-        NomWarnErrRate: 100, 60, 10
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 50, 3, 10
     Commands:
+      - Name: RouteWaypoints
+        Command: rosrun nrc_wm2_svcs multi_set_dest_repeater.py
+        NodeName: RouteWaypoints
+        Type: Software
+        LaunchTime: 3.0
       - Name: AutoGoals
-        Command: rosrun nrc_wm2_svcs auto_goals2 __name:=AutoGoals_node
+        Command: roslaunch nrc_wm2_svcs leaf_route.launch inclRoutePlanner:=true
         NodeName: AutoGoals_node
         Type: Software
         LaunchTime: 3.0
       - Name: Trajectory Planner
-        Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=LeafFS
+        Command: roslaunch nrc_ralp_svcs leaf_planner.launch include_follower:=true include_reactive_follower:=false
         Type: Software
         LaunchTime: 3.0
     Diagnostic:

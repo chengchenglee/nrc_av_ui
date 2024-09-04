@@ -27,6 +27,33 @@ mqtt_filename = 'mqtt_connection_config.yaml'
 #BROKER_PASSWORD = os.getenv('MQTT_PASSWORD', 'yg#eo5cbAksD82qt')
 TLS_protocol_version = ssl.PROTOCOL_TLSv1_2
 
+class MsgStats:
+  def __init__(self,typeStrIn):
+    self.typeStr = typeStrIn
+    self.tLastUpdate = 0.
+    self.msgCount    = 0.
+    self.kbitsTotal  = 0.
+    self.msgsPerSec  = 0.
+    self.kbitsPerSec = 0.
+  
+  def update(self,kbits):
+    if time.time() - self.tLastUpdate < 5.:
+      self.msgCount   += 1.
+      self.kbitsTotal += kbits
+      #print(self.typeStr,self.msgCount,kbits,self.kbitsTotal)
+    else:
+      tNow = time.time()
+      self.msgsPerSec  = self.msgCount / (tNow - self.tLastUpdate)
+      self.kbitsPerSec = self.kbitsTotal / (tNow - self.tLastUpdate)
+      self.tLastUpdate = tNow
+      self.msgCount    = 0.
+      self.kbitsTotal  = 0.
+      self.printStr    = True
+      strOut = 'Mqtt '+self.typeStr+' stats (msg/sec, KBps): '\
+                    +str(round(self.msgsPerSec))+', '\
+                    +str(round(self.kbitsPerSec*10/8)/10)
+      print(strOut)
+
 class CloudConnection:
   def __init__(self,clientId, brokerName):
     self.name = clientId
@@ -34,9 +61,8 @@ class CloudConnection:
     self.clientId = self.name+time.strftime("%Y-%m-%d-%H-%M-%S")
     self.filename = self.filename = rospkg.RosPack().get_path('nrc_av_ui')+'/config/'+mqtt_filename
     self.isConnected = False
-    self.msgsSinceLastUpdate = 0
-    self.avgTransferRate = 3
-    self.lastUpdateTime = time.time()
+    self.msgInStats = MsgStats('Rx')
+    self.msgOutStats = MsgStats('Tx')
     print ("Create mqtt connection:",self.clientId) 
     self.configInfo = self.loadBrokerConfigs()
     print(self.configInfo)
@@ -89,7 +115,7 @@ class CloudConnection:
               resubscribeTopics = []
               for t in self.subscriptions:
                 if t[1] == True:
-                  client.subscribe(t[0],2)
+                  client.subscribe(t[0],t[2])
                   resubscribeTopics.append(t[0])
               if len(resubscribeTopics) > 0:
                 print('Resubscribe:',resubscribeTopics)
@@ -110,9 +136,14 @@ class CloudConnection:
         msg = {}
         msg['topic'] = message.topic
         
+        kbits = getsizeof(message.payload)/1000
+        self.msgInStats.update(kbits)
+        
         if ('snp' in message.topic) and ('data' in message.topic):
           msg['data'] = message.payload
-          
+        elif 'imgStream' in message.topic:
+          msg['data'] = message.payload
+        
         else:
           # Parse csv data
           payloadCsv = message.payload
@@ -159,10 +190,10 @@ class CloudConnection:
       client.on_publish = on_publish
       return client
 
-  def subscribe(self,topics):
+  def subscribe(self,topics,qos):
     for topic in topics:
-      print('Mqtt subscribe to topic:',topic)
-      self.client.subscribe(topic,2)
+      print('Mqtt subscribe (topic/qos):',topic,qos)
+      self.client.subscribe(topic,qos)
       
       foundTopic = False
       for t in self.subscriptions:
@@ -171,7 +202,7 @@ class CloudConnection:
           t[1] = True
           break
       if not foundTopic:
-        self.subscriptions.append([topic,True])
+        self.subscriptions.append([topic,True,qos])
       
   def unsubscribe(self,topics):
     for topic in topics:
@@ -183,7 +214,7 @@ class CloudConnection:
           t[1] = False
           break
 
-  def publishCsv(self,topic,data,qos=2):
+  def publishCsv(self,topic,data,qos):
     if len(data) > 0:
       tStart = time.time()
       result = self.client.publish(topic,data,qos)
@@ -193,18 +224,7 @@ class CloudConnection:
       if status != 0:
         print("Failed to send msg to broker.")
       else:
-        dt = time.time()-tStart
-        dtms = round(dt*10000)/10
-        rate = getsizeof(data)/(dt*1000)
-        
-        self.msgsSinceLastUpdate += 1
-        self.avgTransferRate = 0.3*self.avgTransferRate + 0.7*rate
-        
-        dt = time.time() - self.lastUpdateTime
-        if dt > 1:
-          msgsPerSec = self.msgsSinceLastUpdate / dt
-          #print('Mqtt stats (msg/sec, kbps):'+str(round(msgsPerSec))+', '+str(round(self.avgTransferRate*10)/10))
-          self.lastUpdateTime = time.time()
-          self.msgsSinceLastUpdate = 0
+        kbits = getsizeof(data)/1000
+        self.msgOutStats.update(kbits)
     else:
       print('Cloud connection - empty payload, not sending msg.')
