@@ -48,26 +48,27 @@ def parseMsgs(messages):
         for a in monitoredAgents:
           if agentName in a.name:
             a.tLastMsg = time.time()
+            a.agentMsgCount = hb.msgCount.value
             
     # Received a status update from an agent
     elif "status" in msg['topic']:
-      agentData = MonitoredAgent()
-      agentData.parseMsgPayloadCsv(msg['data'])
+      updatedAgentData = MonitoredAgent()
+      updatedAgentData.parseMsgPayloadCsv(msg['data'])
   
       found = False
       for a in monitoredAgents:
-        if a.name == agentData.name:
+        if a.name == updatedAgentData.name:
           found = True
-          a.update(agentData.subsystems)
+          a.update(updatedAgentData)
       
       if not found:
-        monitoredAgents.append(agentData)
+        monitoredAgents.append(updatedAgentData)
         
     # Received a world model state from an agent
     elif "wmState" in msg['topic']:
       for a in monitoredAgents:
         if a.name in msg['topic']:
-          a.wmStatus.updateFromMqtt(msg['data'])
+          a.updateWmFromMqtt(msg['data'])
           break
         
     elif "imgStream" in msg['topic']:
@@ -117,7 +118,8 @@ def updateTeleopSubs():
     wmTopics = ['dt/'+gui.selectedAgent+'/wmState','dt/'+gui.selectedAgent+'/imgStream']
     for wmTopic in wmTopics:
       if not foundSub:
-        cloud.subscribe([wmTopic])
+        qos = 0
+        cloud.subscribe([wmTopic],qos)
       newSubscribedTopics.append(wmTopic)
   
   subscribedTopics = newSubscribedTopics[:]
@@ -130,7 +132,8 @@ def updateStatusSubs():
       if t == ts:
         alreadySubscribed = True
     if not alreadySubscribed:
-      cloud.subscribe([t])
+      qos = 0
+      cloud.subscribe([t],qos)
       subscribedTopics.append(t)
 
 if True:
@@ -161,11 +164,16 @@ if True:
       for ma in monitoredAgents:
         if isTeleopTab and ma.name == gui.selectedAgent:
           ma.wmDisplayOn = 1
-          gui.updateCanvas(ma.wmStatus,ma.imgStreamData)
+          ma.teleopOn = gui.isTeleop
+          kbitsPerSecIn = cloud.msgInStats.kbitsPerSec
+          gui.updateCanvas(ma.wmStatus,ma.imgStreamData,ma.stateMsgCount,kbitsPerSecIn)
         else:
           ma.wmDisplayOn = 0
+          ma.teleopOn = 0
           ma.teleopCmdData.commands = []
-      if not isTeleopTab: gui.teleopCmds = []
+      if not isTeleopTab:
+        gui.teleopCmds = []
+        gui.isTeleop = 0
     
     if time.time() > updateTeleopCmd:
       updateTeleopCmd = time.time() + 0.1

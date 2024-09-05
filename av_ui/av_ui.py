@@ -73,6 +73,7 @@ if True:
   nextWmSend = 0
   nextSnapSend = time.time()+1
   debugTiming = False
+  rndTripMsgTime = 0
   while running:
     # Wait for updates
     prevTime = time.time()
@@ -96,22 +97,25 @@ if True:
       if debugTiming: print('Send status',dtStamps[1])
       prevTime = time.time()
 
-    remoteWmReq = agent.remoteWmDisplayOn == 1
-    remoteWmReq = remoteWmReq or (time.time()-agent.remoteWmDisplayLastReq < 1.0)
-    if (remoteWmReq or agent.sendWm == 2) and agent.cloud.isConnected == True:
-      agent.passThroughWm = True
-    else:
-      agent.passThroughWm = False
-    
-    if time.time() > nextWmSend and (remoteWmReq or agent.sendWm == 2):
-      nextWmSend = time.time()+0.1
-      if agent.sendWm > 0 and agent.cloud.isConnected == True:
+    fullRateWm = agent.remoteMonTeleoping or agent.sendWm == 2
+    lowRateWm  = agent.remoteWmDisplayOn
+    minWaitTime = max(0.1, min(1.0,round(agent.avgRndTripMsgTime*100)/100))
+    if time.time() > nextWmSend and (lowRateWm or fullRateWm):
+      if fullRateWm:
+        #if (minWaitTime>0.1): print('Delay sending wm due to network',minWaitTime)
+        nextWmSend = time.time()+max(0.1,minWaitTime)
+      else:
+        nextWmSend = time.time()+max(0.5,minWaitTime)
+        
+      if agent.sendWm and agent.cloud.isConnected == True:
         agent.sendWmStatus()
+        agent.passThroughWm  = True
+        agent.passThroughImg = True
       dtStamps[2] = round((time.time() - prevTime)*1000)/1000
       if debugTiming: print('Send WM',dtStamps[2])
       prevTime = time.time()
     
-    if (time.time() > nextSnapSend) and (not remoteWmReq):
+    if (time.time() > nextSnapSend) and (not fullRateWm):
       nextSnapSend = time.time()+0.1
       if agent.cloud.dataInQueue == False and agent.cloud.isConnected == True:
         if (agent.sendSnapshots): agent.sendSnapshot()

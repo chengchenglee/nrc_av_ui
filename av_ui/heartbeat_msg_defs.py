@@ -6,6 +6,9 @@ class HeartbeatEntry:
 class HeartbeatData:
   def __init__(self, agentNameIn = 'leaf', agentTypeIn = 'AV4'):
     
+    ## NOTE: This setup (self.varName and append(HeartbeatEntry) allows
+    ## to get/set values in for-loops and also get/set values by name
+    
     # Define components of heartbeat status
     self.agentName = HeartbeatEntry(agentNameIn)
     self.agentType = HeartbeatEntry(agentTypeIn)
@@ -14,6 +17,7 @@ class HeartbeatData:
     self.pos_th = HeartbeatEntry(0.)
     self.lat    = HeartbeatEntry(0.)
     self.lon    = HeartbeatEntry(0.)
+    self.msgCount = HeartbeatEntry(0)
     
     # Add to message to be sent/received
     self.data = []
@@ -29,8 +33,13 @@ class HeartbeatData:
     self.data[1].append(self.pos_th)
     self.data[1].append(self.lat)
     self.data[1].append(self.lon)
+    
+    self.data.append([])
+    self.data[2].append(HeartbeatEntry('idx'))
+    self.data[2].append(self.msgCount)
   
-  def toMsg(self):
+  def toMsg(self,msgCountIn):
+    self.msgCount.value = msgCountIn
     csvStr = ''
     for i in range(len(self.data)):
       for j in range(len(self.data[i])):

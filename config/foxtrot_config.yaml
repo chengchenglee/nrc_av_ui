@@ -16,7 +16,7 @@ Subsystem:
     Trigger: Startup, StartRequest, ARDX, or PMUX
       - Source: Startup
     HealthTopics:
-      - HealthTopic: /CtrlStateFLG
+      - HealthTopic: /CtrlStateFLG_10hz
         HealthName: CAR
         HealthTopicType: CtrlStateFLG
         NomWarnErrRate: 10, 6, 3
@@ -37,6 +37,11 @@ Subsystem:
         Command: roslaunch nrc_hw_svcs leaf_interface_arduino.launch arduino_machine:=node02
         Type: Software
         LaunchTime: 1.0
+      - Name: CSF_Throttle
+        Command: rosrun topic_tools throttle messages /CtrlStateFLG 10.0 /CtrlStateFLG_10hz
+        NodeName: CSF_Throttle
+        Type: Software
+        LaunchTime: 1
     Diagnostic:
       LED: 0
       Retry: 3
@@ -238,7 +243,7 @@ Subsystem:
       - HealthTopic: /trajectory_follower/health
         HealthName: TRC
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 100, 60, 10
+        NomWarnErrRate: 50, 3, 10
     Commands:
       - Name: RouteWaypoints
         Command: rosrun nrc_wm2_svcs multi_set_dest_repeater.py
@@ -251,7 +256,7 @@ Subsystem:
         Type: Software
         LaunchTime: 3.0
       - Name: Trajectory Planner
-        Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=LeafFS
+        Command: roslaunch nrc_ralp_svcs leaf_planner.launch include_follower:=true include_reactive_follower:=false
         Type: Software
         LaunchTime: 3.0
     Diagnostic:

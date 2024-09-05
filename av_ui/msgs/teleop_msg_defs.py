@@ -62,8 +62,16 @@ class TeleopCmdData:
     self.stamp = stamp
     for line in msgData:
       if len(line) < 1: continue
+    
+      # Read time stamp
       if line[0] == 's' and len(line) >= 2:
         self.seq = int(line[1])
+        
+      # Read msg counter
+      elif len(line) >= 2 and line[0] == 'idx':
+        self.agentMsgCount = int(line[1])
+      
+      # Get list of teleop commands
       elif line[0] == 'c' and len(line) >= TELEOP_ENUMS+1:
         goodData = True
         newEntry = TeleopEntry()

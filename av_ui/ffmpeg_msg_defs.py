@@ -4,14 +4,15 @@ try:
 except ImportError:
   ffmpegTransportExists = False
 
-stampIdx = 0
-seqIdx = 1
-widthIdx = 2
-heightIdx = 3
-pktsIdx = 4
-flgsIdx = 5
-encIdx = 6
-numEnums = 7
+msgCountIdx = 0
+stampIdx    = 1
+seqIdx      = 2
+widthIdx    = 3
+heightIdx   = 4
+pktsIdx     = 5
+flgsIdx     = 6
+encIdx      = 7
+numEnums    = 8
 
 class ImgStreamData:
   def __init__(self):
@@ -21,6 +22,7 @@ class ImgStreamData:
     self.fields = []
     self.fields.append(0)
     self.fields.append(0)
+    self.fields.append(0)
     self.fields.append(512)
     self.fields.append(512)
     self.fields.append('hevc_nvenc')
@@ -28,6 +30,7 @@ class ImgStreamData:
     self.fields.append(0)
     self.imgPkt    = []
     self.unprocessedFrame = False
+    self.msgCount = 0
   
   def width(self):
     return self.fields[widthIdx]
@@ -35,13 +38,16 @@ class ImgStreamData:
   def height(self):
     return self.fields[heightIdx]
   
+  def agentMsgCount(self):
+    return self.fields[msgCountIdx]
+  
   def keyframe(self):
     return self.fields[flgsIdx] == 1
   
   def isFfmpeg(self):
     return self.fields[encIdx] != 'jpeg'
   
-  def toMsg(self,rosMsg,width = 0, height = 0):
+  def toMsg(self,rosMsg, width=0, height=0):
     isFfmpeg = hasattr(rosMsg,"encoding")
     
     if isFfmpeg:
@@ -77,13 +83,16 @@ class ImgStreamData:
     return header+rosMsg.data
     
   def fromMsg(self, dataIn):
+    self.msgCount += 1
+    if self.msgCount >= 100: self.msgCount = 1
+    
     #print('\nParse img stream data')
     headerStr = ''
     headerVec = []
     commaCount = 0
     success = True
     for i in range(0,100):
-      if commaCount >= 7:
+      if commaCount >= numEnums:
         self.imgPkt = dataIn[i:]
         #print(['First bytes:',self.imgPkt[0:20]])
         self.unprocessedFrame = True
