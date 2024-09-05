@@ -299,7 +299,7 @@ class CsvWriterAVinterface:
             #self.writeSnapshot = True
             self.prev_softwareEventTrig = self.softwareEventTrig
 
-            if prev_softwareEventTrig:  # Rising edge.
+            if self.prev_softwareEventTrig:  # Rising edge.
                 self.softwareEventTrig_startTime = rospy.Time.now()
                 self.softwareEventTrig_wasAutonomousAtRisingEdge = wasAutonomous
                 self.writeSnapshot = wasAutonomous              # Only true if there was a trigger and the av was autonomous at the rising edge of the trigger.
