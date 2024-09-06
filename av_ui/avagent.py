@@ -19,6 +19,7 @@ import loader as Loader
 from nrc_msgs.msg import InterventionRequest
 from std_msgs.msg import Int16MultiArray
 from nrc_msgs.msg import TrackedObjectSet,DynamicPoseWithCovar
+from visualization_msgs.msg import Marker, MarkerArray
 from sensor_msgs.msg import CompressedImage
 
 import numpy as np
@@ -104,6 +105,7 @@ class AvAgent:
     rospy.init_node('listener', anonymous=True)  # AvAgent Node
     Loader.subscribe_health_msgs(self.subsystems)
     self.avLedStatusPub = rospy.Publisher("ailsv_av_led",Int16MultiArray,queue_size=1)
+    self.teleopPub      = rospy.Publisher("ailsv_teleop",MarkerArray, queue_size=1)
     self.poseSub     = rospy.Subscriber("/dynamic_global_pose",     DynamicPoseWithCovar,self.pose_callback,queue_size=1)
     self.pose10hzSub = rospy.Subscriber("/dynamic_global_pose_10Hz",DynamicPoseWithCovar,self.pose10hz_callback,queue_size=1)
     if self.sendWm == 1: 
@@ -356,7 +358,10 @@ class AvAgent:
               
       elif 'teleop' in m['topic']:
         stamp = time.time()
+        rosTime = rospy.Time.now()
         self.teleopCmds.fromMsg(m['data'],stamp)
+        ma = self.teleopCmds.toRosMsg(rosTime)
+        self.teleopPub.publish(ma)
             
       # Heartbeat from remote snapshot database
       elif 'snp/remote_server/heartbeat' in m['topic']:

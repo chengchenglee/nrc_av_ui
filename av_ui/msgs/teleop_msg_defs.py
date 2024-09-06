@@ -1,4 +1,6 @@
 
+from visualization_msgs.msg import Marker, MarkerArray
+
 OBJ_ID_IDX   = 0
 POS_X_IDX    = 1
 POS_Y_IDX    = 2
@@ -77,11 +79,42 @@ class TeleopCmdData:
         newEntry = TeleopEntry()
         newEntry.teleopType = line[1]
         for i in range(TELEOP_ENUMS):
-          try: newEntry.values[i] = float(line[i+2])
-          except ValueError: goodData = False
+          if i == OBJ_ID_IDX:
+            try: newEntry.values[i] = int(line[i+2])
+            except ValueError: goodData = False
+          else:
+            try: newEntry.values[i] = float(line[i+2])
+            except ValueError: goodData = False
+          
         if goodData: self.commands.append(newEntry)
 
     #print('Rx Teleop (stamp/seq/cmds):',self.stamp,self.seq,len(self.commands))
     #if len(self.commands) > 0:
       #for cmd in self.commands:
         #print(cmd.teleopType,cmd.values)
+        
+  def toRosMsg(self, stamp):
+    ma = MarkerArray()
+    
+    for cmd in self.commands:
+      m = Marker()
+      m.header.stamp = stamp
+      if cmd.teleopType == 'GAL' or cmd.teleopType == 'GAR' or cmd.teleopType == 'Follow':
+        m.text               = cmd.teleopType
+        m.id                 = cmd.values[OBJ_ID_IDX]
+        m.pose.position.x    = cmd.values[POS_X_IDX]
+        m.pose.position.y    = cmd.values[POS_Y_IDX]
+        m.pose.orientation.z = cmd.values[POS_TH_IDX]
+        ma.markers.append(m)
+    
+    return ma
+        
+          
+      
+      
+      
+      
+      
+      
+      
+      

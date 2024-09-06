@@ -17,7 +17,7 @@ import os
 from collections import deque
 
 class ObjObs:
-  def __init__(self,tNow,msg):
+  def __init__(self,tNow,msg,egoX,egoY):
     orientation_list = [msg.pose.pose.orientation.x, msg.pose.pose.orientation.y,\
                         msg.pose.pose.orientation.z, msg.pose.pose.orientation.w]
     (roll,pitch,yaw) = tf.transformations.euler_from_quaternion(orientation_list)
@@ -25,6 +25,12 @@ class ObjObs:
     self.t   = tNow
     self.objId  = msg.object_id
     self.classification = msg.classification
+    self.l   = round(msg.shape_parameters.x*10)/10
+    self.w   = round(msg.shape_parameters.y*10)/10
+    
+    dx = egoX-msg.pose.pose.position.x
+    dy = egoY-msg.pose.pose.position.y
+    self.r   = round(np.sqrt(dx*dx + dy*dy)*100)/100
     self.x   = round(msg.pose.pose.position.x*100)/100
     self.y   = round(msg.pose.pose.position.y*100)/100
     self.th  = round(yaw*10000)/10000
@@ -36,6 +42,10 @@ class BmapHistRecorder:
     self.prevDgpPose = [0,0,0];
     self.turnSigState = 0
     self.tTurnSigState = 0
+    self.avEngaged = 0
+    self.egoX  = 0
+    self.egoY  = 0
+    self.egoTh = 0
     
     #Vehicle health publisher
     self.healthPub = rospy.Publisher('/bmap_recorder/health_status', DiagnosticArray, queue_size=10)
@@ -44,6 +54,7 @@ class BmapHistRecorder:
     rospy.Subscriber('/dynamic_global_pose', DynamicPoseWithCovar, self.dgpCallback)
     rospy.Subscriber('/pc_processor/multi_object_tracker/tracked_object_set', TrackedObjectSet, self.tosCallback)
     rospy.Subscriber('/CAN_V_reader', CANVReader, self.CanVCallback)
+    rospy.Subscriber('/CtrlStateFLG', CtrlStateFLG, self.ctrlStateCallback)
   
   def addPoint(self,d1,d2):
     dx = d1[0]-d2[0]
@@ -57,25 +68,34 @@ class BmapHistRecorder:
     dist = np.sqrt(dx*dx+dy*dy)
     return dist > 1.0
   
-  #def toObjObs(self,tNow,msgObj):
-    #orientation_list = [msgObj.pose.pose.orientation.x, msgObj.pose.pose.orientation.y,\
-                        #msgObj.pose.pose.orientation.z, msgObj.pose.pose.orientation.w]
-    #(roll,pitch,yaw) = tf.transformations.euler_from_quaternion(orientation_list)
-    
-    #xyth = [msgObj.pose.pose.position.x,msgObj.pose.pose.position.y, yaw]
-    
-    #obs = [msgObj.object_id, tNow, msgObj.classification
-           #round(xyth*100)/100,round(xyth[1]*100)/100,round(xyth[2]*10000)/10000]
-    #return obs
-  
   def toString(self,trkObj):
     if len(trkObj) < 3: return ''
   
+    # Get average length/width
+    length = 0
+    width  = 0
+    classCount = np.zeros(8)
+    currMax = 0
+    for obs in trkObj:
+      length += obs.l
+      width += obs.w
+      classCount[obs.classification] += 1
+      if classCount[obs.classification] > classCount[currMax]:
+        currMax = obs.classification
+    length = round( (length / max(1,len(trkObj)) )*10)/10
+    width  = round( (width  / max(1,len(trkObj)) )*10)/10
+  
+    # Unknown classification, return blank
+    if currMax < 3: return ''
+  
     tZero = trkObj[0].t
     
-    objStr = 'obj,'+str(tZero)+','+str(trkObj.objId
+    objStr = 'obj,t,id,c,l,w,dt,r,x,y,th,'
+    objStr += str(tZero)+','+str(trkObj[0].objId)+','+str(currMax)+','
+    objStr += str(length)+','+str(width)
     for obs in trkObj:
-      objStr += ','+str(round((obs.t-tZero)*100)/100)+\
+      if obs.r > 200: return ''
+      objStr += ','+str(round((obs.t-tZero)*100)/100)+','+str(obs.r)+\
                 ','+str(obs.x)+','+str(obs.y)+','+str(obs.th)
     objStr += '\n'
     return objStr
@@ -89,21 +109,20 @@ class BmapHistRecorder:
       for trkObj in self.objHist:
         if msgObj.object_id == trkObj[0].objId:
           foundObj = True
-          objObs = ObjObs(tNow,msgObj)
+          objObs = ObjObs(tNow,msgObj,self.egoX,self.egoY)
           
           if self.addObjPoint(trkObj[0],objObs):
             trkObj.append(objObs)
-            dx = trkObj[0].x-objObs.x
-            dy = trkObj[0].y-objObs.y
-            dist = round(np.sqrt(dx*dx+dy*dy)*10)/10
-            
-            print('Update obj track:',objObs.objId,dist)
+            #dx = trkObj[0].x-objObs.x
+            #dy = trkObj[0].y-objObs.y
+            #dist = round(np.sqrt(dx*dx+dy*dy)*10)/10
+            #print('Update obj track:',objObs.objId,dist)
           break
       
       if not foundObj:
-        objObs = ObjObs(tNow,msgObj)
+        objObs = ObjObs(tNow,msgObj,self.egoX,self.egoY)
         self.objHist.append([objObs])
-        print('Add new obj track:',objObs.objId)
+        #print('Add new obj track:',objObs.objId)
         
     # Check if delete or publish object track
     oldTracks = self.objHist
@@ -119,8 +138,6 @@ class BmapHistRecorder:
           objStr += self.toString(trkObj)
       else:
         self.objHist.append(trkObj)
-    print('Tracking objects:',len(self.objHist))
-    print('')
     
     # Publish data
     if len(objStr) > 0:
@@ -134,15 +151,20 @@ class BmapHistRecorder:
     (roll,pitch,yaw) = tf.transformations.euler_from_quaternion(orientation_list)
     xyth = [msg.pose.position.x,msg.pose.position.y,yaw]
     
+    self.egoX  = msg.pose.position.x
+    self.egoY  = msg.pose.position.y
+    self.egoTh = yaw
+    
     if self.addPoint(self.prevDgpPose,xyth):
-      print('Add dgp')
+      print('Add dgp',msg.header.stamp.to_sec())
       spd = msg.twist.linear.x*msg.twist.linear.x + msg.twist.linear.y*msg.twist.linear.y
       spd = round(np.sqrt(spd)*10)/10
       yawRate = round(msg.twist.angular.z*100)/100
       dataMsg = String()
       
-      dataMsg.data = 'ego,'
+      dataMsg.data = 'ego,t,avOn,turnSig,x,y,th,'
       dataMsg.data += str(msg.header.stamp.to_sec())+','
+      dataMsg.data += str(self.avEngaged)+','+str(self.turnSigState)+','
       dataMsg.data += str(round(xyth[0]*100)/100)+','+str(round(xyth[1]*100)/100)+','+str(round(xyth[2]*10000)/10000)+','
       dataMsg.data += str(spd)+','+str(yawRate)
       self.dataPub.publish(dataMsg)
@@ -159,6 +181,12 @@ class BmapHistRecorder:
       self.turnSigState = msg.TurnSignals
       
     self.tTurnSigState = tNow
+  
+  def ctrlStateCallback(self,msg):
+    if msg.Engaged == True:
+      self.avEngaged = 1
+    else:
+      self.avEngaged = 0
  
 if __name__ == '__main__':
     print ('Starting Bmap Recorder node.')
