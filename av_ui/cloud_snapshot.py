@@ -69,7 +69,8 @@ def parseMsgs(messages):
         agentName = msg['topic'].split('/')[1]
         topic = 'snp/'+agentName+'/resPartList'
         payload = snapshotStreams[agentName].getPartialList()
-        cloud.publishCsv(topic,payload)
+        qos = 2
+        cloud.publishCsv(topic,payload,qos)
         print('Publish part files list: '+payload)
 
 def updateStatusSubs():
@@ -80,7 +81,8 @@ def updateStatusSubs():
       if t == ts:
         alreadySubscribed = True
     if not alreadySubscribed:
-      cloud.subscribe([t])
+      qos = 2
+      cloud.subscribe([t],qos)
       subscribedTopics.append(t)
 
 if True:
@@ -100,7 +102,8 @@ if True:
     if time.time() > nextHeartbeat:
       topic = 'snp/remote_server/heartbeat'
       data ='a,'+agentName
-      cloud.publishCsv(topic,data)
+      qos = 2
+      cloud.publishCsv(topic,data,qos)
       nextHeartbeat = time.time()+1
 
     time.sleep(0.05)
