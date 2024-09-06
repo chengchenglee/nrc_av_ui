@@ -178,7 +178,7 @@ class CsvWriterAVinterface:
 
     def timerCallback(self, data):            # Interval decided by timerInterval.
         
-        if self.avEngaged and self.inExclusionZone = False:
+        if self.avEngaged and self.inExclusionZone == False:
             if (not self.BRK_Override) and (not self.ACC_Override):
                 self.avEngagedTimer += self.timerInterval
         else:

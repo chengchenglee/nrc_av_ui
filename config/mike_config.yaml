@@ -5,7 +5,7 @@ Configuration:
   printTimeDebug: 0
   useGui: 1
   sendWm: 1
-  sendSnapshots: 0
+  sendSnapshots: 1
   broker: ncal
 
 Subsystem:
@@ -92,7 +92,7 @@ Subsystem:
         NomWarnErrRate: 15, 9, 3
     Commands:
       - Name: Cubtek_eth_raw_left
-        Command: sudo $HOME/projects/nrc_ws/devel/lib/nrc_hw_svcs/pcap eno1 45161 #Left cubtek radar
+        Command: sudo $HOME/projects/nrc_ws/devel/lib/nrc_hw_svcs/pcap eno4 45161 #Left cubtek radar
         Type: Software
         LaunchTime: 2.0
       - Name: Cubtek_eth_raw_right
@@ -116,7 +116,7 @@ Subsystem:
       Retry: 3
       Timeout: 5
     Depends:
-      - Launch:
+      - Launch:CAR
         Run:
 
   InnovusionPCP:
@@ -151,7 +151,7 @@ Subsystem:
       Retry: 3
       Timeout: 5
     Depends:
-      - Launch: EYEQ5
+      - Launch:
         Run:
 
   WM:
@@ -186,7 +186,7 @@ Subsystem:
       Retry: 3
       Timeout: 5
     Depends:
-      - Launch: LUMPCP
+      - Launch: InnovusionPCP
         Run:
 
   PLAN:
