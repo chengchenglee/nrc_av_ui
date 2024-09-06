@@ -54,7 +54,6 @@ class TeleopCmdData:
       for j in range(TELEOP_ENUMS):
         csvStr += ','+str(self.commands[i].values[j])
       csvStr += '\n'
-    #print('Teleop cmd msg:',csvStr)
     self.seq += 1
     if self.seq >= 100: self.seq = 1
     return csvStr
@@ -99,7 +98,7 @@ class TeleopCmdData:
     for cmd in self.commands:
       m = Marker()
       m.header.stamp = stamp
-      if cmd.teleopType == 'GAL' or cmd.teleopType == 'GAR' or cmd.teleopType == 'Follow':
+      if cmd.teleopType == 'GAL' or cmd.teleopType == 'GAR' or cmd.teleopType == 'FTrj':
         m.text               = cmd.teleopType
         m.id                 = cmd.values[OBJ_ID_IDX]
         m.pose.position.x    = cmd.values[POS_X_IDX]

@@ -147,6 +147,9 @@ class MonitoredAgent:
       #newCmd = TeleopEntry.fromOru(10, [1,2,3])
       #self.teleopCmdData.commands.append(newCmd)
       #self.teleopCmdData.commands.append(newCmd)
+      
+    #if (self.teleopCmdData.commands) > 0:
+    #  print('Teleop cmd',self.teleopTopic, self.teleopCmdData.toMsg())
     
     return self.teleopCmdData.toMsg()
   

@@ -47,7 +47,7 @@ class Interface:
     self.windowOpen = False
     self.launchAllReq = False
     self.windowWidth  = 550
-    self.windowHeight = 900
+    self.windowHeight = 930
     self.canvasWidth  = 550
     self.imgHeight    = 268
     self.canvasHeight = 400
@@ -170,8 +170,18 @@ class Interface:
     self.selectedAgentVal.set(newVal)
     self.teleopCmds = []
     self.isTeleop = 0
+    self.enTeleop.configure(text='ENABLE TELEOP')
+    self.setDefaultImg()
+  
+  def setDefaultImg(self):
+    pathToDefaultImg = os.path.expanduser('~')+'/projects/nrc_ws/src/nrc_av_ui/av_ui/test1.png'
+    self.image = Image.open(pathToDefaultImg)
+    self.image2 = self.image.resize((self.canvasWidth,self.imgHeight),Image.ANTIALIAS)
+    self.tkImage = ImageTk.PhotoImage(self.image2)
+    self.tab2_img.configure(image=self.tkImage)
   
   def initCanvas(self):
+    charWidth = 8
     self.agent_options = ['None']
     self.selectedAgentVal = Tkinter.StringVar(self.tab2);
     self.tab2_agentSel = Tkinter.OptionMenu(self.tab2, self.selectedAgentVal, *self.agent_options, command=self.updateSelectedAgent)
@@ -180,23 +190,28 @@ class Interface:
     widthIn  = self.canvasWidth
     heightIn = 200
     
-    pathToDefaultImg = os.path.expanduser('~')+'/projects/nrc_ws/src/nrc_av_ui/av_ui/test1.png'
-    self.image = Image.open(pathToDefaultImg)
-    self.image2 = self.image.resize((self.canvasWidth,self.imgHeight),Image.ANTIALIAS)
-    self.tkImage = ImageTk.PhotoImage(self.image2)
-    
-    self.tab2_img = Tkinter.Label(self.tab2, image=self.tkImage, height=self.imgHeight, width=self.canvasWidth)
+    self.tab2_img = Tkinter.Label(self.tab2, height=self.imgHeight, width=self.canvasWidth)
+    self.setDefaultImg()
     self.tab2_img.grid(column=0, row=2)
     
     self.tab2_canvas = Tkinter.Canvas(self.tab2, bg="white", height=self.canvasHeight, width=self.canvasWidth)
     self.tab2_canvas.grid(column=0, row=3)
     
-    self.lcLeftButton = Tkinter.Button(self.tab2_frame2, text='LC-LFT', width=16, height=4, padx=1, pady=1, relief="raised")
-    self.gaLeftButton = Tkinter.Button(self.tab2_frame2, text='GA-LFT', width=16, height=4, padx=1, pady=1, relief="raised",command=self.gaLeft)
-    self.gaRghtButton = Tkinter.Button(self.tab2_frame2, text='GA-RGT', width=16, height=4, padx=1, pady=1, relief="raised",command=self.gaRght)
-    self.lcRghtButton = Tkinter.Button(self.tab2_frame2, text='LC-RGT', width=16, height=4, padx=1, pady=1, relief="raised")
-    self.enTeleop     = Tkinter.Button(self.tab2_frame2, text='ENABLE TELEOP', width=70, height=2, padx=1, pady=1, relief="raised", command=self.setTeleop)
-    self.enTeleop.grid(row=0, columnspan=4, sticky=Tkinter.W+Tkinter.E)
+    numButtons = 5
+    self.bWidth = int(self.canvasWidth/(numButtons*charWidth))
+    self.lcLeftButton = Tkinter.Button(self.tab2_frame2, text='LC-LFT',\
+                                       width=self.bWidth, height=4, padx=1, pady=1, relief="raised")
+    self.gaLeftButton = Tkinter.Button(self.tab2_frame2, text='GA-LFT',\
+                                       width=self.bWidth, height=4, padx=1, pady=1, relief="raised",command=self.gaLeft)
+    self.followButton = Tkinter.Button(self.tab2_frame2, text='F-TRJ',\
+                                       width=self.bWidth, height=4, padx=1, pady=1, relief="raised",command=self.fTrj)
+    self.gaRghtButton = Tkinter.Button(self.tab2_frame2, text='GA-RGT',
+                                       width=self.bWidth, height=4, padx=1, pady=1, relief="raised",command=self.gaRght)
+    self.lcRghtButton = Tkinter.Button(self.tab2_frame2, text='LC-RGT',\
+                                       width=self.bWidth, height=4, padx=1, pady=1, relief="raised")
+    self.enTeleop     = Tkinter.Button(self.tab2_frame2, text='ENABLE TELEOP',\
+                                       width=numButtons*self.bWidth+numButtons, height=2, padx=1, pady=1, relief="raised", command=self.setTeleop)
+    self.enTeleop.grid(row=0, columnspan=5, sticky=Tkinter.W+Tkinter.E)
     
     # Determine the origin by clicking
     def getorigin(eventorigin):
@@ -262,7 +277,7 @@ class Interface:
           if cmd.objId() == wmObj.object_id:
             if cmd.teleopType == 'ORU':
               color = 'blue'
-            elif cmd.teleopType == 'GAL' or cmd.teleopType == 'GAR':
+            elif cmd.teleopType == 'GAL' or cmd.teleopType == 'GAR' or cmd.teleopType == 'FTrj':
               color = 'green'
           
       ship_id = self.tab2_canvas.create_polygon(bottom,  fill=color)
@@ -371,33 +386,34 @@ class Interface:
     self.tab2_img.configure(image=self.tkImage)
     
   def processClick(self,wmStatus):
-    print('Get nearest object.')
-    closestDist = 10000
-    closestBox  = -1
-    for i in range(len(wmStatus.objs)):
-      du = self.mouseclick[1]-wmStatus.objs[i].avgU
-      dv = self.mouseclick[2]-wmStatus.objs[i].avgV
-      dist = du*du + dv*dv
-      if dist < closestDist:
-        closestBox = i
-        closestDist = dist
     
-    if closestBox >= 0 and closestDist < 10*10:
-      objExists = False
+    if self.isTeleop == True:
+      closestDist = 10000
+      closestBox  = -1
+      for i in range(len(wmStatus.objs)):
+        du = self.mouseclick[1]-wmStatus.objs[i].avgU
+        dv = self.mouseclick[2]-wmStatus.objs[i].avgV
+        dist = du*du + dv*dv
+        if dist < closestDist:
+          closestBox = i
+          closestDist = dist
       
-      # Try to see if we're already tracking this object
-      for cmd in self.teleopCmds:
-        cmdIsOru = (cmd.teleopType == 'ORU' or cmd.teleopType == 'GAL' or cmd.teleopType == 'GAR')
-        if cmdIsOru:
-          if cmd.objId() == wmStatus.objs[closestBox].object_id:
-            cmd.setAction('remove')
-            objExists = True
-            break
-          
-      # If not, create possible teleop entry for this object
-      if not objExists:
-        newCmd = TeleopEntry.fromOru(wmStatus.objs[closestBox].object_id, wmStatus.objs[closestBox].xyth())
-        self.teleopCmds.append(newCmd)
+      if closestBox >= 0 and closestDist < 10*10:
+        objExists = False
+        
+        # Try to see if we're already tracking this object
+        for cmd in self.teleopCmds:
+          cmdIsOru = (cmd.teleopType == 'ORU' or cmd.teleopType == 'GAL' or cmd.teleopType == 'GAR' or cmd.teleopType == 'FTrj')
+          if cmdIsOru:
+            if cmd.objId() == wmStatus.objs[closestBox].object_id:
+              cmd.setAction('remove')
+              objExists = True
+              break
+            
+        # If not, create possible teleop entry for this object
+        if not objExists:
+          newCmd = TeleopEntry.fromOru(wmStatus.objs[closestBox].object_id, wmStatus.objs[closestBox].xyth())
+          self.teleopCmds.append(newCmd)
         
     # Clear old entries
     self.mouseclick[3] = False
@@ -409,6 +425,9 @@ class Interface:
   
   def updateCanvas(self,wmStatus,imgStreamData,stateMsgCount,kbps):
     self.tab2_canvas.delete("all")
+    
+    if self.isTeleop == False:
+      self.teleopCmds = []
     
     self.updateImg(imgStreamData)
     
@@ -577,11 +596,13 @@ class Interface:
     if self.isTeleop:
       self.lcLeftButton.grid(column=0, row=1, sticky=Tkinter.W+Tkinter.E)
       self.gaLeftButton.grid(column=1, row=1, sticky=Tkinter.W+Tkinter.E)
-      self.gaRghtButton.grid(column=2, row=1, sticky=Tkinter.W+Tkinter.E)
-      self.lcRghtButton.grid(column=3, row=1, sticky=Tkinter.W+Tkinter.E)
+      self.followButton.grid(column=2, row=1, sticky=Tkinter.W+Tkinter.E)
+      self.gaRghtButton.grid(column=3, row=1, sticky=Tkinter.W+Tkinter.E)
+      self.lcRghtButton.grid(column=4, row=1, sticky=Tkinter.W+Tkinter.E)
     else:
       self.lcLeftButton.grid_forget()
       self.gaLeftButton.grid_forget()
+      self.followButton.grid_forget()
       self.gaRghtButton.grid_forget()
       self.lcRghtButton.grid_forget()
 
@@ -595,6 +616,11 @@ class Interface:
     else:
       self.isTeleop = 1
       self.enTeleop.configure(text='DISABLE TELEOP')
+
+  def fTrj(self):
+    for cmd in self.teleopCmds:
+      if cmd.teleopType == 'ORU':
+        cmd.teleopType = 'FTrj'
 
   def gaLeft(self):
     for cmd in self.teleopCmds:
