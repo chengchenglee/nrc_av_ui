@@ -47,14 +47,33 @@ class BmapHistRecorder:
     self.egoY  = 0
     self.egoTh = 0
     
+    # Places where we don't want to record
+    self.exclPoses = []
+    self.exclPoses.append([4870.25,-2212.87,0.0194033,75.0,17.0])  #SVPG
+    self.inExclusionZone = True
+    
+    self.diagMsg = DiagnosticArray()
+    diagStatus = DiagnosticStatus()
+    self.diagMsg.status.append(diagStatus)
+    
     #Vehicle health publisher
-    self.healthPub = rospy.Publisher('/bmap_recorder/health_status', DiagnosticArray, queue_size=10)
+    self.healthPub = rospy.Publisher('/bmap_recorder/health', DiagnosticArray, queue_size=10)
     self.dataPub   = rospy.Publisher('/bmap_recorder/data', String, queue_size=10)
     
     rospy.Subscriber('/dynamic_global_pose', DynamicPoseWithCovar, self.dgpCallback)
     rospy.Subscriber('/pc_processor/multi_object_tracker/tracked_object_set', TrackedObjectSet, self.tosCallback)
     rospy.Subscriber('/CAN_V_reader', CANVReader, self.CanVCallback)
     rospy.Subscriber('/CtrlStateFLG', CtrlStateFLG, self.ctrlStateCallback)
+    
+    # Create a ROS Timer for reading data
+    rospy.Timer(rospy.Duration(0.5), self.timerCallback)
+    
+  def timerCallback(self,data):
+    statusStr =  's,3\n'
+    statusStr += 'r,10\n'
+    self.diagMsg.header.stamp = rospy.Time.now()
+    self.diagMsg.status[-1].message = statusStr
+    self.healthPub.publish(self.diagMsg)
   
   def addPoint(self,d1,d2):
     dx = d1[0]-d2[0]
@@ -146,7 +165,34 @@ class BmapHistRecorder:
       dataMsg.data = objStr
       self.dataPub.publish(dataMsg)
   
+  def updateExclZone(self,msg):
+    # Check if we're in an exclusion zone
+    self.inExclusionZone = False
+    for point in self.exclPoses:
+      exclPose = np.zeros((3,3))
+      exclPose[0,0] =  np.cos(point[2])
+      exclPose[0,1] =  np.sin(point[2])
+      exclPose[1,0] = -np.sin(point[2])
+      exclPose[1,1] =  np.cos(point[2])
+      exclPose[2,2] =  1
+      exclPose[0,2] = point[0]
+      exclPose[1,2] = point[1]
+      exclPoseInv = np.linalg.inv(exclPose)
+      
+      egoPoint = np.zeros((3,1))
+      egoPoint[0,0] = msg.pose.position.x
+      egoPoint[1,0] = msg.pose.position.y
+      egoPoint[2,0] = 1
+      
+      relPoint = np.dot(exclPoseInv,egoPoint)
+      if abs(relPoint[0,0]) < point[3] and abs(relPoint[1,0]) < point[4]:
+        self.inExclusionZone = True
+        #print('In exclusion zone',round(relPoint[0,0]*10)/10,round(relPoint[1,0]*10)/10)
+  
   def dgpCallback(self,msg):
+    # Places we don't want to record
+    self.updateExclZone(msg)
+
     orientation_list = [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
     (roll,pitch,yaw) = tf.transformations.euler_from_quaternion(orientation_list)
     xyth = [msg.pose.position.x,msg.pose.position.y,yaw]
@@ -156,18 +202,19 @@ class BmapHistRecorder:
     self.egoTh = yaw
     
     if self.addPoint(self.prevDgpPose,xyth):
-      print('Add dgp',msg.header.stamp.to_sec())
+      #print('Add dgp',msg.header.stamp.to_sec())
       spd = msg.twist.linear.x*msg.twist.linear.x + msg.twist.linear.y*msg.twist.linear.y
       spd = round(np.sqrt(spd)*10)/10
       yawRate = round(msg.twist.angular.z*100)/100
       dataMsg = String()
       
-      dataMsg.data = 'ego,t,avOn,turnSig,x,y,th,'
-      dataMsg.data += str(msg.header.stamp.to_sec())+','
-      dataMsg.data += str(self.avEngaged)+','+str(self.turnSigState)+','
-      dataMsg.data += str(round(xyth[0]*100)/100)+','+str(round(xyth[1]*100)/100)+','+str(round(xyth[2]*10000)/10000)+','
-      dataMsg.data += str(spd)+','+str(yawRate)
-      self.dataPub.publish(dataMsg)
+      if self.inExclusionZone == False:
+        dataMsg.data = 'ego,t,avOn,turnSig,x,y,th,'
+        dataMsg.data += str(msg.header.stamp.to_sec())+','
+        dataMsg.data += str(self.avEngaged)+','+str(self.turnSigState)+','
+        dataMsg.data += str(round(xyth[0]*100)/100)+','+str(round(xyth[1]*100)/100)+','+str(round(xyth[2]*10000)/10000)+','
+        dataMsg.data += str(spd)+','+str(yawRate)
+        self.dataPub.publish(dataMsg)
       self.prevDgpPose = xyth
       
   def CanVCallback(self,msg):

@@ -2,13 +2,13 @@
 
   <machine name="local" address="localhost"/>
   <machine name="node02" address="node02" env-loader="$(find nrc_svcs)/launch/env.sh" />
-  <arg name="snapshot_machine" default="local" />
-  <arg name="suffix" default="" />
+  <arg name="snapshot_machine"  default="local" />
 
-  <arg name="prefix" default="autonomy_log" />
-  <arg name="compression" default="false" /> <!--bz2 compression -->
-  <arg name="checkEngaged" default="True" />
-  <arg name="car" default="Foxtrot" />
+  <arg name="recordSnapshots"   default="True"/>
+  <arg name="recordBmapData"    default="True"/>
+  <arg name="checkEngaged"      default="True" />
+  <arg name="car"               default="Foxtrot" />
+  <arg name="snapshotDirectory" default="/opt/data/snapshots"/>
 
   <!-- (.*) does not work with snapshot rosbag command. So added a seperate snapshot main topics-->
   <arg name="snapshot_system_main_topics"
@@ -90,13 +90,16 @@
   |/cubtek_raw_points
   |/ariya_back_radar_tracked_objects"/>
   
-  <!--Run snapshot buffer shell script-->
-  <group if="True">
+  <arg name="bmap_topics"
+  default="/bmap_recorder/data"/>
+  
+  <group if="$(arg recordSnapshots)">
+    <!--Snapshot trigger node-->
+    <node pkg="nrc_av_ui" type="Snapshot_Trigger.py" name="snapshot_trigger_node" output="screen" args="-e $(arg checkEngaged) -c $(arg car)"/>
+    
+    <!--Snapshot bagfile recorder-->
     <node pkg="nrc_av_ui" type="rosbagSnapshot.sh" name="rosbag_snapshot" output="screen"
     args="$(arg snapshot_system_front_tower_cameras_topics) $(arg snapshot_system_main_topics) $(arg snapshot_pc_processor_all_topics) $(arg snapshot_wm_all_topics) $(arg snapshot_ralp_all_topics) $(arg cubtek_topics)"/>
-
-    <!--Run snapshot node-->
-    <node pkg="nrc_av_ui" type="Snapshot_Trigger.py" name="snapshot_trigger_node" output="screen" args="-e $(arg checkEngaged) -c $(arg car)"/>
     
     <node if="False" name="snapshot" pkg="nodelet" type="nodelet"
         args="standalone image_proc/resize" output="screen">
@@ -106,7 +109,14 @@
         <param name="scale_height" value="0.4" />
     </node>
   </group>
-  
-  <node pkg="nrc_av_ui" type="rosbagRecordMonitor.py" name="snapshot_monitor" args="-d ~/projects/disengagementData/bags/ -t SnapshotHealth -n SnapshotMonitor -m Trigger" machine="$(arg snapshot_machine)" output="screen"/>
+
+  <group if="$(arg recordBmapData)">
+    <!--Bmap data collector-->
+    <node pkg="nrc_av_ui" type="bmapDataCollector.py" name="bmap_data_collector" output="screen"/>
+    
+    <!--Bmap bagfile recorder-->
+    <node pkg="nrc_av_ui" type="rosbagrecord2.sh" name="rosbag_bmap_data" output="screen"
+    args="-p $(arg snapshotDirectory) -c --lz4 -o bmap_log -e $(arg bmap_topics) -d 10s"  machine="$(arg snapshot_machine)"/>  
+  </group>
 
 </launch>

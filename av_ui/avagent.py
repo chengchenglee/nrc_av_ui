@@ -108,6 +108,7 @@ class AvAgent:
     self.teleopPub      = rospy.Publisher("ailsv_teleop",MarkerArray, queue_size=1)
     self.poseSub     = rospy.Subscriber("/dynamic_global_pose",     DynamicPoseWithCovar,self.pose_callback,queue_size=1)
     self.pose10hzSub = rospy.Subscriber("/dynamic_global_pose_10Hz",DynamicPoseWithCovar,self.pose10hz_callback,queue_size=1)
+    self.gps2hzSub   = rospy.Subscriber("/gps_state/gps_state_oxts_2hz",DynamicPoseWithCovar,self.gps2hz_callback,queue_size=1)
     if self.sendWm == 1: 
       self.wmStatusSub = rospy.Subscriber("pc_processor/multi_object_tracker/tracked_object_set", TrackedObjectSet, self.wmStatus.updateObjs, queue_size = 1)
     
@@ -142,6 +143,10 @@ class AvAgent:
     self.heartbeat.pos_x.value = msg.pose.position.x
     self.heartbeat.pos_y.value = msg.pose.position.y
     self.heartbeat.pos_th.value = yaw
+    
+  def gps2hz_callback(self,msg):
+    self.heartbeat.lat = msg.Latitude
+    self.heartbeat.lon = msg.Longitude
     
   def nextMsgCount(self):
     self.mqttMsgCount += 1

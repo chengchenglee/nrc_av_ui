@@ -19,7 +19,7 @@ do
   esac
 done
     
-echo "Options: " $NAME $COMP $TOP
+echo "Bagfile record options (name/compression/duration): " $NAME $COMP $DUR
     
 d=`date +%F`
 cd ${NRC_BAG_DIR}
@@ -27,4 +27,4 @@ mkdir -p ${d}
 cd ${d}
 
 echo "Recording to directory: " $PWD
-#rosbag record -o $NAME -e $TOP $COMP --split --duration=$DUR --buffsize=$SIZ
+rosbag record -o $NAME -e $TOP $COMP --split --duration=$DUR --buffsize=$SIZ

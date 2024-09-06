@@ -104,8 +104,37 @@ class CsvWriterAVinterface:
         self.healthPub = rospy.Publisher('/snapshotTrigger/health_status', DiagnosticArray, queue_size=10)
         rospy.init_node('Snapshot_Trigger')
         
+        # Places where we don't want to record
+        self.exclPoses = []
+        self.exclPoses.append([4870.25,-2212.87,0.0194033,75.0,17.0])  #SVPG
+        self.inExclusionZone = True
+        
         # Create a ROS Timer for reading data
         rospy.Timer(rospy.Duration(self.timerInterval), self.timerCallback)
+    
+    def updateExclZone(self,msg):
+      # Check if we're in an exclusion zone
+      self.inExclusionZone = False
+      for point in self.exclPoses:
+        exclPose = np.zeros((3,3))
+        exclPose[0,0] =  np.cos(point[2])
+        exclPose[0,1] =  np.sin(point[2])
+        exclPose[1,0] = -np.sin(point[2])
+        exclPose[1,1] =  np.cos(point[2])
+        exclPose[2,2] =  1
+        exclPose[0,2] = point[0]
+        exclPose[1,2] = point[1]
+        exclPoseInv = np.linalg.inv(exclPose)
+        
+        egoPoint = np.zeros((3,1))
+        egoPoint[0,0] = msg.pose.position.x
+        egoPoint[1,0] = msg.pose.position.y
+        egoPoint[2,0] = 1
+        
+        relPoint = np.dot(exclPoseInv,egoPoint)
+        if abs(relPoint[0,0]) < point[3] and abs(relPoint[1,0]) < point[4]:
+          self.inExclusionZone = True
+          #print('In exclusion zone',round(relPoint[0,0]*10)/10,round(relPoint[1,0]*10)/10)
     
     def poseCallback(self, msg):
         '''
@@ -117,6 +146,9 @@ class CsvWriterAVinterface:
         And if the vehicle is moving very slowly and it covers 50 meters in 15 seconds, 
         then when a trigger happens the code will record data from 15 seconds prior to the trigger upto 20 seconds after the trigger.
         '''
+        # Disable recording snapshots in some locations, like SVPG
+        self.updateExclZone(msg)
+        
         if self.lastPose is not None:
             # Check the time difference
             if (msg.header.stamp - self.lastPose.header.stamp).to_sec() < 0.1:
@@ -146,7 +178,7 @@ class CsvWriterAVinterface:
 
     def timerCallback(self, data):            # Interval decided by timerInterval.
         
-        if self.avEngaged:
+        if self.avEngaged and self.inExclusionZone = False:
             if (not self.BRK_Override) and (not self.ACC_Override):
                 self.avEngagedTimer += self.timerInterval
         else:

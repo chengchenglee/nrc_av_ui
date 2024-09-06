@@ -82,6 +82,11 @@ Subsystem:
         NodeName: MapMatch_node
         Type: Software
         LaunchTime: 3.0
+      - Name: GPS_Throttle
+        Command: rosrun topic_tools throttle messages /gps_state/gps_state_oxts 2.0 /gps_state/gps_state_oxts_2hz
+        NodeName: GPS_Throttle
+        Type: Software
+        LaunchTime: 1
     Diagnostic:
       LED: 1
       Retry: 3
@@ -283,6 +288,10 @@ Subsystem:
         NomWarnErrRate: 10, 6, 3
       - HealthTopic: /SnapshotHealth
         HealthName: SBAG
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /bmap_recorder/health
+        HealthName: BMAP
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
     Commands:
