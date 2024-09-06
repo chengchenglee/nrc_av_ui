@@ -160,7 +160,7 @@ class BmapHistRecorder:
     
     # Publish data
     if len(objStr) > 0:
-      print('Publish objects',objStr)
+      #print('Publish objects',objStr)
       dataMsg = String()
       dataMsg.data = objStr
       self.dataPub.publish(dataMsg)
