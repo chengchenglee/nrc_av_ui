@@ -6,7 +6,7 @@ Configuration:
   useGui: 1
   sendWm: 1
   sendSnapshots: 1
-  broker: ncal
+  broker: emqx
 
 Subsystem:
   CAR:

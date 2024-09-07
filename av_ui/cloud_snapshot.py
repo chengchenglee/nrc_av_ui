@@ -14,7 +14,7 @@ import time
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-b', '--broker', default='ncal')
+parser.add_argument('-b', '--broker', default='emqx')
 args, uargs = parser.parse_known_args()
 
 running = True

@@ -7,7 +7,7 @@ Configuration:
   sendWm: 1
   sendSnapshots: 1
   Map: Franklin.set
-  broker: ncal
+  broker: emqx
 
 Subsystem:
   CAR:

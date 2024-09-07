@@ -5,7 +5,6 @@ import os
 import ssl
 import json
 import argparse
-import paho.mqtt.client as mqtt_client
 from collections import OrderedDict
 from sys import getsizeof
 import yaml
@@ -14,18 +13,20 @@ from nrc_msgs.msg import GpsState
 import rospkg
 from threading import Lock
 
+foundPaho = True
+try:
+  a = 1
+  import paho.mqtt.client as mqtt_client
+except:
+  foundPaho = False
+
 mutex = Lock()
 usingMailbox = False
 
 subscribeTopics = ["dt/tfc/vehicle/telemetry"]
 mqtt_filename = 'mqtt_connection_config.yaml'
 
-#MQTT parameters from environment variables
-#BROKER_ADDRESS = os.getenv('MQTT_SERVER', 'mqtt-broker-ncal.nrcsv.com')
-#BROKER_PORT = int(os.getenv('MQTT_PORT', 8883))
-#BROKER_USERNAME = os.getenv('MQTT_USER', 'sam_teleop')
-#BROKER_PASSWORD = os.getenv('MQTT_PASSWORD', 'yg#eo5cbAksD82qt')
-TLS_protocol_version = ssl.PROTOCOL_TLSv1_2
+#TLS_protocol_version = ssl.PROTOCOL_TLSv1_2
 
 class MsgStats:
   def __init__(self,typeStrIn):
@@ -56,24 +57,22 @@ class MsgStats:
 
 class CloudConnection:
   def __init__(self,clientId, brokerName):
+    self.foundPaho = foundPaho
     self.name = clientId
     self.broker = brokerName
-    self.clientId = self.name+time.strftime("%Y-%m-%d-%H-%M-%S")
-    self.filename = self.filename = rospkg.RosPack().get_path('nrc_av_ui')+'/config/'+mqtt_filename
+    self.clientId = self.name+'_'+time.strftime("%Y-%m-%d-%H-%M-%S")
+    self.filename = rospkg.RosPack().get_path('nrc_av_ui')+'/config/'+mqtt_filename
     self.isConnected = False
-    self.msgInStats = MsgStats('Rx')
-    self.msgOutStats = MsgStats('Tx')
-    print ("Create mqtt connection:",self.clientId) 
     self.configInfo = self.loadBrokerConfigs()
     print(self.configInfo)
-    self.configInfo['PROTOCOL'] = TLS_protocol_version
-    if not self.configInfo:
-      print("Check mqtt config file.")
+    self.configInfo['PROTOCOL'] = ssl.PROTOCOL_TLSv1_2
     self.client = []
     self.mailbox = []
     self.subscriptions = []
     self.unsubscriptions = []
     self.dataInQueue = False
+    self.msgInStats = MsgStats('Rx')
+    self.msgOutStats = MsgStats('Tx')
 
   def loadBrokerConfigs(self):
     config_file = open(self.filename, 'r')
@@ -95,8 +94,9 @@ class CloudConnection:
           self.configInfo[key] = value
     
   def init(self, configName='doris'):
-    self.client = self.connect_mqtt(configName)
-    self.client.loop_start()
+    if foundPaho:
+      self.client = self.connect_mqtt(configName)
+      self.client.loop_start()
     
   def getMail(self):
     with mutex:
@@ -170,11 +170,13 @@ class CloudConnection:
           a = 1
           #print("Subscribed to mqtt messages.")
       
+      
+      print ("Create mqtt connection:",self.clientId) 
       client_id = 'natcsv-mqtt-client.'+self.clientId
-      client = mqtt_client.Client(client_id, clean_session=False)
+      client = mqtt_client.Client(client_id, clean_session=True)
       client.username_pw_set(self.configInfo['MQTT_USER'], self.configInfo['MQTT_PASSWORD'])
       
-      if self.configInfo['MQTT_PORT'] == 8883:
+      if self.configInfo['MQTT_PORT'] == 30203 or self.configInfo['MQTT_PORT'] == 8883:
           # enable SSL
           context = ssl.SSLContext(self.configInfo['PROTOCOL'])
           # do not check the cert hostname
@@ -192,8 +194,9 @@ class CloudConnection:
 
   def subscribe(self,topics,qos):
     for topic in topics:
-      print('Mqtt subscribe (topic/qos):',topic,qos)
-      self.client.subscribe(topic,qos)
+      if foundPaho:
+        print('Mqtt subscribe (topic/qos):',topic,qos)
+        self.client.subscribe(topic,qos)
       
       foundTopic = False
       for t in self.subscriptions:
@@ -206,8 +209,9 @@ class CloudConnection:
       
   def unsubscribe(self,topics):
     for topic in topics:
-      print('Mqtt unsubscribe to topic:',topic)
-      self.client.unsubscribe(topic)
+      if foundPaho:
+        print('Mqtt unsubscribe to topic:',topic)
+        self.client.unsubscribe(topic)
       
       for t in self.subscriptions:
         if t[0] == topic:
@@ -217,10 +221,11 @@ class CloudConnection:
   def publishCsv(self,topic,data,qos):
     if len(data) > 0:
       tStart = time.time()
-      result = self.client.publish(topic,data,qos)
-      self.dataInQueue = True
-      #result.wait_for_publish()
-      status = result[0]
+      status = 0
+      if foundPaho:
+        result = self.client.publish(topic,data,qos)
+        status = result[0]
+        self.dataInQueue = True
       if status != 0:
         print("Failed to send msg to broker.")
       else:
