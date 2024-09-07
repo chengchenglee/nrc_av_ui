@@ -5,7 +5,7 @@
   <arg name="snapshot_machine"  default="local" />
 
   <arg name="recordSnapshots"   default="True"/>
-  <arg name="recordBmapData"    default="True"/>
+  <arg name="recordBmapData"    default="False"/>
   <arg name="checkEngaged"      default="True" />
   <arg name="car"               default="Foxtrot" />
   <arg name="snapshotDirectory" default="/opt/data/snapshots"/>
