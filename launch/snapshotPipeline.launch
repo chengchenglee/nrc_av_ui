@@ -119,7 +119,7 @@
     
     <!--Bmap bagfile recorder-->
     <node pkg="nrc_av_ui" type="rosbagrecord2.sh" name="rosbag_bmap_data" output="screen"
-    args="-p $(arg snapshotDirectory) -c --lz4 -o bmap_log -e $(arg bmap_topics) -d 10s"  machine="$(arg snapshot_machine)"/>  
+    args="-p $(arg snapshotDirectory) -c --lz4 -o bmap_log -e $(arg bmap_topics) -d 10m"  machine="$(arg snapshot_machine)"/>  
   </group>
 
 </launch>
