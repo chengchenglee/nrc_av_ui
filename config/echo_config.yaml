@@ -243,10 +243,6 @@ Subsystem:
         HealthName: GOALS
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /prm/risk_field/health
-        HealthName: RSKFLD
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
       - HealthTopic: /trajectory_planner/health
         HealthName: TrajP
         HealthTopicType: DiagnosticArray
