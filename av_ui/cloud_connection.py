@@ -185,7 +185,7 @@ class CloudConnection:
 
       client.on_connect = on_connect
       client.on_disconnect = on_disconnect
-      print(self.configInfo['MQTT_SERVER'], self.configInfo['MQTT_PORT'])
+      print(self.configInfo['MQTT_SERVER'], self.configInfo['MQTT_PORT'], self.configInfo['MQTT_USER'], self.configInfo['MQTT_PASSWORD'])
       client.connect(self.configInfo['MQTT_SERVER'], self.configInfo['MQTT_PORT'])
       client.on_subscribe = on_mqtt_subscribe
       client.on_message = on_mqtt_message
