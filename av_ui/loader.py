@@ -25,8 +25,7 @@ def getField(text,field,default):
   for line in lines:
     if field in line:
       value = line.split(': ')[1]
-  
-  print ("Loader param: "+field+" ==> "+str(value))
+  print ("Loader param: ",field," ==> ",value)
   return value
 
 def getSubConfigs(text, config):
