@@ -11,7 +11,7 @@ Subsystem:
     Type: Software
     Description: ROS traffic over MQTT
     Trigger:
-      - Source: StartRequest
+      - Source: Startup
     Commands:
       - Name: ROS-MQTT-Bridge
         Command: bash /root/projects/fvla_cloudav/src/scripts/launch_mqtt.sh
@@ -29,7 +29,24 @@ Subsystem:
     Type: Software
     Description: TrackMatching
     Trigger:
-      - Source: StartRequest
+      - Source: Startup
+    HealthTopics:
+      - HealthTopic: /pc_processor/multi_object_tracker/tracked_object_set_track_matched_1
+        HealthName: TOS1
+        HealthTopicType: TrackedObjectSet
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /dynamic_global_pose_track_matched_1
+        HealthName: DGP1
+        HealthTopicType: DynamicPoseWithCovar
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /pc_processor/multi_object_tracker/tracked_object_set_track_matched_2
+        HealthName: TOS2
+        HealthTopicType: TrackedObjectSet
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /dynamic_global_pose_track_matched_2
+        HealthName: DGP2
+        HealthTopicType: DynamicPoseWithCovar
+        NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: TM1
         Command: python /root/projects/fvla_cloudav/src/track_matching_new/track_matcher_lidar1.py
@@ -52,7 +69,24 @@ Subsystem:
     Type: Algorithm
     Description: Fuse dabp and tos
     Trigger:
-      - Source: StartRequest
+      - Source: Startup
+    HealthTopics:
+      - HealthTopic: /pc_processor/visible_space/visible_space_ray_points
+        HealthName: VA
+        HealthTopicType: VisibleSpacePoints
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /dynamic_global_pose_infrapod_matched
+        HealthName: DGP
+        HealthTopicType: DynamicPoseWithCovar
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /pc_processor/multi_object_tracker/tracked_object_set
+        HealthName: TOS
+        HealthTopicType: TrackedObjectSet
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /drivable_area_boundary_points
+        HealthName: DABP
+        HealthTopicType: PointCloud2
+        NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: DABP
         Command: python /root/projects/fvla_cloudav/src/fusion/get_DABP_fused.py
@@ -77,7 +111,7 @@ Subsystem:
     Type: Algorithm
     Description: CloudAV Agent for fleetux
     Trigger:
-      - Source: StartRequest
+      - Source: Startup
     Commands:
       - Name: Agent
         Command: python /root/projects/fvla_cloudav/src/cloud-av-agent/agent.py --vin ${VEHICLE_ID}
@@ -94,7 +128,7 @@ Subsystem:
     Type: Algorithm
     Description: World Model
     Trigger:
-      - Source: StartRequest
+      - Source: Startup
     HealthTopics:
       - HealthTopic: /VirtualVehs/health
         HealthName: VRT
@@ -120,7 +154,7 @@ Subsystem:
     Type: Algorithm
     Description: Route planner and DM
     Trigger:
-      - Source: StartRequest
+      - Source: Startup
     HealthTopics:
       - HealthTopic: /modia/route_plan/health
         HealthName: ROUTE
@@ -161,7 +195,7 @@ Subsystem:
     Type: Algorithm
     Description: teleop nodes
     Trigger:
-      - Source: StartRequest
+      - Source: Startup
     Commands:
     - Name: Tlmtry
       Command: roslaunch mqtt_telemetry mqtt_telemetry.launch agent_name:=${VEHICLE_ID}
@@ -182,7 +216,7 @@ Subsystem:
     Type: Algorithm
     Description: health monitor
     Trigger:
-      - Source: StartRequest
+      - Source: Startup
     Commands:
     - Name: HM
       Command: roslaunch health-monitor cloudav_health.launch config_file:=$HOME/projects/fvla_cloudav/src/configs/health-monitor/CloudAV_HealthCheck.yaml
@@ -197,11 +231,11 @@ Subsystem:
 
   BAG:
     Type: Algorithm
-    Description: health monitor
+    Description: cloud rosbag recoridng
     Trigger:
-      - Source: StartRequest
+      - Source: Startup
     Commands:
-    - Name: HM
+    - Name: BAG
       Command: bash $HOME/projects/fvla_cloudav/src/scripts/start_recording.sh
       LaunchTime: 1
     Diagnostic:
