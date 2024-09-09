@@ -1,3 +1,4 @@
+import rospy
 import argparse
 import numpy as np
 import rosbag
@@ -28,22 +29,8 @@ from ast import literal_eval
 from ros_numpy import numpify
 from scipy.spatial.transform import Rotation
 
-# AWS boto3 implementation
-import boto3
-import botocore
-from botocore.errorfactory import ClientError
-from threading import Thread
-import time
-from time import sleep
-import progressbar
-
 global currentSpeed
 global currentAccel
-
-
-session = boto3.Session(profile_name='sachin')
-s3 = session.resource('s3')
-s3Client = session.client('s3')
 
 fourcc = cv2.VideoWriter_fourcc(*"mp4v")
 snap_folder_name = "snapshot_videos"
@@ -51,7 +38,7 @@ aws_bags_folder_name = "/home/users/sachin/projects/awsVideoProduction/awsBags/"
 #frame_size = (3840, 2160)
 frame_size = (2160, 1080)
 #frame_size = (720, 480)
-widthOfCameraFeed = int(frame_size[1]/3)
+widthOfCameraFeed = int(frame_size[1]/2.5)
 offsetOfCameraFeed = 50
 tflImageWidth = 85
 fps = 10
@@ -602,13 +589,14 @@ def draw_front_camera(f,frame,camera_messages):
         # cv2.imshow('w',image_np)
         # cv2.waitKey(30)
 
-        x_offset=y_offset=offsetOfCameraFeed
+        x_offset=offsetOfCameraFeed
+        y_offset=offsetOfCameraFeed+20
         frame[y_offset:y_offset+image_np.shape[0], x_offset:x_offset+image_np.shape[1]] = image_np
 
 def draw_speed_on_front_camera_image(f,frame):
     #Add speed of the vehicle to image
     font = cv2.FONT_HERSHEY_SIMPLEX
-    org = ([offsetOfCameraFeed+widthOfCameraFeed-130,offsetOfCameraFeed+30])
+    org = ([offsetOfCameraFeed+widthOfCameraFeed-130,offsetOfCameraFeed+50])
     fontScale = 0.7
     thickness = 2
 
@@ -993,7 +981,7 @@ def process_directory(bags_dir: Path, args):
         drivable_area_data = list(bag.read_messages(args.drivable_area_topic))
 
     if not drivable_area_data:
-        print("No lane id data, ... continuing")
+        print("No drivable area data, ... continuing")
     else:
         print("Processing drivable area data .......")
         _, _, drivable_area_start_frame, _ = align_data(tr_data, drivable_area_data)
@@ -1212,12 +1200,22 @@ def is_bag_dir(dir: Path, args) -> bool:
 
 def main(args):
     dir2process = Path(args.bags_dir)
-    #dir2process = Path(aws_bags_folder_name + "snapshot_bagfiles/" + time.strftime("%Y%m%d"))
-    print(dir2process)
     if not os.path.isdir(dir2process/snap_folder_name) and dir2process.suffix != ".bag":
-        os.mkdir(dir2process/snap_folder_name)
+        os.makedirs(dir2process/snap_folder_name, exist_ok=True)
+    elif not os.path.isdir(dir2process/snap_folder_name) and dir2process.suffix == ".bag":
+        os.makedirs(dir2process.parent/snap_folder_name, exist_ok=True)
     if not dir2process.is_dir() and dir2process.suffix == ".bag":
-        process_directory(dir2process, args)
+        #ret = process_directory(dir2process, args)
+        try:
+            ret = process_directory(dir2process, args)
+            if ret == -1:
+                print("Error occured with bag file: "),
+                print(dir2process)
+            elif ret == 2:
+                print("Video for " + dir2process.name + " already exists")
+        except Exception as e: 
+            print(e)
+            pass
     elif is_bag_dir(dir2process, args):
         for item in dir2process.iterdir():
             try:
@@ -1230,15 +1228,6 @@ def main(args):
             except Exception as e: 
                 print(e)
                 pass
-
-def downloadDirectoryFroms3(bucketName, remoteDirectoryName):
-    bucket = s3.Bucket(bucketName)
-    for obj in bucket.objects.filter(Prefix = remoteDirectoryName):
-        if not os.path.exists(os.path.dirname(aws_bags_folder_name+obj.key)):
-            os.makedirs(os.path.dirname(aws_bags_folder_name+obj.key))
-        if not os.path.exists(aws_bags_folder_name+obj.key):
-            bucket.download_file(obj.key, aws_bags_folder_name+obj.key) # save to same path
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Pre-Process bag files.')
@@ -1262,9 +1251,9 @@ if __name__ == '__main__':
     parser.add_argument('--drivable_area_topic', type=str, default='/drivable_area_boundary_points',
                         help='Track topic with objects lists per time stamp '
                              '(default: /drivable_area_boundary_points)')
-    parser.add_argument('--camera_topic', type=str, default='/snapshot/image/compressed',
+    parser.add_argument('--camera_topic', type=str, default='/tower_cam_front/image_cropped2/compressed',
                         help='Camera topic lists per time stamp '
-                             '(default: /snapshot/image/compressed)')
+                             '(default: /tower_cam_front/image_cropped2/compressed)')
     parser.add_argument('--sensor_pose_topic', type=str, default='/dynamic_global_pose',
                         help='Raw topic with sensor pose per time stamp '
                              '(default: /dynamic_global_pose)')
@@ -1296,10 +1285,4 @@ if __name__ == '__main__':
                         help="consider vehicles in next lanes left and right")
     parser.add_argument("--ignore_lead", action='store_true',
                         help="skip lead processing")
-    try:
-        downloadDirectoryFroms3("foxtrot-snapshots","snapshot_bagfiles/"+time.strftime("%Y%m%d"))
-    except:
-        print("AWS connection did not work")
-        pass
-    # /lead_vehicle
     main(parser.parse_args())
