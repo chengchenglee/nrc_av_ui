@@ -10,6 +10,7 @@ pyCodeDir="$HOME/projects/awsVideoProduction/venv/videoProductionTool"
 test=false
 vehicle="foxtrot"
 inputDate=$1
+isDecompress=$2
 if [ -z "$inputDate" ]
 then
     dateNow=$snapshotsDir$(date '+%Y-%m-%d')

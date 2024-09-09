@@ -2,7 +2,7 @@ Configuration:
 
 Brokers:
   doris:
-    MQTT_SERVER: doris
+    MQTT_SERVER: doris.ail-sv.com
     MQTT_PORT: 8883
     MQTT_USER: sam_teleop
     MQTT_PASSWORD: yg#eo5cbAksD82qt
