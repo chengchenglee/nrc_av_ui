@@ -23,7 +23,7 @@ from visualization_msgs.msg import Marker, MarkerArray
 from sensor_msgs.msg import CompressedImage
 
 import numpy as np
-import tf.transformations
+#import tf.transformations
 import time
 from cloud_connection import CloudConnection
 import json, ast
@@ -72,7 +72,7 @@ class AvAgent:
     printDebug = int(verbose)
     self.subsystems = Loader.read_subsystems(text, printDebug)
     self.mapName = Loader.getField(text,'mapName','Franklin.set')
-    self.mqttConfig = Loader.getField(text,'mqttConfig','local')
+    #self.mqttConfig = Loader.getField(text,'mqttConfig','local')
     self.useGui  = int(Loader.getField(text,'useGui',1))
     self.sendWm  = int(Loader.getField(text,'sendWm',0))
     self.sendSnapshots  = int(Loader.getField(text,'sendSnapshots',0))
@@ -91,7 +91,7 @@ class AvAgent:
 
     # Prepare cloud connection
     self.cloud = CloudConnection(self.name, self.broker)
-    self.cloud.updateConfig(text)
+    #self.cloud.updateConfig(text)
     
     # Prepare variables for uploading snapshots
     self.lastSnapshotRepoMsg = 0
@@ -119,7 +119,7 @@ class AvAgent:
       print('Subscribed to ffmpeg packets.')
 
     # Setup mqtt publishers and subscribers
-    self.cloud.init(self.mqttConfig)
+    self.cloud.init()
     qos = 1
     self.cloud.subscribe(['cmd/'+self.name+'/remote'],qos)
     self.cloud.subscribe(['cmd/'+self.name+'/teleop'],qos)
@@ -128,8 +128,12 @@ class AvAgent:
     self.cloud.subscribe(['wyp/'+self.name+'/remote'],qos)
 
   def pose_callback(self, msg):
-    orientation_list = [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
-    (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(orientation_list)
+    #orientation_list = [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
+    #(roll, pitch, yaw) = tf.transformations.euler_from_quaternion(orientation_list)
+    q = msg.pose.orientation
+    siny_cosp = 2 * (q.w * q.z + q.x * q.y)
+    cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z)
+    yaw = np.arctan2(siny_cosp, cosy_cosp)
     
     self.heartbeat.pos_x.value = msg.pose.position.x
     self.heartbeat.pos_y.value = msg.pose.position.y
@@ -137,8 +141,12 @@ class AvAgent:
     
   def pose10hz_callback(self, msg):
     self.poseSub.unregister()
-    orientation_list = [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
-    (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(orientation_list)
+    #orientation_list = [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
+    #(roll, pitch, yaw) = tf.transformations.euler_from_quaternion(orientation_list)
+    q = msg.pose.orientation
+    siny_cosp = 2 * (q.w * q.z + q.x * q.y)
+    cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z)
+    yaw = np.arctan2(siny_cosp, cosy_cosp)
     
     self.heartbeat.pos_x.value = msg.pose.position.x
     self.heartbeat.pos_y.value = msg.pose.position.y

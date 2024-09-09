@@ -16,13 +16,13 @@ Brokers:
   emqx:
     MQTT_SERVER: avt-mqtt.nrcsv.com
     MQTT_PORT: 30203
-    MQTT_USER: av_team
+    MQTT_USER: av_team_client
     MQTT_PASSWORD: atfRKyUeprZqjv9m8i
   
   quic:
     MQTT_SERVER: 127.0.0.1
     MQTT_PORT: 1883
-    MQTT_USER: quic_mqtt
+    MQTT_USER: quic_mqtt_client
     MQTT_PASSWORD: A9g7bW#NyLQ4PIZ
 
   local:
