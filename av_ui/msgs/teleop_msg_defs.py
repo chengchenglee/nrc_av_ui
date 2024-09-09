@@ -5,7 +5,9 @@ OBJ_ID_IDX   = 0
 POS_X_IDX    = 1
 POS_Y_IDX    = 2
 POS_TH_IDX   = 3
-TELEOP_ENUMS = 4
+POS_V_IDX    = 4
+POS_W_IDX    = 5
+TELEOP_ENUMS = 6
 
 class TeleopEntry:
   def __init__(self,typeIn = '',dataIn = []):
@@ -29,6 +31,13 @@ class TeleopEntry:
     data[POS_Y_IDX]  = xyth[1]
     data[POS_TH_IDX] = xyth[2]
     
+    if (len(xyth) >= 5):
+      data[POS_V_IDX]  = xyth[3]
+      data[POS_W_IDX]  = xyth[4]
+    else:
+      data[POS_V_IDX]  = 0
+      data[POS_W_IDX]  = 0
+      
     return cls(action,data)
   
   def objId(self):
@@ -104,6 +113,10 @@ class TeleopCmdData:
         m.pose.position.x    = cmd.values[POS_X_IDX]
         m.pose.position.y    = cmd.values[POS_Y_IDX]
         m.pose.orientation.z = cmd.values[POS_TH_IDX]
+        
+        # Append speed information
+        m.pose.orientation.x = cmd.values[POS_V_IDX]
+        m.pose.orientation.y = cmd.values[POS_W_IDX]
         ma.markers.append(m)
     
     return ma

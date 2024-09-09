@@ -7,6 +7,7 @@ import numpy as np
 from numpy.linalg import inv
 import cv2
 #from scipy.spatial.transform import Rotation
+from wmStatus import WmObject
 
 keyboardListener = True
 try:
@@ -52,35 +53,33 @@ else: # 3+
 class virtVeh:
   def __init__(self):
     self.lastUpdate = 0
-    self.reset([0,0,0,0,0])
-    self.length = 4
-    self.width = 2
+    self.vv = WmObject(-2,[0,0,0,2,4,0])
   
-  def reset(self,data):
-    self.lastUpdate = time.time()
-    self.x  = data[0]
-    self.y  = data[1]
-    self.th = data[2]
-    self.v  = data[3]
-    self.w  = data[4]
+  #def reset(self,data):
+    #self.lastUpdate = time.time()
+    #self.x  = data[0]
+    #self.y  = data[1]
+    #self.th = data[2]
+    #self.v  = data[3]
+    #self.w  = data[4]
     
-    c,s = np.cos(data[2]), np.sin(data[2])
-    self.centerPose = np.array(((c, -s, data[0]),
-                                (s, c,  data[1]),
-                                (0, 0,  1)))
-    self.poseInv = inv(self.centerPose)
+    #c,s = np.cos(data[2]), np.sin(data[2])
+    #self.centerPose = np.array(((c, -s, data[0]),
+                                #(s, c,  data[1]),
+                                #(0, 0,  1)))
+    #self.poseInv = inv(self.centerPose)
     
-  def move(self,data):
-    dx  = data[0]
-    dth = data[1]
-    c,s = np.cos(dth), np.sin(dth)
-    dPose = np.array(((c, -s, dx),
-                      (s, c,  0),
-                      (0, 0,  1)))
-    self.centerPose = np.dot(self.centerPose,dPose)
-    self.x  = self.centerPose[0,2]
-    self.y  = self.centerPose[1,2]
-    self.th = np.arctan2(self.centerPose[1,0],self.centerPose[0,0])
+  #def move(self,data):
+    #dx  = data[0]
+    #dth = data[1]
+    #c,s = np.cos(dth), np.sin(dth)
+    #dPose = np.array(((c, -s, dx),
+                      #(s, c,  0),
+                      #(0, 0,  1)))
+    #self.centerPose = np.dot(self.centerPose,dPose)
+    #self.x  = self.centerPose[0,2]
+    #self.y  = self.centerPose[1,2]
+    #self.th = np.arctan2(self.centerPose[1,0],self.centerPose[0,0])
     
 class Interface:
   def __init__(self):
@@ -257,22 +256,20 @@ class Interface:
     self.lcRghtButton = Tkinter.Button(self.tab2_frame2, text='LC-RGT',\
                                        width=self.bWidth, height=4, padx=1, pady=1, relief="raised")
     
-    
-        
-    self.virtualVeh = virtVeh()
+    self.virtualVeh = WmObject(-2,[0,0,0,0,0,0])
 
     if keyboardListener:
       def on_press(key):
         #print(key)
         keyStr = str(key).replace("'","")
         if 'up' in keyStr:
-          self.virtualVeh.move([1,0])
+          self.virtualVeh.accel([1,0])
         if 'down' in keyStr:
-          self.virtualVeh.move([-1,0])
+          self.virtualVeh.accel([-1,0])
         if 'left' in keyStr:
-          self.virtualVeh.move([0,0.3])
+          self.virtualVeh.accel([0,0.3])
         if 'right' in keyStr:
-          self.virtualVeh.move([0,-0.3])
+          self.virtualVeh.accel([0,-0.3])
 
       self.listener = Listener(on_press=on_press)
       print('Start keyboard listener')
@@ -311,41 +308,7 @@ class Interface:
     rotMtx = np.dot(rotY, np.dot(rotX,rotZ))
     return rotMtx
   
-  def drawVirt(self,virtObj,frame):
-    pose = np.dot(frame.poseInv,virtObj.centerPose)
-    
-    cornerVec = np.empty((8,3))
-    i=0
-    cornerOrder = [[-1,-1],[-1,1],[1,1],[1,-1]]
-    for dz in range(0,2):
-      for coord in cornerOrder:
-        pt = np.dot(pose,[coord[0]*virtObj.length/2,coord[1]*virtObj.width/2,1])
-        cornerVec[i,:] = pt
-        cornerVec[i,2] = dz*2.0
-        i += 1
-        
-    corners2d,_ = cv2.projectPoints(cornerVec,
-                                    self.rvec,self.tvec.reshape(-1,1),
-                                    self.cMtx,
-                                    None)
-
-    bottom = []
-    inRange = True
-    for i in range(0,4):
-      u = self.canvasWidth-corners2d[i,0,0]
-      v = corners2d[i,0,1]
-      if u < 0 or u > self.canvasWidth or v < 0 or v > self.canvasHeight:
-        print('vv not in range')
-        inRange = False
-        break
-      bottom.append([u])
-      bottom.append([v])
-      
-    if inRange:
-      color = 'purple'
-      ship_id = self.tab2_canvas.create_polygon(bottom,  fill=color)
-  
-  def drawBox(self,wmObj,frame):
+  def drawBox(self,wmObj,frame,color='red'):
     corners = wmObj.cornersInFrame(frame)
     corners2d,_ = cv2.projectPoints(corners,
                                   self.rvec,self.tvec.reshape(-1,1),
@@ -369,7 +332,6 @@ class Interface:
       avgV = avgV + v/4
     
     if inRange:
-      color = 'red'
       if wmObj.object_id == -1:
         color = 'grey'
       else:
@@ -512,7 +474,7 @@ class Interface:
             
         # If not, create possible teleop entry for this object
         if not objExists:
-          newCmd = TeleopEntry.fromOru(wmStatus.objs[closestBox].object_id, wmStatus.objs[closestBox].xyth())
+          newCmd = TeleopEntry.fromOru(wmStatus.objs[closestBox].object_id, wmStatus.objs[closestBox].xythvw())
           self.teleopCmds.append(newCmd)
         
     # Clear old entries
@@ -568,18 +530,29 @@ class Interface:
                           [0, fy, cy/2],
                           [1,  0, 1]], np.float32)
     
+    frame = wmStatus.dgp
+    if self.isRemoteDrv:
+      frame = self.virtualVeh
     
-    #height = self.camPctTop*20  + (1-self.camPctTop)*7
-    #pitch  = self.camPctTop*-75 + (1-self.camPctTop)*-85
+    minSpd = 1
+    maxSpd = 6
+    m = (1.-0.)/(maxSpd-minSpd)
+    b = 1. - m*maxSpd
+    
+    pctTop = min(1., max(0., m*frame.speed()+b))
+    height = pctTop*45  + (1-pctTop)*35
+    pitch  = pctTop*-75 + (1-pctTop)*-50
     #self.camPctTop += self.camPctIncr
     #if self.camPctTop < 0:
       #self.camPctIncr =  0.01
     #elif self.camPctTop > 1:
       #self.camPctIncr = -0.01
       
-    # Define camera extrinsics
-    height =  35
-    pitch  = -70
+      
+    if not self.isRemoteDrv:
+      height =  35
+      pitch  = -70
+      
     ypr = [270,0,pitch]
     rotMtx = self.rpyToRot(ypr)
 
@@ -589,24 +562,21 @@ class Interface:
     self.tvec = tvec
     
     # Draw grid
-    #self.drawGrid1()
-    self.drawGrid(wmStatus.dgp)
-    
-    # Draw objects
-    #if len(self.objsOfInterest) > 0: print(self.objsOfInterest)
+    self.drawGrid(frame)
   
+    # Draw other road users
     for obj in wmStatus.objs:
-      self.drawBox(obj,wmStatus.dgp)
+      self.drawBox(obj,frame)
       
     # Draw ego
-    self.drawBox(wmStatus.dgp,wmStatus.dgp)
+    self.drawBox(wmStatus.dgp,frame)
     
     # Draw virtual
     if self.isRemoteDrv:
-      self.drawVirt(self.virtualVeh,wmStatus.dgp)
+      self.virtualVeh.simulate(0.1)
+      self.drawBox(self.virtualVeh,frame,'purple')
     else:
-      vvData = [wmStatus.dgp.data[0],wmStatus.dgp.data[1],wmStatus.dgp.data[2],wmStatus.dgp.data[5],0]
-      self.virtualVeh.reset(vvData)
+      self.virtualVeh.reset(wmStatus.dgp)
     
     # Draw messaging stats
     self.drawMsgStats(stateMsgCount,wmStatus.msgCount,imgStreamData.msgCount,kbps)
@@ -786,7 +756,6 @@ class Interface:
         agent.teleopCmdData.commands.append(cmd)
         
     if self.isRemoteDrv:
-      xyth = [self.virtualVeh.x,self.virtualVeh.y,self.virtualVeh.th]
-      newCmd = TeleopEntry.fromOru(-2, xyth)
+      newCmd = TeleopEntry.fromOru(-2, self.virtualVeh.xythvw())
       newCmd.teleopType = 'FVV'
       agent.teleopCmdData.commands.append(newCmd)
