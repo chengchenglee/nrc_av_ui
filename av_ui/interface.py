@@ -5,8 +5,8 @@ import os
 from nrc_msgs.msg import FailureModeRequest
 from subsystem import Subsystem
 import rospy
-from MultiSetDest import MultiSetDest
-from MultiSetDest import MULTI_DEST_LIST
+#from MultiSetDest import MultiSetDest
+#from MultiSetDest import MULTI_DEST_LIST
 
 # Gui
 if sys.version_info[0] < 3:
@@ -42,7 +42,8 @@ class Interface:
     
     self.teleopMenu = []
 
-    self.MultiDestList = self.load_multi_destList(MULTI_DEST_LIST)
+    #self.MultiDestList = self.load_multi_destList(MULTI_DEST_LIST)
+    self.MultiDestList = []
   
   def onClosing(self):
     print("OnClosing")

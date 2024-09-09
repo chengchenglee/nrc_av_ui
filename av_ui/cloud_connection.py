@@ -2,6 +2,7 @@
 
 import time
 import os
+import subprocess
 import ssl
 import json
 import argparse
@@ -15,7 +16,6 @@ from threading import Lock
 
 foundPaho = True
 try:
-  a = 1
   import paho.mqtt.client as mqtt_client
 except:
   foundPaho = False
@@ -73,6 +73,7 @@ class CloudConnection:
     self.dataInQueue = False
     self.msgInStats = MsgStats('Rx')
     self.msgOutStats = MsgStats('Tx')
+    self.quicTunnel = False
 
   def loadBrokerConfigs(self):
     config_file = open(self.filename, 'r')
@@ -84,18 +85,31 @@ class CloudConnection:
       print("Check mqtt configuration file. Available brokers: ", configs['Brokers'].keys())
       return None
     
-  def updateConfig(self,text):
-    keys = self.configInfo.keys()
-    lines = text.split('\n')
-    for line in lines:
-      for key in keys:
-        if key in line:
-          value = line.split(': ')[1]
-          self.configInfo[key] = value
+  #def updateConfig(self,text):
+    #keys = self.configInfo.keys()
+    #lines = text.split('\n')
+    #for line in lines:
+      #for key in keys:
+        #if key in line:
+          #value = line.split(': ')[1]
+          #self.configInfo[key] = value
     
-  def init(self, configName='doris'):
+  def init(self):
     if foundPaho:
-      self.client = self.connect_mqtt(configName)
+      if False and self.broker == 'quic':
+        print('Setup quic tunnel')
+        pathToSshKey = os.path.expanduser('~')+'/.ssh3/id_quic'
+        cmd = '/usr/local/scripts/quic-link_verbose.sh -h avt-mqtt.nrcsv.com -k '+pathToSshKey+' &'
+        print(cmd)
+        proc = subprocess.Popen(
+          [cmd],shell=True,
+          stdout = subprocess.DEVNULL,
+          stderr = subprocess.STDOUT)
+        time.sleep(0.5)
+        self.quicTunnel = True
+        print('Done setup quic tunnel')
+      
+      self.client = self.connect_mqtt()
       self.client.loop_start()
     
   def getMail(self):
@@ -106,7 +120,7 @@ class CloudConnection:
       usingMailbox = False
     return mail
 
-  def connect_mqtt(self,configName):
+  def connect_mqtt(self):
       def on_connect(client, userdata, flags, rc):
           if rc == 0:
               self.isConnected = True
@@ -169,7 +183,6 @@ class CloudConnection:
       def on_mqtt_subscribe(client, userdata, mid, granted_qos):  # subscribe to mqtt broker
           a = 1
           #print("Subscribed to mqtt messages.")
-      
       
       print ("Create mqtt connection:",self.clientId) 
       client_id = 'natcsv-mqtt-client.'+self.clientId
