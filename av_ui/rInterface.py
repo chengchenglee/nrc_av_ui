@@ -4,8 +4,16 @@ import sys, os, subprocess
 from subsystem import Subsystem
 import time
 import numpy as np
+from numpy.linalg import inv
 import cv2
 #from scipy.spatial.transform import Rotation
+
+keyboardListener = True
+try:
+  from pynput.keyboard import Key, Listener
+except:
+  print('\n\n\nInstall pygame for keyboard/joystick control of teleop.\n\n\n')
+  keyboardListener = False
 
 # Display images
 import io
@@ -41,6 +49,39 @@ else: # 3+
     import tkinter as Tkinter # 3.6
     import tkinter.ttk as ttk
     
+class virtVeh:
+  def __init__(self):
+    self.lastUpdate = 0
+    self.reset([0,0,0,0,0])
+    self.length = 4
+    self.width = 2
+  
+  def reset(self,data):
+    self.lastUpdate = time.time()
+    self.x  = data[0]
+    self.y  = data[1]
+    self.th = data[2]
+    self.v  = data[3]
+    self.w  = data[4]
+    
+    c,s = np.cos(data[2]), np.sin(data[2])
+    self.centerPose = np.array(((c, -s, data[0]),
+                                (s, c,  data[1]),
+                                (0, 0,  1)))
+    self.poseInv = inv(self.centerPose)
+    
+  def move(self,data):
+    dx  = data[0]
+    dth = data[1]
+    c,s = np.cos(dth), np.sin(dth)
+    dPose = np.array(((c, -s, dx),
+                      (s, c,  0),
+                      (0, 0,  1)))
+    self.centerPose = np.dot(self.centerPose,dPose)
+    self.x  = self.centerPose[0,2]
+    self.y  = self.centerPose[1,2]
+    self.th = np.arctan2(self.centerPose[1,0],self.centerPose[0,0])
+    
 class Interface:
   def __init__(self):
     self.window = []
@@ -60,6 +101,7 @@ class Interface:
     
     self.selectedAgent = 'None'
     self.isTeleop = False
+    self.isRemoteDrv = False
     #self.canvasDrawn = False
     self.tab2_canvas = []
     self.canvasTime = 0
@@ -199,6 +241,11 @@ class Interface:
     
     numButtons = 5
     self.bWidth = int(self.canvasWidth/(numButtons*charWidth))
+    self.enTeleop     = Tkinter.Button(self.tab2_frame2, text='ENABLE TELEOP',\
+                                       width=numButtons*self.bWidth+numButtons, height=2, padx=1, pady=1, relief="raised", command=self.setTeleop)
+    self.enTeleop.grid(row=0, columnspan=5, sticky=Tkinter.W+Tkinter.E)
+    self.enRemoteDrv  = Tkinter.Button(self.tab2_frame2, text='REMOTE DRIVE',\
+                                       width=numButtons*self.bWidth+numButtons, height=2, padx=1, pady=1, relief="raised", command=self.setRemoteDrv)
     self.lcLeftButton = Tkinter.Button(self.tab2_frame2, text='LC-LFT',\
                                        width=self.bWidth, height=4, padx=1, pady=1, relief="raised")
     self.gaLeftButton = Tkinter.Button(self.tab2_frame2, text='GA-LFT',\
@@ -209,9 +256,28 @@ class Interface:
                                        width=self.bWidth, height=4, padx=1, pady=1, relief="raised",command=self.gaRght)
     self.lcRghtButton = Tkinter.Button(self.tab2_frame2, text='LC-RGT',\
                                        width=self.bWidth, height=4, padx=1, pady=1, relief="raised")
-    self.enTeleop     = Tkinter.Button(self.tab2_frame2, text='ENABLE TELEOP',\
-                                       width=numButtons*self.bWidth+numButtons, height=2, padx=1, pady=1, relief="raised", command=self.setTeleop)
-    self.enTeleop.grid(row=0, columnspan=5, sticky=Tkinter.W+Tkinter.E)
+    
+    
+        
+    self.virtualVeh = virtVeh()
+
+    if keyboardListener:
+      def on_press(key):
+        #print(key)
+        keyStr = str(key).replace("'","")
+        if 'up' in keyStr:
+          self.virtualVeh.move([1,0])
+        if 'down' in keyStr:
+          self.virtualVeh.move([-1,0])
+        if 'left' in keyStr:
+          self.virtualVeh.move([0,0.3])
+        if 'right' in keyStr:
+          self.virtualVeh.move([0,-0.3])
+
+      self.listener = Listener(on_press=on_press)
+      print('Start keyboard listener')
+      self.listener.start()
+
     
     # Determine the origin by clicking
     def getorigin(eventorigin):
@@ -244,6 +310,40 @@ class Interface:
     
     rotMtx = np.dot(rotY, np.dot(rotX,rotZ))
     return rotMtx
+  
+  def drawVirt(self,virtObj,frame):
+    pose = np.dot(frame.poseInv,virtObj.centerPose)
+    
+    cornerVec = np.empty((8,3))
+    i=0
+    cornerOrder = [[-1,-1],[-1,1],[1,1],[1,-1]]
+    for dz in range(0,2):
+      for coord in cornerOrder:
+        pt = np.dot(pose,[coord[0]*virtObj.length/2,coord[1]*virtObj.width/2,1])
+        cornerVec[i,:] = pt
+        cornerVec[i,2] = dz*2.0
+        i += 1
+        
+    corners2d,_ = cv2.projectPoints(cornerVec,
+                                    self.rvec,self.tvec.reshape(-1,1),
+                                    self.cMtx,
+                                    None)
+
+    bottom = []
+    inRange = True
+    for i in range(0,4):
+      u = self.canvasWidth-corners2d[i,0,0]
+      v = corners2d[i,0,1]
+      if u < 0 or u > self.canvasWidth or v < 0 or v > self.canvasHeight:
+        print('vv not in range')
+        inRange = False
+        break
+      bottom.append([u])
+      bottom.append([v])
+      
+    if inRange:
+      color = 'purple'
+      ship_id = self.tab2_canvas.create_polygon(bottom,  fill=color)
   
   def drawBox(self,wmObj,frame):
     corners = wmObj.cornersInFrame(frame)
@@ -423,6 +523,32 @@ class Interface:
       if not cmd.teleopType == 'remove':
         self.teleopCmds.append(cmd)
   
+  def processKeyboard(self):
+    #print('Get keyboard')
+    #done = False
+    #key = input()
+    #print(key)
+    a = 1
+    
+    #events = pygame.event.get()
+    #print(events)
+    #print(pygame.time.get_ticks())
+    
+    #pressed = pygame.key.get_pressed()
+    ##print(pressed)
+    
+    #if pressed[pygame.K_d]:
+      #print('d')
+    
+    ##for event in events:
+      ##if event.type == pygame.KEYDOWN:
+        ##if event.key == pygame.K_LEFT:
+          ##print('Left')
+        ##if event.key == pygame.K_RIGHT:
+          ##print('Right')
+          
+    #pygame.event.pump()
+  
   def updateCanvas(self,wmStatus,imgStreamData,stateMsgCount,kbps):
     self.tab2_canvas.delete("all")
     
@@ -430,6 +556,8 @@ class Interface:
       self.teleopCmds = []
     
     self.updateImg(imgStreamData)
+    
+    self.processKeyboard()
     
     # Define camera matrix
     fx = 800
@@ -472,6 +600,13 @@ class Interface:
       
     # Draw ego
     self.drawBox(wmStatus.dgp,wmStatus.dgp)
+    
+    # Draw virtual
+    if self.isRemoteDrv:
+      self.drawVirt(self.virtualVeh,wmStatus.dgp)
+    else:
+      vvData = [wmStatus.dgp.data[0],wmStatus.dgp.data[1],wmStatus.dgp.data[2],wmStatus.dgp.data[5],0]
+      self.virtualVeh.reset(vvData)
     
     # Draw messaging stats
     self.drawMsgStats(stateMsgCount,wmStatus.msgCount,imgStreamData.msgCount,kbps)
@@ -593,13 +728,15 @@ class Interface:
         rowIdx += 1
       
     # Teleop Window
-    if self.isTeleop:
-      self.lcLeftButton.grid(column=0, row=1, sticky=Tkinter.W+Tkinter.E)
-      self.gaLeftButton.grid(column=1, row=1, sticky=Tkinter.W+Tkinter.E)
-      self.followButton.grid(column=2, row=1, sticky=Tkinter.W+Tkinter.E)
-      self.gaRghtButton.grid(column=3, row=1, sticky=Tkinter.W+Tkinter.E)
-      self.lcRghtButton.grid(column=4, row=1, sticky=Tkinter.W+Tkinter.E)
+    if self.isTeleop:  
+      self.enRemoteDrv.grid(column=0, columnspan=5, sticky=Tkinter.W+Tkinter.E)
+      self.lcLeftButton.grid(column=0, row=2, sticky=Tkinter.W+Tkinter.E)
+      self.gaLeftButton.grid(column=1, row=2, sticky=Tkinter.W+Tkinter.E)
+      self.followButton.grid(column=2, row=2, sticky=Tkinter.W+Tkinter.E)
+      self.gaRghtButton.grid(column=3, row=2, sticky=Tkinter.W+Tkinter.E)
+      self.lcRghtButton.grid(column=4, row=2, sticky=Tkinter.W+Tkinter.E)
     else:
+      self.enRemoteDrv.grid_forget()
       self.lcLeftButton.grid_forget()
       self.gaLeftButton.grid_forget()
       self.followButton.grid_forget()
@@ -612,10 +749,20 @@ class Interface:
   def setTeleop(self):
     if self.isTeleop:
       self.isTeleop = 0
+      self.isRemoteDrv = False
+      self.enRemoteDrv.configure(text='ENABLE REMOTE DRIVE')
       self.enTeleop.configure(text='ENABLE TELEOP')
     else:
       self.isTeleop = 1
       self.enTeleop.configure(text='DISABLE TELEOP')
+      
+  def setRemoteDrv(self):
+    if self.isRemoteDrv:
+      self.isRemoteDrv = False
+      self.enRemoteDrv.configure(text='ENABLE REMOTE DRIVE')
+    else:
+      self.isRemoteDrv = True
+      self.enRemoteDrv.configure(text='DISABLE REMOTE')
 
   def fTrj(self):
     for cmd in self.teleopCmds:
@@ -637,3 +784,9 @@ class Interface:
     for cmd in self.teleopCmds:
       if cmd.teleopType != 'ORU' and cmd.teleopType != 'remove':
         agent.teleopCmdData.commands.append(cmd)
+        
+    if self.isRemoteDrv:
+      xyth = [self.virtualVeh.x,self.virtualVeh.y,self.virtualVeh.th]
+      newCmd = TeleopEntry.fromOru(-2, xyth)
+      newCmd.teleopType = 'FVV'
+      agent.teleopCmdData.commands.append(newCmd)

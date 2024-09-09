@@ -98,7 +98,7 @@ class TeleopCmdData:
     for cmd in self.commands:
       m = Marker()
       m.header.stamp = stamp
-      if cmd.teleopType == 'GAL' or cmd.teleopType == 'GAR' or cmd.teleopType == 'FTrj':
+      if cmd.teleopType == 'GAL' or cmd.teleopType == 'GAR' or cmd.teleopType == 'FTrj' or cmd.teleopType == 'FVV':
         m.text               = cmd.teleopType
         m.id                 = cmd.values[OBJ_ID_IDX]
         m.pose.position.x    = cmd.values[POS_X_IDX]
