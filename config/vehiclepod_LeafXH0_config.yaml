@@ -21,8 +21,8 @@ Subsystem:
   CAR:
     Type: Sensor
     Description: Vehicle CAN
-    Trigger: Startup or StartRequest
-      - Source: StartRequest
+    Trigger:
+      - Source: Startup
     HealthTopics:
       - HealthTopic: /CtrlStateFLG
         HealthName: CAR
@@ -67,7 +67,7 @@ Subsystem:
         Command: roslaunch nrc_svcs leaf_tf_subsystem.launch sanborn:=true
         Type: Software
         LaunchTime: 1.0
-        - Name: Pose Estimator
+      - Name: Pose Estimator
         Command: roslaunch pose_estimator pose_estimator.launch
         Type: Software
         LaunchTime: 1.0
