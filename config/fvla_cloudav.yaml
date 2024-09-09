@@ -1,0 +1,213 @@
+Configuration:
+  Name: fvla-cloudav
+  agentType: CloudAV
+  Map: Franklin.set
+  useGui: 0
+  sendWm: 0
+  broker: doris
+
+Subsystem:
+  Bridge:
+    Type: Software
+    Description: ROS traffic over MQTT
+    Trigger:
+      - Source: StartRequest
+    Commands:
+      - Name: ROS-MQTT-Bridge
+        Command: bash /root/projects/fvla_cloudav/src/scripts/launch_mqtt.sh
+        NodeName: mqtt_client_local
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      Retry: 3
+      Timeout: 3
+      Depends:
+      - Launch:
+        Run:
+
+  TM:
+    Type: Software
+    Description: TrackMatching
+    Trigger:
+      - Source: StartRequest
+    Commands:
+      - Name: TM1
+        Command: python /root/projects/fvla_cloudav/src/track_matching_new/track_matcher_lidar1.py
+        NodeName: track_matching_lidar1
+        Type: Software
+        LaunchTime: 3.0
+      - Name: TM2
+        Command: python /root/projects/fvla_cloudav/src/track_matching_new/track_matcher_lidar2.py
+        NodeName: track_matching_lidar2
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      Retry: 3
+      Timeout: 3
+      Depends:
+      - Launch:
+        Run:
+  
+  Fusion:
+    Type: Algorithm
+    Description: Fuse dabp and tos
+    Trigger:
+      - Source: StartRequest
+    Commands:
+      - Name: DABP
+        Command: python /root/projects/fvla_cloudav/src/fusion/get_DABP_fused.py
+        Type: Algorithm
+        LaunchTime: 3.0
+      - Name: TOS
+        Command: python /root/projects/fvla_cloudav/src/fusion/get_TOS_fused.py
+        Type: Algorithm
+        LaunchTime: 3.0
+      - Name: VA
+        Command: python /root/projects/fvla_cloudav/src/fusion/get_VARP_fused.py
+        Type: Algorithm
+        LaunchTime: 3.0
+    Diagnostic:
+      Retry: 3
+      Timeout: 3
+      Depends:
+      - Launch:
+        Run:
+
+  Agent:
+    Type: Algorithm
+    Description: CloudAV Agent for fleetux
+    Trigger:
+      - Source: StartRequest
+    Commands:
+      - Name: Agent
+        Command: python /root/projects/fvla_cloudav/src/cloud-av-agent/agent.py --vin ${VEHICLE_ID}
+        Type: Algorithm
+        LaunchTime: 3.0
+    Diagnostic:
+      Retry: 3
+      Timeout: 3
+      Depends:
+      - Launch:
+        Run:
+
+  WM:
+    Type: Algorithm
+    Description: World Model
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /VirtualVehs/health
+        HealthName: VRT
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /master_filter/health
+        HealthName: WOS
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: WM
+        Command: roslaunch nrc_wm2_svcs leaf_pred.launch
+        Type: Software
+        LaunchTime: 1.0
+    Diagnostic:
+      Retry: 3
+      Timeout: 3
+      Depends:
+      - Launch:
+        Run:
+
+  Plan:
+    Type: Algorithm
+    Description: Route planner and DM
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /modia/route_plan/health
+        HealthName: ROUTE
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 1, 0.5, 0.2
+      - HealthTopic: /autoGoals/health
+        HealthName: GOALS
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /trajectory_planner/health
+        HealthName: TRP
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: Route
+        Command: roslaunch nrc_dm_svcs modia_all.launch autonomy_level:=ad5 use_modia_decisions:=false
+        NodeName: RouteWaypoints
+        Type: Software
+        LaunchTime: 3
+      - Name: Autogoals
+        Command: roslaunch nrc_wm2_svcs leaf_route.launch configName:=SAM_AD
+        NodeName: AutoGoals_node
+        Type: Software
+        LaunchTime: 3
+      - Name: TRP
+        Command: roslaunch nrc_ralp_svcs leaf_planner.launch include_follower:=false vehicle_type:=FVL
+        NodeName: AutoGoals_node
+        Type: Software
+        LaunchTime: 3
+    Diagnostic:
+      Retry: 3
+      Timeout: 3
+      Depends:
+      - Launch:
+        Run:
+
+  Teleop:
+    Type: Algorithm
+    Description: teleop nodes
+    Trigger:
+      - Source: StartRequest
+    Commands:
+    - Name: Tlmtry
+      Command: roslaunch mqtt_telemetry mqtt_telemetry.launch agent_name:=${VEHICLE_ID}
+      Type: Software
+      LaunchTime: 3
+    - Name: Node
+      Command: roslaunch nrc_ralp_svcs remote_driver.launch agent_name:=${VEHICLE_ID}
+      Type: Software
+      LaunchTime: 3
+    Diagnostic:
+      Retry: 3
+      Timeout: 3
+      Depends:
+      - Launch:
+        Run:
+
+  HM:
+    Type: Algorithm
+    Description: health monitor
+    Trigger:
+      - Source: StartRequest
+    Commands:
+    - Name: HM
+      Command: roslaunch health-monitor cloudav_health.launch config_file:=$HOME/projects/fvla_cloudav/src/configs/health-monitor/CloudAV_HealthCheck.yaml
+      Type: Software
+      LaunchTime: 1
+    Diagnostic:
+      Retry: 3
+      Timeout: 3
+      Depends:
+      - Launch:
+        Run:
+
+  BAG:
+    Type: Algorithm
+    Description: health monitor
+    Trigger:
+      - Source: StartRequest
+    Commands:
+    - Name: HM
+      Command: bash $HOME/projects/fvla_cloudav/src/scripts/start_recording.sh
+      LaunchTime: 1
+    Diagnostic:
+      Retry: 3
+      Timeout: 3
+      Depends:
+      - Launch:
+        Run:
+
