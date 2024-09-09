@@ -2,10 +2,10 @@ Configuration:
   Name: Lima
   mapName: Franklin.set
   printTimeDebug: 0
-  useGui: 0
+  useGui: 1
   sendWm: 1
   sendSnapshots: 1
-  broker: ncal
+  broker: ccta_ads
 
 Subsystem:
   CCM-CAR:
@@ -28,11 +28,11 @@ Subsystem:
         Type: Software
         LaunchTime: 5.0
       - Name: EthRawReader
-        Command: python ~/projects/nrc_ws/src/nrc_leaf/scripts/eth_raw.py
+        Command: python ~/projects/nrc_ws/src/nrc_leaf/scripts/eth_raw_lima.py
         Type: Software
         LaunchTime: 5.0
       - Name: EthReader
-        Command: rosrun nrc_leaf consume_eth_can
+        Command: rosrun nrc_leaf consume_eth_can_lima
         Type: Software
         LaunchTime: 5.0
     Diagnostic:
@@ -77,14 +77,18 @@ Subsystem:
     Trigger:
       - Source: StartRequest
     HealthTopics: 
-      - HealthTopic: /notification
-        HealthName: CMD
+  - HealthTopic: /ccm_acc_control_h
+        HealthName: CCM
         HealthTopicType: String
-        NomWarnErrRate: 0.1, 0.01, 0.01
+        NomWarnErrRate: 10, 6, 3 
       - HealthTopic: /ProPILOT_inputs
         HealthName: PPI
         HealthTopicType: ProPILOTInput
         NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /ccm_speed_plan
+        HealthName: CSP
+        HealthTopicType: String
+        NomWarnErrRate: 0.1, 0.01, 0.01
     Commands:
       - Name: ACC Trigger
         Command: roslaunch ccm_acc_trigger ccm_acc_trigger.launch
