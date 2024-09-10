@@ -56,13 +56,11 @@ if True:
   
   if (agent.useGui == 1): interface.setupWindow(agent)
 
-  if False:
-    os.system("rosrun nrc_svcs paramsForDriving.sh")
-    os.system("rosrun nrc_svcs paramsForMap.sh "+agent.mapName)
-    os.system("rosparam set /robot_description -t "+rospkg.RosPack().get_path('nrc_av_ui')+'/calib/'+agent.agentUrdf+'.urdf')
-  if True:
-    os.system("rosparam set /agent_name "+agent.name)
-    os.system("rosparam set /agent_config "+agent_config)
+  os.system("rosrun nrc_svcs paramsForDriving.sh")
+  os.system("rosrun nrc_svcs paramsForMap.sh "+agent.mapName)
+  os.system("rosparam set /robot_description -t "+rospkg.RosPack().get_path('nrc_av_ui')+'/calib/'+agent.agentUrdf+'.urdf')
+  os.system("rosparam set /agent_name "+agent.name)
+  os.system("rosparam set /agent_config "+agent_config)
 
   if agent.rosparams:
     for key, value in agent.rosparams.items():
