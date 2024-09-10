@@ -79,25 +79,19 @@ class WmObject:
     self.poseInv = obj.poseInv
     
   def accel(self,data):
-    self.data[vIdx] = max(0., min(10., self.data[vIdx] + data[0]))
-    self.data[yrIdx] = max(-5, min(5, self.data[yrIdx] + data[1]))
+    dt = data[0]
+    self.data[vIdx]  = max(0., min(10., self.data[vIdx] + dt*data[1]))
+    length = max(0.5,self.data[lIdx])
+    yawRate = self.data[vIdx]*np.tan(data[2]/length)
+    self.data[yrIdx] = max(-5, min(5, yawRate))
     
-    print(self.data[vIdx],self.data[yrIdx])
+    #print(self.data[vIdx],self.data[yrIdx])
     
   def simulate(self,dt):
-    # Decelerate and return to center steering
-    self.data[vIdx]  = max(0,self.data[vIdx]-0.1)
-    if self.data[yrIdx] > 0:
-      self.data[yrIdx] = self.data[yrIdx] - min(self.data[yrIdx],0.05)
-    else:
-      self.data[yrIdx] = self.data[yrIdx] + max(self.data[yrIdx],0.05)
-      
-    #print(self.data[vIdx],self.data[yrIdx])
-      
     # Update pose
     dx = dt*self.data[vIdx]*np.cos(self.data[thIdx])
     dy = dt*self.data[vIdx]*np.sin(self.data[thIdx])
-    dth = dt*self.data[vIdx]*np.tan(self.data[yrIdx]/self.data[lIdx])
+    dth = dt*self.data[yrIdx]
     self.data[xIdx]  += dx
     self.data[yIdx]  += dy
     self.data[thIdx] += dth

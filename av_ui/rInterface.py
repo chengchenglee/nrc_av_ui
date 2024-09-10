@@ -13,8 +13,19 @@ keyboardListener = True
 try:
   from pynput.keyboard import Key, Listener
 except:
-  print('\n\n\nInstall pygame for keyboard/joystick control of teleop.\n\n\n')
+  print('\n\n\nInstall pynput for keyboard/joystick control of teleop.\n\n\n')
   keyboardListener = False
+
+joystickReader = True
+try:
+  import pygame
+  pygame.init()
+except:
+  print('pygame module not found, no joystick control')
+  # python3 -m pip install -U pygame --user
+  # If runtimeError: Unable to run "sdl-config"
+  # => sudo apt-get install libsdl2-mixer-dev libsdl2-image-dev libsdl2-ttf-dev
+  joystickReader = False
 
 # Display images
 import io
@@ -256,24 +267,38 @@ class Interface:
     self.lcRghtButton = Tkinter.Button(self.tab2_frame2, text='LC-RGT',\
                                        width=self.bWidth, height=4, padx=1, pady=1, relief="raised")
     
-    self.virtualVeh = WmObject(-2,[0,0,0,0,0,0])
+    self.virtualVeh = WmObject(-2,[0,0,0,0,0,0,0])
 
+    # Read joystick
+    self.joyPad = False
+    self.lastJoyUpdate = time.time()
+    self.joysticks = []
+    if joystickReader:
+      print('Init joystick...')
+      pygame.joystick.init()
+      self.joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
+      for joy in self.joysticks:
+        joy.init()
+        
+    # Read keyboard
     if keyboardListener:
       def on_press(key):
         #print(key)
-        keyStr = str(key).replace("'","")
-        if 'up' in keyStr:
-          self.virtualVeh.accel([1,0])
-        if 'down' in keyStr:
-          self.virtualVeh.accel([-1,0])
-        if 'left' in keyStr:
-          self.virtualVeh.accel([0,0.3])
-        if 'right' in keyStr:
-          self.virtualVeh.accel([0,-0.3])
+        if not self.joyPad:
+          keyStr = str(key).replace("'","")
+          if 'up' in keyStr:
+            self.virtualVeh.accel([1,0])
+          if 'down' in keyStr:
+            self.virtualVeh.accel([-1,0])
+          if 'left' in keyStr:
+            self.virtualVeh.accel([0,0.3])
+          if 'right' in keyStr:
+            self.virtualVeh.accel([0,-0.3])
 
       self.listener = Listener(on_press=on_press)
       print('Start keyboard listener')
       self.listener.start()
+    
 
     
     # Determine the origin by clicking
@@ -485,31 +510,54 @@ class Interface:
       if not cmd.teleopType == 'remove':
         self.teleopCmds.append(cmd)
   
-  def processKeyboard(self):
-    #print('Get keyboard')
-    #done = False
-    #key = input()
-    #print(key)
-    a = 1
-    
-    #events = pygame.event.get()
-    #print(events)
-    #print(pygame.time.get_ticks())
-    
-    #pressed = pygame.key.get_pressed()
-    ##print(pressed)
-    
-    #if pressed[pygame.K_d]:
-      #print('d')
-    
-    ##for event in events:
-      ##if event.type == pygame.KEYDOWN:
-        ##if event.key == pygame.K_LEFT:
-          ##print('Left')
-        ##if event.key == pygame.K_RIGHT:
-          ##print('Right')
+  def processJoystick(self):
+    self.joyPad = False
+    if len(self.joysticks) == 0:
+      a=1
+      #print('Init joystick...')
+      #pygame.joystick.init()
+      #self.joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
+      #for joy in self.joysticks:
+        #joy.init()
+        
+    else:
+      pygame.event.pump()
+      for joy in self.joysticks:
+        isJoypad    = 'Microsoft X-Box' in joy.get_name()
+        hasSticks   = joy.get_numaxes()    >= 6
+        hasButtons  = joy.get_numbuttons() >= 11
+        if isJoypad and hasSticks and hasButtons:
+          self.joyPad = True
+          dt = time.time() - self.lastJoyUpdate
+          self.lastJoyUpdate = time.time()
           
-    #pygame.event.pump()
+          dt = min(0.2,dt)
+          
+          v1 = 3.5;
+          v2 = 10;
+          pct1 = 1.0;  # at v1, steering = pct1 * max_steer
+          pct2 = 0.05; # at v2, steering = pct2 * max_steer
+
+          m = (pct2 - pct1)/(v2 - v1)
+          b = (pct1 - m * v1)
+          steerScale = min(pct1, max(pct2, m*self.virtualVeh.speed()+b))
+          vScale = 4.5  # joy.get_axis(5) > 0 ==> braking
+          
+          #print(joy.get_axis(0),joy.get_axis(5))
+          self.joySteer = -steerScale*joy.get_axis(0)*0.75;
+          self.joyAccel = vScale*joy.get_axis(5) # (Pressed, 1) -> (Released, -1)
+          self.joyReset = joy.get_button(2)
+          
+          self.virtualVeh.accel([dt,self.joyAccel,self.joySteer])
+        
+          #if False:
+            #print('Joy name',joy.get_name())
+            #for i in range(joy.get_numaxes()):
+              #print('Joy axis',i,joy.get_axis(i))
+            #for i in range(joy.get_numbuttons()):
+              #print('Joy button',i,joy.get_button(i))
+            #for i in range(joy.get_numhats()):
+              #print('Joy hat',i,joy.get_hat(i))
   
   def updateCanvas(self,wmStatus,imgStreamData,stateMsgCount,kbps):
     self.tab2_canvas.delete("all")
@@ -519,7 +567,8 @@ class Interface:
     
     self.updateImg(imgStreamData)
     
-    self.processKeyboard()
+    if joystickReader:
+      self.processJoystick()
     
     # Define camera matrix
     fx = 800
