@@ -131,5 +131,27 @@ Subsystem:
       - Launch: 
         Run:
 
+  BAG:
+    Type: Algorithm
+    Description: Record bagfiles
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /BagfileHealth
+        HealthName: BAG
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: BAG
+        Command: roslaunch nrc_av_ui record_ccm_car.launch
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 7
+      Retry: 0
+      Timeout: 5
+    Depends:
+      - Launch:
+          Run:
 
 
