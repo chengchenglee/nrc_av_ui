@@ -67,6 +67,7 @@ class Interface:
     self.camPctTop = 0
     self.camPctIncr = 0.01
     self.tab2_img = []
+    self.pointcloud_canvas = None
     
     self.mouseclick = [0,0,0,False]
     
@@ -197,6 +198,9 @@ class Interface:
     self.lcRghtButton = Tkinter.Button(self.tab2_frame2, text='LC-RGT', width=16, height=4, padx=1, pady=1, relief="raised")
     self.enTeleop     = Tkinter.Button(self.tab2_frame2, text='ENABLE TELEOP', width=70, height=2, padx=1, pady=1, relief="raised", command=self.setTeleop)
     self.enTeleop.grid(row=0, columnspan=4, sticky=Tkinter.W+Tkinter.E)
+
+    self.pointcloud_canvas = Tkinter.Canvas(self.tab2, bg="black", height=self.canvasHeight, width=self.canvasWidth)
+    self.pointcloud_canvas.grid(column=2, row=2)  
     
     # Determine the origin by clicking
     def getorigin(eventorigin):
@@ -313,7 +317,102 @@ class Interface:
       x = self.windowWidth-points2d[i,0,0]
       y = points2d[i,0,1]
       self.tab2_canvas.create_oval(x-dotRadius,y-dotRadius,x+dotRadius,y+dotRadius,outline=colorval)
-      
+   
+  def drawPointCloud(self, wmStatus):
+    print(f"drawPointCloud called. Number of points: {len(wmStatus.cloud)}")
+    if not wmStatus.cloud:
+        print("No point cloud data available!")
+        return
+
+    points_drawn = 0
+    for point in wmStatus.cloud:
+        x, y, z = point
+        
+        # Project 3D point to 2D plane
+        points3d = np.array([[x, y, z]], dtype=np.float32)
+        points2d, _ = cv2.projectPoints(points3d,
+                                        self.rvec, self.tvec.reshape(-1, 1),
+                                        self.cMtx, None)
+
+        # Calculate color intensity based on the z-value for depth effect
+        depth = min(255, max(0, int(255 - z * 100)))  # Adjust multiplier for depth scaling
+        colorval = f"#{depth:02x}{depth:02x}{depth:02x}"
+
+        # Adjust point coordinates for the canvas
+        x_proj = self.windowWidth - points2d[0, 0, 0]
+        y_proj = points2d[0, 0, 1]
+
+        # Draw the point on the canvas
+        if 0 <= x_proj < self.canvasWidth and 0 <= y_proj < self.canvasHeight:
+            self.tab2_canvas.create_oval(x_proj - 3, y_proj - 3,
+                                         x_proj + 3, y_proj + 3,
+                                         fill=colorval, outline=colorval)
+            points_drawn += 1
+
+    print(f"Drawn {points_drawn} points out of {len(wmStatus.cloud)} from the point cloud")
+  def drawPointCloudSeparate(self, wmStatus):
+    if not wmStatus.cloud:
+        print("No point cloud data available!")
+        return
+
+    self.pointcloud_canvas.delete("all")
+    
+    x_vals, y_vals, z_vals = zip(*wmStatus.cloud)
+    print(f"X range: {min(x_vals):.2f} to {max(x_vals):.2f}")
+    print(f"Y range: {min(y_vals):.2f} to {max(y_vals):.2f}")
+    print(f"Z range: {min(z_vals):.2f} to {max(z_vals):.2f}")
+    
+    points_drawn = 0
+    points_processed = 0
+    
+    x_proj_values = []
+    y_proj_values = []
+    
+    scale_factor = 2
+    center_x = -32250
+    center_y = 42380
+
+    for point in wmStatus.cloud:
+        x, y, z = point
+        
+        # Adjusted projection with scaling and offset
+        x_proj = self.canvasWidth/2 + (x - center_x) * scale_factor
+        y_proj = self.canvasHeight/2 - (y - center_y) * scale_factor
+        
+        x_proj_values.append(x_proj)
+        y_proj_values.append(y_proj)
+        
+        # Color based on X coordinate
+        color_val = int((x - min(x_vals)) / (max(x_vals) - min(x_vals)) * 255)
+        colorval = f"#{color_val:02x}00{255-color_val:02x}"
+
+        # Draw the point
+        point_size = 2
+        self.pointcloud_canvas.create_oval(x_proj - point_size, y_proj - point_size,
+                                           x_proj + point_size, y_proj + point_size,
+                                           fill=colorval, outline="white")
+        points_drawn += 1
+        points_processed += 1
+        
+        if points_processed <= 5:
+            print(f"Projected coordinates for point {points_processed-1}: ({x_proj:.2f}, {y_proj:.2f})")
+        
+        if points_processed % 1000 == 0:
+            print(f"Processed {points_processed} points, drawn {points_drawn}")
+
+    print(f"Drawn {points_drawn} points out of {len(wmStatus.cloud)} from the point cloud")
+    print(f"Canvas size: {self.canvasWidth}x{self.canvasHeight}")
+    
+    if x_proj_values and y_proj_values:
+        print(f"Projected x range: {min(x_proj_values):.2f} to {max(x_proj_values):.2f}")
+        print(f"Projected y range: {min(y_proj_values):.2f} to {max(y_proj_values):.2f}")
+        
+        # Draw bounding box
+        x_min, x_max = min(x_proj_values), max(x_proj_values)
+        y_min, y_max = min(y_proj_values), max(y_proj_values)
+        self.pointcloud_canvas.create_rectangle(x_min, y_min, x_max, y_max, outline="blue", width=2)
+    
+  
   def drawMsgStats(self,stateMsgCount,wmMsgCount,imgMsgCount,kbps):
     
     kbpsStr = str(round(kbps*10/8)/10)
@@ -450,6 +549,8 @@ class Interface:
   
     for obj in wmStatus.objs:
       self.drawBox(obj,wmStatus.dgp)
+    # self.drawGrid(wmStatus.dgp)
+    self.drawPointCloudSeparate(wmStatus)
       
     # Draw ego
     self.drawBox(wmStatus.dgp,wmStatus.dgp)

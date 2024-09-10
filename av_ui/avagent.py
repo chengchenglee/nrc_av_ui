@@ -20,6 +20,7 @@ from nrc_msgs.msg import InterventionRequest
 from std_msgs.msg import Int16MultiArray
 from nrc_msgs.msg import TrackedObjectSet,DynamicPoseWithCovar
 from sensor_msgs.msg import CompressedImage
+from std_msgs.msg import String
 
 import numpy as np
 import tf.transformations
@@ -64,6 +65,7 @@ class AvAgent:
     self.mqttMsgCount = 0
     self.msgCountTime = []
     self.avgRndTripMsgTime = 0.5
+    self.compressed_wm_string = ""
 
     # Load the agent configuration
     with open(self.filename, 'r') as file:
@@ -106,6 +108,7 @@ class AvAgent:
     self.avLedStatusPub = rospy.Publisher("ailsv_av_led",Int16MultiArray,queue_size=1)
     self.poseSub     = rospy.Subscriber("/dynamic_global_pose",     DynamicPoseWithCovar,self.pose_callback,queue_size=1)
     self.pose10hzSub = rospy.Subscriber("/dynamic_global_pose_10Hz",DynamicPoseWithCovar,self.pose10hz_callback,queue_size=1)
+    self.wmStringSub = rospy.Subscriber("/WmCompressor/wm_string",String,self.compressed_wm_callback,queue_size=1)
     if self.sendWm == 1: 
       self.wmStatusSub = rospy.Subscriber("pc_processor/multi_object_tracker/tracked_object_set", TrackedObjectSet, self.wmStatus.updateObjs, queue_size = 1)
     
@@ -140,7 +143,8 @@ class AvAgent:
     self.heartbeat.pos_x.value = msg.pose.position.x
     self.heartbeat.pos_y.value = msg.pose.position.y
     self.heartbeat.pos_th.value = yaw
-    
+  def compressed_wm_callback(self,msg):
+    self.compressed_wm_string = msg
   def nextMsgCount(self):
     self.mqttMsgCount += 1
     if self.mqttMsgCount >=1000: self.mqttMsgCount = 1
@@ -206,11 +210,14 @@ class AvAgent:
     self.cloud.publishCsv(topic,data,qos)
   
   def sendWmStatus(self):
+    # print("im here in wm status")
     # Send world model status (ego + other positions)
     qos=0
     topic = 'dt/'+self.name+'/wmState'
     payload = ''
-    payload += self.wmStatus.getWmStr()+'\n'
+    
+    payload += self.compressed_wm_string.data
+    # print("string is here" , self.compressed_wm_string)
     self.cloud.publishCsv(topic,payload,qos)
   
   def sendImgStreamPkt(self,msg):
