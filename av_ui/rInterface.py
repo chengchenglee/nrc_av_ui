@@ -545,19 +545,44 @@ class Interface:
           
           #print(joy.get_axis(0),joy.get_axis(5))
           self.joySteer = -steerScale*joy.get_axis(0)*0.75;
-          self.joyAccel = vScale*joy.get_axis(5) # (Pressed, 1) -> (Released, -1)
-          self.joyReset = joy.get_button(2)
+          
+          # Estimate desired accel
+          minBrakeButton = -0.98
+          maxBrakeButton =  0.98
+          minBrakeInput  = -1.0
+          maxBrakeInput  =  0.0
+          m = (maxBrakeInput-minBrakeInput)/(maxBrakeButton-minBrakeButton)
+          b = maxBrakeInput - m*maxBrakeButton
+          brakeInput = min(1,max(0,m*joy.get_axis(2)))
+                                 
+          minAccelButton = -0.98
+          maxAccelButton =  0.98
+          minAccelInput  = -0.2
+          maxAccelInput  =  1.0
+          m = (maxAccelInput-minAccelInput)/(maxBrakeButton-minBrakeButton)
+          b = maxAccelInput - m*maxBrakeButton
+          accelInput = min(maxAccelInput,max(minAccelInput,m*joy.get_axis(5)))
+          
+          if (brakeInput > 0):
+            self.joyAccel = -vScale*brakeInput
+            #if self.joyAccel < -0.1: print('Brake! ', self.joyAccel)
+          else:
+            self.joyAccel =  vScale*accelInput
+            #if self.joyAccel > 0.1: print('Accel! ', self.joyAccel)
+          
+          self.joyReset  = joy.get_button(0)
+          self.joyCancel = joy.get_button(1)
           
           self.virtualVeh.accel([dt,self.joyAccel,self.joySteer])
         
-          #if False:
-            #print('Joy name',joy.get_name())
-            #for i in range(joy.get_numaxes()):
-              #print('Joy axis',i,joy.get_axis(i))
-            #for i in range(joy.get_numbuttons()):
-              #print('Joy button',i,joy.get_button(i))
-            #for i in range(joy.get_numhats()):
-              #print('Joy hat',i,joy.get_hat(i))
+          if False:
+            print('Joy name',joy.get_name())
+            for i in range(joy.get_numaxes()):
+              print('Joy axis',i,joy.get_axis(i))
+            for i in range(joy.get_numbuttons()):
+              print('Joy button',i,joy.get_button(i))
+            for i in range(joy.get_numhats()):
+              print('Joy hat',i,joy.get_hat(i))
   
   def updateCanvas(self,wmStatus,imgStreamData,stateMsgCount,kbps):
     self.tab2_canvas.delete("all")
@@ -581,6 +606,14 @@ class Interface:
     
     frame = wmStatus.dgp
     if self.isRemoteDrv:
+      if self.joyPad:
+        if self.joyReset:
+          print('Reset virtual veh')
+          self.virtualVeh.reset(wmStatus.dgp)
+        if self.joyCancel:
+          self.isRemoteDrv = False
+          self.enRemoteDrv.configure(text='ENABLE REMOTE DRIVE')
+      
       frame = self.virtualVeh
     
     minSpd = 1
