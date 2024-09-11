@@ -38,7 +38,7 @@ class CsvWriterAVinterface:
         self.prev_BRK_Override = False      # Used for creating edge triggers when the flag changes value.
         self.BRK_Override_waitForTimerCallback = False
         self.BRK_Override_wasAutonomousAtRisingEdge = False     # Flag to check if AV was engaged or was autonomous at rising edge of trigger.
-        self.BRK_Override_wasAutonomousAtFallingEdge = False    # Flag to check if AV was engaged or was autonomous at falling edge of trigger.
+        #self.BRK_Override_wasAutonomousAtFallingEdge = False    # Flag to check if AV was engaged or was autonomous at falling edge of trigger.
         self.BRK_OverrideTimer = 0
         self.BRK_Override_startTime = 0
         self.brkTapDuration = 1         # If brake override is less than this time, it is classified as brake tap.
@@ -47,7 +47,7 @@ class CsvWriterAVinterface:
         self.prev_ACC_Override = False      # Used for creating edge triggers when the flag changes value.
         self.ACC_Override_waitForTimerCallback = False
         self.ACC_Override_wasAutonomousAtRisingEdge = False     # Flag to check if AV was engaged or was autonomous at rising edge of trigger.
-        self.ACC_Override_wasAutonomousAtFallingEdge = False    # Flag to check if AV was engaged or was autonomous at falling edge of trigger.
+        #self.ACC_Override_wasAutonomousAtFallingEdge = False    # Flag to check if AV was engaged or was autonomous at falling edge of trigger.
         self.ACC_OverrideTimer = 0
         self.ACC_Override_startTime = 0
         
@@ -55,7 +55,7 @@ class CsvWriterAVinterface:
         self.prev_snapButtonTrig = False    # Used for creating edge triggers when the flag changes value.
         self.snapButtonTrig_waitForTimerCallback = False
         self.snapButtonTrig_wasAutonomousAtRisingEdge = False     # Flag to check if AV was engaged or was autonomous at rising edge of trigger.
-        self.snapButtonTrig_wasAutonomousAtFallingEdge = False    # Flag to check if AV was engaged or was autonomous at falling edge of trigger.
+        #self.snapButtonTrig_wasAutonomousAtFallingEdge = False    # Flag to check if AV was engaged or was autonomous at falling edge of trigger.
         self.snapButtonTrigTimer = 0
         self.snapButtonTrig_startTime = 0
         
@@ -63,7 +63,7 @@ class CsvWriterAVinterface:
         self.prev_softwareEventTrig = False     # Used for creating edge triggers when the flag changes value.
         self.softwareEventTrig_waitForTimerCallback = False
         self.softwareEventTrig_wasAutonomousAtRisingEdge = False     # Flag to check if AV was engaged or was autonomous at rising edge of trigger.
-        self.softwareEventTrig_wasAutonomousAtFallingEdge = False    # Flag to check if AV was engaged or was autonomous at falling edge of trigger.
+        #self.softwareEventTrig_wasAutonomousAtFallingEdge = False    # Flag to check if AV was engaged or was autonomous at falling edge of trigger.
         self.softwareEventTrigTimer = 0
         self.softwareEventTrig_startTime = 0
         self.softwareEventTrigName = ''
@@ -104,8 +104,37 @@ class CsvWriterAVinterface:
         self.healthPub = rospy.Publisher('/snapshotTrigger/health_status', DiagnosticArray, queue_size=10)
         rospy.init_node('Snapshot_Trigger')
         
+        # Places where we don't want to record
+        self.exclPoses = []
+        self.exclPoses.append([4870.25,-2212.87,0.0194033,75.0,17.0])  #SVPG
+        self.inExclusionZone = True
+        
         # Create a ROS Timer for reading data
         rospy.Timer(rospy.Duration(self.timerInterval), self.timerCallback)
+    
+    def updateExclZone(self,msg):
+      # Check if we're in an exclusion zone
+      self.inExclusionZone = False
+      for point in self.exclPoses:
+        exclPose = np.zeros((3,3))
+        exclPose[0,0] =  np.cos(point[2])
+        exclPose[0,1] =  np.sin(point[2])
+        exclPose[1,0] = -np.sin(point[2])
+        exclPose[1,1] =  np.cos(point[2])
+        exclPose[2,2] =  1
+        exclPose[0,2] = point[0]
+        exclPose[1,2] = point[1]
+        exclPoseInv = np.linalg.inv(exclPose)
+        
+        egoPoint = np.zeros((3,1))
+        egoPoint[0,0] = msg.pose.position.x
+        egoPoint[1,0] = msg.pose.position.y
+        egoPoint[2,0] = 1
+        
+        relPoint = np.dot(exclPoseInv,egoPoint)
+        if abs(relPoint[0,0]) < point[3] and abs(relPoint[1,0]) < point[4]:
+          self.inExclusionZone = True
+          #print('In exclusion zone',round(relPoint[0,0]*10)/10,round(relPoint[1,0]*10)/10)
     
     def poseCallback(self, msg):
         '''
@@ -117,6 +146,9 @@ class CsvWriterAVinterface:
         And if the vehicle is moving very slowly and it covers 50 meters in 15 seconds, 
         then when a trigger happens the code will record data from 15 seconds prior to the trigger upto 20 seconds after the trigger.
         '''
+        # Disable recording snapshots in some locations, like SVPG
+        self.updateExclZone(msg)
+        
         if self.lastPose is not None:
             # Check the time difference
             if (msg.header.stamp - self.lastPose.header.stamp).to_sec() < 0.1:
@@ -146,7 +178,7 @@ class CsvWriterAVinterface:
 
     def timerCallback(self, data):            # Interval decided by timerInterval.
         
-        if self.avEngaged:
+        if self.avEngaged and self.inExclusionZone == False:
             if (not self.BRK_Override) and (not self.ACC_Override):
                 self.avEngagedTimer += self.timerInterval
         else:
@@ -200,21 +232,24 @@ class CsvWriterAVinterface:
 
         #if wasAutonomous and (self.BRK_Override != self.prev_BRK_Override):
         if self.BRK_Override != self.prev_BRK_Override:
-            self.writeSnapshot = True
+            #self.writeSnapshot = True
             self.prev_BRK_Override = self.BRK_Override
             
             if self.prev_BRK_Override:      # Rising edge.
                 self.BRK_Override_startTime = rospy.Time.now()
                 self.BRK_Override_wasAutonomousAtRisingEdge = wasAutonomous
+                self.writeSnapshot = wasAutonomous              # Only true if there was a trigger and the av was autonomous at the rising edge of the trigger.
             else:                           # Falling edge.
                 self.BRK_OverrideTimer = (rospy.Time.now() - self.BRK_Override_startTime).to_sec()
-                self.BRK_Override_wasAutonomousAtFallingEdge = wasAutonomous
+                #self.BRK_Override_wasAutonomousAtFallingEdge = wasAutonomous
                 
                 # Sometimes av can get disengaged while an override is still active. If av was disengaged for the entire time of 
                 # the duration of the override, or if wasAutonomous (which is false if av is engaged for anything less than 2 sec), 
-                # then those overrides are ignored. So, only record this trigger if the av was engaged at atleast one of the 
-                # rising or falling edge of this trigger.
-                if self.BRK_Override_wasAutonomousAtRisingEdge or self.BRK_Override_wasAutonomousAtFallingEdge:
+                # then those overrides are ignored. But if the av was engaged during the rising edge of the trigger, then it will 
+                # still record a even if the av was disengaged before the falling edge of the trigger. 
+                # So, only record this trigger if the av was engaged at atleast one of the rising or falling edge of this trigger.
+                #if self.BRK_Override_wasAutonomousAtRisingEdge or self.BRK_Override_wasAutonomousAtFallingEdge:
+                if self.BRK_Override_wasAutonomousAtRisingEdge:
                     if self.BRK_OverrideTimer <= self.brkTapDuration:
                         self.prefixList.append('brkTap')
                         self.durationList.append(self.BRK_OverrideTimer)
@@ -229,25 +264,28 @@ class CsvWriterAVinterface:
                 self.BRK_Override_startTime = 0         # Reinitialize.
                 self.BRK_OverrideTimer = 0
                 self.BRK_Override_wasAutonomousAtRisingEdge = False
-                self.BRK_Override_wasAutonomousAtFallingEdge = False
+                #self.BRK_Override_wasAutonomousAtFallingEdge = False
         
         #if wasAutonomous and (self.ACC_Override != self.prev_ACC_Override):
         if self.ACC_Override != self.prev_ACC_Override:
-            self.writeSnapshot = True
+            #self.writeSnapshot = True
             self.prev_ACC_Override = self.ACC_Override
 
             if self.prev_ACC_Override:      # Rising edge.
                 self.ACC_Override_startTime = rospy.Time.now()
                 self.ACC_Override_wasAutonomousAtRisingEdge = wasAutonomous
+                self.writeSnapshot = wasAutonomous              # Only true if there was a trigger and the av was autonomous at the rising edge of the trigger.
             else:                           # Falling edge.
                 self.ACC_OverrideTimer = (rospy.Time.now() - self.ACC_Override_startTime).to_sec()
-                self.ACC_Override_wasAutonomousAtFallingEdge = wasAutonomous
+                #self.ACC_Override_wasAutonomousAtFallingEdge = wasAutonomous
 
                 # Sometimes av can get disengaged while an override is still active. If av was disengaged for the entire time of 
                 # the duration of the override, or if wasAutonomous (which is false if av is engaged for anything less than 2 sec), 
-                # then those overrides are ignored. So, only record this trigger if the av was engaged at atleast one of the 
-                # rising or falling edge of this trigger.
-                if self.ACC_Override_wasAutonomousAtRisingEdge or self.ACC_Override_wasAutonomousAtFallingEdge:
+                # then those overrides are ignored. But if the av was engaged during the rising edge of the trigger, then it will 
+                # still record a even if the av was disengaged before the falling edge of the trigger. 
+                # So, only record this trigger if the av was engaged at atleast one of the rising or falling edge of this trigger.
+                #if self.ACC_Override_wasAutonomousAtRisingEdge or self.ACC_Override_wasAutonomousAtFallingEdge:
+                if self.ACC_Override_wasAutonomousAtRisingEdge:
                     self.prefixList.append('accOverride')
                     self.durationList.append(self.ACC_OverrideTimer)
                     self.startTimeList.append(self.ACC_Override_startTime)
@@ -256,26 +294,29 @@ class CsvWriterAVinterface:
                 self.ACC_Override_startTime = 0         # Reinitialize.
                 self.ACC_OverrideTimer = 0
                 self.ACC_Override_wasAutonomousAtRisingEdge = False
-                self.ACC_Override_wasAutonomousAtFallingEdge = False
+                #self.ACC_Override_wasAutonomousAtFallingEdge = False
         
         #if wasAutonomous and (self.snapButtonTrig != self.prev_snapButtonTrig):
         if self.snapButtonTrig != self.prev_snapButtonTrig:
             print('Snapshot triggered by button press.')
-            self.writeSnapshot = True
+            #self.writeSnapshot = True
             self.prev_snapButtonTrig = self.snapButtonTrig
             
             if self.prev_snapButtonTrig:    # Rising edge.
                 self.snapButtonTrig_startTime = rospy.Time.now()
                 self.snapButtonTrig_wasAutonomousAtRisingEdge = wasAutonomous
+                self.writeSnapshot = wasAutonomous              # Only true if there was a trigger and the av was autonomous at the rising edge of the trigger.
             else:                           # Falling edge.
                 self.snapButtonTrigTimer = (rospy.Time.now() - self.snapButtonTrig_startTime).to_sec()
-                self.snapButtonTrig_wasAutonomousAtFallingEdge = wasAutonomous
+                #self.snapButtonTrig_wasAutonomousAtFallingEdge = wasAutonomous
                 
                 # Sometimes av can get disengaged while an override is still active. If av was disengaged for the entire time of 
                 # the duration of the override, or if wasAutonomous (which is false if av is engaged for anything less than 2 sec), 
-                # then those overrides are ignored. So, only record this trigger if the av was engaged at atleast one of the 
-                # rising or falling edge of this trigger.
-                if self.snapButtonTrig_wasAutonomousAtRisingEdge or self.snapButtonTrig_wasAutonomousAtFallingEdge:
+                # then those overrides are ignored. But if the av was engaged during the rising edge of the trigger, then it will 
+                # still record a even if the av was disengaged before the falling edge of the trigger. 
+                # So, only record this trigger if the av was engaged at atleast one of the rising or falling edge of this trigger.
+                #if self.snapButtonTrig_wasAutonomousAtRisingEdge or self.snapButtonTrig_wasAutonomousAtFallingEdge:
+                if self.snapButtonTrig_wasAutonomousAtRisingEdge:
                     self.prefixList.append('snapButton')
                     self.durationList.append(self.snapButtonTrigTimer)
                     self.startTimeList.append(self.snapButtonTrig_startTime)
@@ -283,25 +324,28 @@ class CsvWriterAVinterface:
                 self.snapButtonTrig_startTime = 0           # Reinitialize.
                 self.snapButtonTrigTimer = 0
                 self.snapButtonTrig_wasAutonomousAtRisingEdge = False
-                self.snapButtonTrig_wasAutonomousAtFallingEdge = False
+                #self.snapButtonTrig_wasAutonomousAtFallingEdge = False
             
         #if wasAutonomous and (self.softwareEventTrig != self.prev_softwareEventTrig):
         if self.softwareEventTrig != self.prev_softwareEventTrig:
-            self.writeSnapshot = True
+            #self.writeSnapshot = True
             self.prev_softwareEventTrig = self.softwareEventTrig
 
-            if prev_softwareEventTrig:  # Rising edge.
+            if self.prev_softwareEventTrig:  # Rising edge.
                 self.softwareEventTrig_startTime = rospy.Time.now()
                 self.softwareEventTrig_wasAutonomousAtRisingEdge = wasAutonomous
+                self.writeSnapshot = wasAutonomous              # Only true if there was a trigger and the av was autonomous at the rising edge of the trigger.
             else:                           # Falling edge.
                 self.softwareEventTrigTimer = (rospy.Time.now() - self.softwareEventTrig_startTime).to_sec()
-                self.softwareEventTrig_wasAutonomousAtFallingEdge = wasAutonomous
+                #self.softwareEventTrig_wasAutonomousAtFallingEdge = wasAutonomous
 
                 # Sometimes av can get disengaged while an override is still active. If av was disengaged for the entire time of 
                 # the duration of the override, or if wasAutonomous (which is false if av is engaged for anything less than 2 sec), 
-                # then those overrides are ignored. So, only record this trigger if the av was engaged at atleast one of the 
-                # rising or falling edge of this trigger.
-                if self.softwareEventTrig_wasAutonomousAtRisingEdge or self.softwareEventTrig_wasAutonomousAtFallingEdge:
+                # then those overrides are ignored. But if the av was engaged during the rising edge of the trigger, then it will 
+                # still record a even if the av was disengaged before the falling edge of the trigger. 
+                # So, only record this trigger if the av was engaged at atleast one of the rising or falling edge of this trigger.
+                #if self.softwareEventTrig_wasAutonomousAtRisingEdge or self.softwareEventTrig_wasAutonomousAtFallingEdge:
+                if self.softwareEventTrig_wasAutonomousAtRisingEdge:
                     self.prefixList.append(str(self.softwareEventTrigName))
                     self.durationList.append(self.softwareEventTrigTimer)
                     self.startTimeList.append(self.softwareEventTrig_startTime)
@@ -309,7 +353,7 @@ class CsvWriterAVinterface:
                 self.softwareEventTrig_startTime = 0        # Reinitialize.
                 self.softwareEventTrigTimer = 0
                 self.softwareEventTrig_wasAutonomousAtRisingEdge = False
-                self.softwareEventTrig_wasAutonomousAtFallingEdge = False
+                #self.softwareEventTrig_wasAutonomousAtFallingEdge = False
         
         
         # Calculating the start time for this snapshot.

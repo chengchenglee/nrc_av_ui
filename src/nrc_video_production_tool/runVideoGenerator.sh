@@ -39,6 +39,7 @@ cd $dateNow
 shopt -s nullglob
 mv *.orig.bag $dateNow/compressed
 
+
 cd $pyCodeDir
 echo "cd $pyCodeDir"
 echo "Starting Python node"
