@@ -83,7 +83,7 @@ if True:
       agent.pollMonitors()
       agent.parseAgentMail()
       if (agent.useGui == 1):
-        interface.updateSnpText(agent.fileInTransit)
+        interface.updateSnpText(agent.fileInTransit, agent.cloud.isConnected)
         interface.update(agent.subsystems)
       dtStamps[0] = round((time.time() - prevTime)*1000)/1000
       if debugTiming: print('Poll Monitors/Mail',dtStamps[0])

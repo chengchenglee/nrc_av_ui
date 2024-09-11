@@ -19,6 +19,8 @@ class FileInTransit:
     self.bytesSent = 0
     self.state = ['Idle','Initializing']
     self.debounceNewFile = 5
+    self.snapsSent = 0
+    self.bmapsSent = 0
   
   def setNew(self,fileInfo):
     self.fileOpen = 1
@@ -46,6 +48,10 @@ class FileInTransit:
     isDir = os.path.isdir(doneDir)
     if not isDir:
       os.makedirs(doneDir)
+      
+    # Record number of bag files sent
+    if 'snap' in self.filename: self.snapsSent += 1
+    if 'bmap' in self.filename: self.bmapsSent += 1
     
     # Move to sent directory
     newFilename = doneDir+self.filename+'.bag'

@@ -5,8 +5,8 @@ Configuration:
   printTimeDebug: 0
   useGui: 1
   sendWm: 1
-  sendSnapshots: 0
-  broker: ncal
+  sendSnapshots: 1
+  broker: emqx
 
 Subsystem:
   CAR:
@@ -92,7 +92,7 @@ Subsystem:
         NomWarnErrRate: 15, 9, 3
     Commands:
       - Name: Cubtek_eth_raw_left
-        Command: sudo $HOME/projects/nrc_ws/devel/lib/nrc_hw_svcs/pcap eno1 45161 #Left cubtek radar
+        Command: sudo $HOME/projects/nrc_ws/devel/lib/nrc_hw_svcs/pcap eno4 45161 #Left cubtek radar
         Type: Software
         LaunchTime: 2.0
       - Name: Cubtek_eth_raw_right
@@ -116,7 +116,7 @@ Subsystem:
       Retry: 3
       Timeout: 5
     Depends:
-      - Launch:
+      - Launch:CAR
         Run:
 
   InnovusionPCP:
@@ -151,7 +151,7 @@ Subsystem:
       Retry: 3
       Timeout: 5
     Depends:
-      - Launch: EYEQ5
+      - Launch:
         Run:
 
   WM:
@@ -186,7 +186,7 @@ Subsystem:
       Retry: 3
       Timeout: 5
     Depends:
-      - Launch: LUMPCP
+      - Launch: InnovusionPCP
         Run:
 
   PLAN:
@@ -201,10 +201,6 @@ Subsystem:
         NomWarnErrRate: 1, 0.5, 0.2
       - HealthTopic: /autoGoals/health
         HealthName: GOALS
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /prm/risk_field/health
-        HealthName: RSKFLD
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
       - HealthTopic: /trajectory_planner/health

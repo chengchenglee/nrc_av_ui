@@ -4,8 +4,28 @@ import sys, os, subprocess
 from subsystem import Subsystem
 import time
 import numpy as np
+from numpy.linalg import inv
 import cv2
 #from scipy.spatial.transform import Rotation
+from wmStatus import WmObject
+
+keyboardListener = True
+try:
+  from pynput.keyboard import Key, Listener
+except:
+  print('\n\n\nInstall pynput for keyboard/joystick control of teleop.\n\n\n')
+  keyboardListener = False
+
+joystickReader = True
+try:
+  import pygame
+  pygame.init()
+except:
+  print('pygame module not found, no joystick control')
+  # python3 -m pip install -U pygame --user
+  # If runtimeError: Unable to run "sdl-config"
+  # => sudo apt-get install libsdl2-mixer-dev libsdl2-image-dev libsdl2-ttf-dev
+  joystickReader = False
 
 # Display images
 import io
@@ -41,13 +61,44 @@ else: # 3+
     import tkinter as Tkinter # 3.6
     import tkinter.ttk as ttk
     
+class virtVeh:
+  def __init__(self):
+    self.lastUpdate = 0
+    self.vv = WmObject(-2,[0,0,0,2,4,0])
+  
+  #def reset(self,data):
+    #self.lastUpdate = time.time()
+    #self.x  = data[0]
+    #self.y  = data[1]
+    #self.th = data[2]
+    #self.v  = data[3]
+    #self.w  = data[4]
+    
+    #c,s = np.cos(data[2]), np.sin(data[2])
+    #self.centerPose = np.array(((c, -s, data[0]),
+                                #(s, c,  data[1]),
+                                #(0, 0,  1)))
+    #self.poseInv = inv(self.centerPose)
+    
+  #def move(self,data):
+    #dx  = data[0]
+    #dth = data[1]
+    #c,s = np.cos(dth), np.sin(dth)
+    #dPose = np.array(((c, -s, dx),
+                      #(s, c,  0),
+                      #(0, 0,  1)))
+    #self.centerPose = np.dot(self.centerPose,dPose)
+    #self.x  = self.centerPose[0,2]
+    #self.y  = self.centerPose[1,2]
+    #self.th = np.arctan2(self.centerPose[1,0],self.centerPose[0,0])
+    
 class Interface:
   def __init__(self):
     self.window = []
     self.windowOpen = False
     self.launchAllReq = False
     self.windowWidth  = 550
-    self.windowHeight = 900
+    self.windowHeight = 930
     self.canvasWidth  = 550
     self.imgHeight    = 268
     self.canvasHeight = 400
@@ -60,6 +111,7 @@ class Interface:
     
     self.selectedAgent = 'None'
     self.isTeleop = False
+    self.isRemoteDrv = False
     #self.canvasDrawn = False
     self.tab2_canvas = []
     self.canvasTime = 0
@@ -170,8 +222,18 @@ class Interface:
     self.selectedAgentVal.set(newVal)
     self.teleopCmds = []
     self.isTeleop = 0
+    self.enTeleop.configure(text='ENABLE TELEOP')
+    self.setDefaultImg()
+  
+  def setDefaultImg(self):
+    pathToDefaultImg = os.path.expanduser('~')+'/projects/nrc_ws/src/nrc_av_ui/av_ui/test1.png'
+    self.image = Image.open(pathToDefaultImg)
+    self.image2 = self.image.resize((self.canvasWidth,self.imgHeight),Image.ANTIALIAS)
+    self.tkImage = ImageTk.PhotoImage(self.image2)
+    self.tab2_img.configure(image=self.tkImage)
   
   def initCanvas(self):
+    charWidth = 8
     self.agent_options = ['None']
     self.selectedAgentVal = Tkinter.StringVar(self.tab2);
     self.tab2_agentSel = Tkinter.OptionMenu(self.tab2, self.selectedAgentVal, *self.agent_options, command=self.updateSelectedAgent)
@@ -180,23 +242,64 @@ class Interface:
     widthIn  = self.canvasWidth
     heightIn = 200
     
-    pathToDefaultImg = os.path.expanduser('~')+'/projects/nrc_ws/src/nrc_av_ui/av_ui/test1.png'
-    self.image = Image.open(pathToDefaultImg)
-    self.image2 = self.image.resize((self.canvasWidth,self.imgHeight),Image.ANTIALIAS)
-    self.tkImage = ImageTk.PhotoImage(self.image2)
-    
-    self.tab2_img = Tkinter.Label(self.tab2, image=self.tkImage, height=self.imgHeight, width=self.canvasWidth)
+    self.tab2_img = Tkinter.Label(self.tab2, height=self.imgHeight, width=self.canvasWidth)
+    self.setDefaultImg()
     self.tab2_img.grid(column=0, row=2)
     
     self.tab2_canvas = Tkinter.Canvas(self.tab2, bg="white", height=self.canvasHeight, width=self.canvasWidth)
     self.tab2_canvas.grid(column=0, row=3)
     
-    self.lcLeftButton = Tkinter.Button(self.tab2_frame2, text='LC-LFT', width=16, height=4, padx=1, pady=1, relief="raised")
-    self.gaLeftButton = Tkinter.Button(self.tab2_frame2, text='GA-LFT', width=16, height=4, padx=1, pady=1, relief="raised",command=self.gaLeft)
-    self.gaRghtButton = Tkinter.Button(self.tab2_frame2, text='GA-RGT', width=16, height=4, padx=1, pady=1, relief="raised",command=self.gaRght)
-    self.lcRghtButton = Tkinter.Button(self.tab2_frame2, text='LC-RGT', width=16, height=4, padx=1, pady=1, relief="raised")
-    self.enTeleop     = Tkinter.Button(self.tab2_frame2, text='ENABLE TELEOP', width=70, height=2, padx=1, pady=1, relief="raised", command=self.setTeleop)
-    self.enTeleop.grid(row=0, columnspan=4, sticky=Tkinter.W+Tkinter.E)
+    numButtons = 5
+    self.bWidth = int(self.canvasWidth/(numButtons*charWidth))
+    self.enTeleop     = Tkinter.Button(self.tab2_frame2, text='ENABLE TELEOP',\
+                                       width=numButtons*self.bWidth+numButtons, height=2, padx=1, pady=1, relief="raised", command=self.setTeleop)
+    self.enTeleop.grid(row=0, columnspan=5, sticky=Tkinter.W+Tkinter.E)
+    self.enRemoteDrv  = Tkinter.Button(self.tab2_frame2, text='REMOTE DRIVE',\
+                                       width=numButtons*self.bWidth+numButtons, height=2, padx=1, pady=1, relief="raised", command=self.setRemoteDrv)
+    self.lcLeftButton = Tkinter.Button(self.tab2_frame2, text='LC-LFT',\
+                                       width=self.bWidth, height=4, padx=1, pady=1, relief="raised")
+    self.gaLeftButton = Tkinter.Button(self.tab2_frame2, text='GA-LFT',\
+                                       width=self.bWidth, height=4, padx=1, pady=1, relief="raised",command=self.gaLeft)
+    self.followButton = Tkinter.Button(self.tab2_frame2, text='F-TRJ',\
+                                       width=self.bWidth, height=4, padx=1, pady=1, relief="raised",command=self.fTrj)
+    self.gaRghtButton = Tkinter.Button(self.tab2_frame2, text='GA-RGT',
+                                       width=self.bWidth, height=4, padx=1, pady=1, relief="raised",command=self.gaRght)
+    self.lcRghtButton = Tkinter.Button(self.tab2_frame2, text='LC-RGT',\
+                                       width=self.bWidth, height=4, padx=1, pady=1, relief="raised")
+    
+    self.virtualVeh = WmObject(-2,[0,0,0,0,0,0,0])
+
+    # Read joystick
+    self.joyPad = False
+    self.lastJoyUpdate = time.time()
+    self.joysticks = []
+    if joystickReader:
+      print('Init joystick...')
+      pygame.joystick.init()
+      self.joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
+      for joy in self.joysticks:
+        joy.init()
+        
+    # Read keyboard
+    if keyboardListener:
+      def on_press(key):
+        #print(key)
+        if not self.joyPad:
+          keyStr = str(key).replace("'","")
+          if 'up' in keyStr:
+            self.virtualVeh.accel([1,0])
+          if 'down' in keyStr:
+            self.virtualVeh.accel([-1,0])
+          if 'left' in keyStr:
+            self.virtualVeh.accel([0,0.3])
+          if 'right' in keyStr:
+            self.virtualVeh.accel([0,-0.3])
+
+      self.listener = Listener(on_press=on_press)
+      print('Start keyboard listener')
+      self.listener.start()
+    
+
     
     # Determine the origin by clicking
     def getorigin(eventorigin):
@@ -230,7 +333,7 @@ class Interface:
     rotMtx = np.dot(rotY, np.dot(rotX,rotZ))
     return rotMtx
   
-  def drawBox(self,wmObj,frame):
+  def drawBox(self,wmObj,frame,color='red'):
     corners = wmObj.cornersInFrame(frame)
     corners2d,_ = cv2.projectPoints(corners,
                                   self.rvec,self.tvec.reshape(-1,1),
@@ -254,7 +357,6 @@ class Interface:
       avgV = avgV + v/4
     
     if inRange:
-      color = 'red'
       if wmObj.object_id == -1:
         color = 'grey'
       else:
@@ -262,7 +364,7 @@ class Interface:
           if cmd.objId() == wmObj.object_id:
             if cmd.teleopType == 'ORU':
               color = 'blue'
-            elif cmd.teleopType == 'GAL' or cmd.teleopType == 'GAR':
+            elif cmd.teleopType == 'GAL' or cmd.teleopType == 'GAR' or cmd.teleopType == 'FTrj':
               color = 'green'
           
       ship_id = self.tab2_canvas.create_polygon(bottom,  fill=color)
@@ -371,33 +473,34 @@ class Interface:
     self.tab2_img.configure(image=self.tkImage)
     
   def processClick(self,wmStatus):
-    print('Get nearest object.')
-    closestDist = 10000
-    closestBox  = -1
-    for i in range(len(wmStatus.objs)):
-      du = self.mouseclick[1]-wmStatus.objs[i].avgU
-      dv = self.mouseclick[2]-wmStatus.objs[i].avgV
-      dist = du*du + dv*dv
-      if dist < closestDist:
-        closestBox = i
-        closestDist = dist
     
-    if closestBox >= 0 and closestDist < 10*10:
-      objExists = False
+    if self.isTeleop == True:
+      closestDist = 10000
+      closestBox  = -1
+      for i in range(len(wmStatus.objs)):
+        du = self.mouseclick[1]-wmStatus.objs[i].avgU
+        dv = self.mouseclick[2]-wmStatus.objs[i].avgV
+        dist = du*du + dv*dv
+        if dist < closestDist:
+          closestBox = i
+          closestDist = dist
       
-      # Try to see if we're already tracking this object
-      for cmd in self.teleopCmds:
-        cmdIsOru = (cmd.teleopType == 'ORU' or cmd.teleopType == 'GAL' or cmd.teleopType == 'GAR')
-        if cmdIsOru:
-          if cmd.objId() == wmStatus.objs[closestBox].object_id:
-            cmd.setAction('remove')
-            objExists = True
-            break
-          
-      # If not, create possible teleop entry for this object
-      if not objExists:
-        newCmd = TeleopEntry.fromOru(wmStatus.objs[closestBox].object_id, wmStatus.objs[closestBox].xyth())
-        self.teleopCmds.append(newCmd)
+      if closestBox >= 0 and closestDist < 10*10:
+        objExists = False
+        
+        # Try to see if we're already tracking this object
+        for cmd in self.teleopCmds:
+          cmdIsOru = (cmd.teleopType == 'ORU' or cmd.teleopType == 'GAL' or cmd.teleopType == 'GAR' or cmd.teleopType == 'FTrj')
+          if cmdIsOru:
+            if cmd.objId() == wmStatus.objs[closestBox].object_id:
+              cmd.setAction('remove')
+              objExists = True
+              break
+            
+        # If not, create possible teleop entry for this object
+        if not objExists:
+          newCmd = TeleopEntry.fromOru(wmStatus.objs[closestBox].object_id, wmStatus.objs[closestBox].xythvw())
+          self.teleopCmds.append(newCmd)
         
     # Clear old entries
     self.mouseclick[3] = False
@@ -407,10 +510,90 @@ class Interface:
       if not cmd.teleopType == 'remove':
         self.teleopCmds.append(cmd)
   
+  def processJoystick(self):
+    self.joyPad = False
+    if len(self.joysticks) == 0:
+      a=1
+      #print('Init joystick...')
+      #pygame.joystick.init()
+      #self.joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
+      #for joy in self.joysticks:
+        #joy.init()
+        
+    else:
+      pygame.event.pump()
+      for joy in self.joysticks:
+        isJoypad    = 'Microsoft X-Box' in joy.get_name()
+        hasSticks   = joy.get_numaxes()    >= 6
+        hasButtons  = joy.get_numbuttons() >= 11
+        if isJoypad and hasSticks and hasButtons:
+          self.joyPad = True
+          dt = time.time() - self.lastJoyUpdate
+          self.lastJoyUpdate = time.time()
+          
+          dt = min(0.2,dt)
+          
+          v1 = 3.5;
+          v2 = 10;
+          pct1 = 1.0;  # at v1, steering = pct1 * max_steer
+          pct2 = 0.05; # at v2, steering = pct2 * max_steer
+
+          m = (pct2 - pct1)/(v2 - v1)
+          b = (pct1 - m * v1)
+          steerScale = min(pct1, max(pct2, m*self.virtualVeh.speed()+b))
+          vScale = 4.5  # joy.get_axis(5) > 0 ==> braking
+          
+          #print(joy.get_axis(0),joy.get_axis(5))
+          self.joySteer = -steerScale*joy.get_axis(0)*0.75;
+          
+          # Estimate desired accel
+          minBrakeButton = -0.98
+          maxBrakeButton =  0.98
+          minBrakeInput  = -1.0
+          maxBrakeInput  =  0.0
+          m = (maxBrakeInput-minBrakeInput)/(maxBrakeButton-minBrakeButton)
+          b = maxBrakeInput - m*maxBrakeButton
+          brakeInput = min(1,max(0,m*joy.get_axis(2)))
+                                 
+          minAccelButton = -0.98
+          maxAccelButton =  0.98
+          minAccelInput  = -0.2
+          maxAccelInput  =  1.0
+          m = (maxAccelInput-minAccelInput)/(maxBrakeButton-minBrakeButton)
+          b = maxAccelInput - m*maxBrakeButton
+          accelInput = min(maxAccelInput,max(minAccelInput,m*joy.get_axis(5)))
+          
+          if (brakeInput > 0):
+            self.joyAccel = -vScale*brakeInput
+            #if self.joyAccel < -0.1: print('Brake! ', self.joyAccel)
+          else:
+            self.joyAccel =  vScale*accelInput
+            #if self.joyAccel > 0.1: print('Accel! ', self.joyAccel)
+          
+          self.joyReset  = joy.get_button(0)
+          self.joyCancel = joy.get_button(1)
+          
+          self.virtualVeh.accel([dt,self.joyAccel,self.joySteer])
+        
+          if False:
+            print('Joy name',joy.get_name())
+            for i in range(joy.get_numaxes()):
+              print('Joy axis',i,joy.get_axis(i))
+            for i in range(joy.get_numbuttons()):
+              print('Joy button',i,joy.get_button(i))
+            for i in range(joy.get_numhats()):
+              print('Joy hat',i,joy.get_hat(i))
+  
   def updateCanvas(self,wmStatus,imgStreamData,stateMsgCount,kbps):
     self.tab2_canvas.delete("all")
     
+    if self.isTeleop == False:
+      self.teleopCmds = []
+    
     self.updateImg(imgStreamData)
+    
+    if joystickReader:
+      self.processJoystick()
     
     # Define camera matrix
     fx = 800
@@ -421,18 +604,37 @@ class Interface:
                           [0, fy, cy/2],
                           [1,  0, 1]], np.float32)
     
+    frame = wmStatus.dgp
+    if self.isRemoteDrv:
+      if self.joyPad:
+        if self.joyReset:
+          print('Reset virtual veh')
+          self.virtualVeh.reset(wmStatus.dgp)
+        if self.joyCancel:
+          self.isRemoteDrv = False
+          self.enRemoteDrv.configure(text='ENABLE REMOTE DRIVE')
+      
+      frame = self.virtualVeh
     
-    #height = self.camPctTop*20  + (1-self.camPctTop)*7
-    #pitch  = self.camPctTop*-75 + (1-self.camPctTop)*-85
+    minSpd = 1
+    maxSpd = 6
+    m = (1.-0.)/(maxSpd-minSpd)
+    b = 1. - m*maxSpd
+    
+    pctTop = min(1., max(0., m*frame.speed()+b))
+    height = pctTop*45  + (1-pctTop)*35
+    pitch  = pctTop*-75 + (1-pctTop)*-50
     #self.camPctTop += self.camPctIncr
     #if self.camPctTop < 0:
       #self.camPctIncr =  0.01
     #elif self.camPctTop > 1:
       #self.camPctIncr = -0.01
       
-    # Define camera extrinsics
-    height =  35
-    pitch  = -70
+      
+    if not self.isRemoteDrv:
+      height =  35
+      pitch  = -70
+      
     ypr = [270,0,pitch]
     rotMtx = self.rpyToRot(ypr)
 
@@ -442,17 +644,21 @@ class Interface:
     self.tvec = tvec
     
     # Draw grid
-    #self.drawGrid1()
-    self.drawGrid(wmStatus.dgp)
-    
-    # Draw objects
-    #if len(self.objsOfInterest) > 0: print(self.objsOfInterest)
+    self.drawGrid(frame)
   
+    # Draw other road users
     for obj in wmStatus.objs:
-      self.drawBox(obj,wmStatus.dgp)
+      self.drawBox(obj,frame)
       
     # Draw ego
-    self.drawBox(wmStatus.dgp,wmStatus.dgp)
+    self.drawBox(wmStatus.dgp,frame)
+    
+    # Draw virtual
+    if self.isRemoteDrv:
+      self.virtualVeh.simulate(0.1)
+      self.drawBox(self.virtualVeh,frame,'purple')
+    else:
+      self.virtualVeh.reset(wmStatus.dgp)
     
     # Draw messaging stats
     self.drawMsgStats(stateMsgCount,wmStatus.msgCount,imgStreamData.msgCount,kbps)
@@ -574,14 +780,18 @@ class Interface:
         rowIdx += 1
       
     # Teleop Window
-    if self.isTeleop:
-      self.lcLeftButton.grid(column=0, row=1, sticky=Tkinter.W+Tkinter.E)
-      self.gaLeftButton.grid(column=1, row=1, sticky=Tkinter.W+Tkinter.E)
-      self.gaRghtButton.grid(column=2, row=1, sticky=Tkinter.W+Tkinter.E)
-      self.lcRghtButton.grid(column=3, row=1, sticky=Tkinter.W+Tkinter.E)
+    if self.isTeleop:  
+      self.enRemoteDrv.grid(column=0, columnspan=5, sticky=Tkinter.W+Tkinter.E)
+      self.lcLeftButton.grid(column=0, row=2, sticky=Tkinter.W+Tkinter.E)
+      self.gaLeftButton.grid(column=1, row=2, sticky=Tkinter.W+Tkinter.E)
+      self.followButton.grid(column=2, row=2, sticky=Tkinter.W+Tkinter.E)
+      self.gaRghtButton.grid(column=3, row=2, sticky=Tkinter.W+Tkinter.E)
+      self.lcRghtButton.grid(column=4, row=2, sticky=Tkinter.W+Tkinter.E)
     else:
+      self.enRemoteDrv.grid_forget()
       self.lcLeftButton.grid_forget()
       self.gaLeftButton.grid_forget()
+      self.followButton.grid_forget()
       self.gaRghtButton.grid_forget()
       self.lcRghtButton.grid_forget()
 
@@ -591,10 +801,25 @@ class Interface:
   def setTeleop(self):
     if self.isTeleop:
       self.isTeleop = 0
+      self.isRemoteDrv = False
+      self.enRemoteDrv.configure(text='ENABLE REMOTE DRIVE')
       self.enTeleop.configure(text='ENABLE TELEOP')
     else:
       self.isTeleop = 1
       self.enTeleop.configure(text='DISABLE TELEOP')
+      
+  def setRemoteDrv(self):
+    if self.isRemoteDrv:
+      self.isRemoteDrv = False
+      self.enRemoteDrv.configure(text='ENABLE REMOTE DRIVE')
+    else:
+      self.isRemoteDrv = True
+      self.enRemoteDrv.configure(text='DISABLE REMOTE')
+
+  def fTrj(self):
+    for cmd in self.teleopCmds:
+      if cmd.teleopType == 'ORU':
+        cmd.teleopType = 'FTrj'
 
   def gaLeft(self):
     for cmd in self.teleopCmds:
@@ -611,3 +836,8 @@ class Interface:
     for cmd in self.teleopCmds:
       if cmd.teleopType != 'ORU' and cmd.teleopType != 'remove':
         agent.teleopCmdData.commands.append(cmd)
+        
+    if self.isRemoteDrv:
+      newCmd = TeleopEntry.fromOru(-2, self.virtualVeh.xythvw())
+      newCmd.teleopType = 'FVV'
+      agent.teleopCmdData.commands.append(newCmd)

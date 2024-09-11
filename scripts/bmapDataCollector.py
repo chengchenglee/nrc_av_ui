@@ -16,18 +16,64 @@ import subprocess
 import os
 from collections import deque
 
+class ObjObs:
+  def __init__(self,tNow,msg,egoX,egoY):
+    orientation_list = [msg.pose.pose.orientation.x, msg.pose.pose.orientation.y,\
+                        msg.pose.pose.orientation.z, msg.pose.pose.orientation.w]
+    (roll,pitch,yaw) = tf.transformations.euler_from_quaternion(orientation_list)
+    
+    self.t   = tNow
+    self.objId  = msg.object_id
+    self.classification = msg.classification
+    self.l   = round(msg.shape_parameters.x*10)/10
+    self.w   = round(msg.shape_parameters.y*10)/10
+    
+    dx = egoX-msg.pose.pose.position.x
+    dy = egoY-msg.pose.pose.position.y
+    self.r   = round(np.sqrt(dx*dx + dy*dy)*100)/100
+    self.x   = round(msg.pose.pose.position.x*100)/100
+    self.y   = round(msg.pose.pose.position.y*100)/100
+    self.th  = round(yaw*10000)/10000
+
 class BmapHistRecorder:
   def __init__(self,args):
     self.egoHist = []
     self.objHist = []
     self.prevDgpPose = [0,0,0];
+    self.turnSigState = 0
+    self.tTurnSigState = 0
+    self.avEngaged = 0
+    self.egoX  = 0
+    self.egoY  = 0
+    self.egoTh = 0
+    
+    # Places where we don't want to record
+    self.exclPoses = []
+    self.exclPoses.append([4870.25,-2212.87,0.0194033,75.0,17.0])  #SVPG
+    self.inExclusionZone = True
+    
+    self.diagMsg = DiagnosticArray()
+    diagStatus = DiagnosticStatus()
+    self.diagMsg.status.append(diagStatus)
     
     #Vehicle health publisher
-    self.healthPub = rospy.Publisher('/bmap_recorder/health_status', DiagnosticArray, queue_size=10)
+    self.healthPub = rospy.Publisher('/bmap_recorder/health', DiagnosticArray, queue_size=10)
     self.dataPub   = rospy.Publisher('/bmap_recorder/data', String, queue_size=10)
     
     rospy.Subscriber('/dynamic_global_pose', DynamicPoseWithCovar, self.dgpCallback)
-    rospy.Subscriber('/ailsv_tracked_objects', TrackedObjectSet, self.tosCallback)
+    rospy.Subscriber('/pc_processor/multi_object_tracker/tracked_object_set', TrackedObjectSet, self.tosCallback)
+    rospy.Subscriber('/CAN_V_reader', CANVReader, self.CanVCallback)
+    rospy.Subscriber('/CtrlStateFLG', CtrlStateFLG, self.ctrlStateCallback)
+    
+    # Create a ROS Timer for reading data
+    rospy.Timer(rospy.Duration(0.5), self.timerCallback)
+    
+  def timerCallback(self,data):
+    statusStr =  's,3\n'
+    statusStr += 'r,10\n'
+    self.diagMsg.header.stamp = rospy.Time.now()
+    self.diagMsg.status[-1].message = statusStr
+    self.healthPub.publish(self.diagMsg)
   
   def addPoint(self,d1,d2):
     dx = d1[0]-d2[0]
@@ -36,63 +82,158 @@ class BmapHistRecorder:
     return dist > 1.0
   
   def addObjPoint(self,d1,d2):
-    dx = d1[2]-d2[2]
-    dy = d1[3]-d2[3]
+    dx = d1.x-d2.x
+    dy = d1.y-d2.y
     dist = np.sqrt(dx*dx+dy*dy)
     return dist > 1.0
   
-  def toObjObs(self,msgObj):
-    orientation_list = [msgObj.pose.pose.orientation.x, msgObj.pose.pose.orientation.y,\
-                        msgObj.pose.pose.orientation.z, msgObj.pose.pose.orientation.w]
-    (roll,pitch,yaw) = tf.transformations.euler_from_quaternion(orientation_list)
+  def toString(self,trkObj):
+    if len(trkObj) < 3: return ''
+  
+    # Get average length/width
+    length = 0
+    width  = 0
+    classCount = np.zeros(8)
+    currMax = 0
+    for obs in trkObj:
+      length += obs.l
+      width += obs.w
+      classCount[obs.classification] += 1
+      if classCount[obs.classification] > classCount[currMax]:
+        currMax = obs.classification
+    length = round( (length / max(1,len(trkObj)) )*10)/10
+    width  = round( (width  / max(1,len(trkObj)) )*10)/10
+  
+    # Unknown classification, return blank
+    if currMax < 3: return ''
+  
+    tZero = trkObj[0].t
     
-    xyth = [msgObj.pose.pose.position.x,msgObj.pose.pose.position.y,yaw]
-    
-    obs = [msgObj.object_id, msgObj.last_observation.to_sec(),\
-           round(xyth[0]*100)/100,round(xyth[1]*100)/100,round(xyth[2]*10000)/10000]
-    return obs
+    objStr = 'obj,t,id,c,l,w,dt,r,x,y,th,'
+    objStr += str(tZero)+','+str(trkObj[0].objId)+','+str(currMax)+','
+    objStr += str(length)+','+str(width)
+    for obs in trkObj:
+      if obs.r > 200: return ''
+      objStr += ','+str(round((obs.t-tZero)*100)/100)+','+str(obs.r)+\
+                ','+str(obs.x)+','+str(obs.y)+','+str(obs.th)
+    objStr += '\n'
+    return objStr
   
   def tosCallback(self,msg):
+    tNow = msg.header.stamp.to_sec()
     
-    foundObj = False
     for msgObj in msg.objects:
       if msgObj.object_id >=10000: continue
+      foundObj = False
       for trkObj in self.objHist:
-        if msgObj.object_id == trkObj[0][0]:
+        if msgObj.object_id == trkObj[0].objId:
           foundObj = True
-          objObs = self.toObjObs(msgObj)
-          if self.addObjPoint(trkObj[-1],objObs):
+          objObs = ObjObs(tNow,msgObj,self.egoX,self.egoY)
+          
+          if self.addObjPoint(trkObj[0],objObs):
             trkObj.append(objObs)
-            dx = trkObj[0][2]-objObs[2]
-            dy = trkObj[0][3]-objObs[3]
-            dist = round(np.sqrt(dx*dx+dy*dy)*10)/10
-            
-            print('Update obj track:',objObs[0],dist)
+            #dx = trkObj[0].x-objObs.x
+            #dy = trkObj[0].y-objObs.y
+            #dist = round(np.sqrt(dx*dx+dy*dy)*10)/10
+            #print('Update obj track:',objObs.objId,dist)
           break
       
       if not foundObj:
-        objObs = self.toObjObs(msgObj)
+        objObs = ObjObs(tNow,msgObj,self.egoX,self.egoY)
         self.objHist.append([objObs])
-        print('Add new obj track:',objObs[0])
+        #print('Add new obj track:',objObs.objId)
+        
+    # Check if delete or publish object track
+    oldTracks = self.objHist
+    self.objHist = []
+    objStr = ''
+    for trkObj in oldTracks:
+      dt = tNow - trkObj[-1].t
+      if dt > 2.0:
+        dx = trkObj[0].x - trkObj[-1].x
+        dy = trkObj[0].y - trkObj[-1].y
+        dist = np.sqrt(dx*dx + dy*dy)
+        if dist > 20.:
+          objStr += self.toString(trkObj)
+      else:
+        self.objHist.append(trkObj)
+    
+    # Publish data
+    if len(objStr) > 0:
+      #print('Publish objects',objStr)
+      dataMsg = String()
+      dataMsg.data = objStr
+      self.dataPub.publish(dataMsg)
+  
+  def updateExclZone(self,msg):
+    # Check if we're in an exclusion zone
+    self.inExclusionZone = False
+    for point in self.exclPoses:
+      exclPose = np.zeros((3,3))
+      exclPose[0,0] =  np.cos(point[2])
+      exclPose[0,1] =  np.sin(point[2])
+      exclPose[1,0] = -np.sin(point[2])
+      exclPose[1,1] =  np.cos(point[2])
+      exclPose[2,2] =  1
+      exclPose[0,2] = point[0]
+      exclPose[1,2] = point[1]
+      exclPoseInv = np.linalg.inv(exclPose)
+      
+      egoPoint = np.zeros((3,1))
+      egoPoint[0,0] = msg.pose.position.x
+      egoPoint[1,0] = msg.pose.position.y
+      egoPoint[2,0] = 1
+      
+      relPoint = np.dot(exclPoseInv,egoPoint)
+      if abs(relPoint[0,0]) < point[3] and abs(relPoint[1,0]) < point[4]:
+        self.inExclusionZone = True
+        #print('In exclusion zone',round(relPoint[0,0]*10)/10,round(relPoint[1,0]*10)/10)
   
   def dgpCallback(self,msg):
+    # Places we don't want to record
+    self.updateExclZone(msg)
+
     orientation_list = [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
     (roll,pitch,yaw) = tf.transformations.euler_from_quaternion(orientation_list)
     xyth = [msg.pose.position.x,msg.pose.position.y,yaw]
     
+    self.egoX  = msg.pose.position.x
+    self.egoY  = msg.pose.position.y
+    self.egoTh = yaw
+    
     if self.addPoint(self.prevDgpPose,xyth):
+      #print('Add dgp',msg.header.stamp.to_sec())
       spd = msg.twist.linear.x*msg.twist.linear.x + msg.twist.linear.y*msg.twist.linear.y
       spd = round(np.sqrt(spd)*10)/10
       yawRate = round(msg.twist.angular.z*100)/100
       dataMsg = String()
       
-      dataMsg.data = 'ego,'
-      dataMsg.data += str(msg.header.stamp.to_sec())+','
-      dataMsg.data += str(round(xyth[0]*100)/100)+','+str(round(xyth[1]*100)/100)+','+str(round(xyth[2]*10000)/10000)+','
-      dataMsg.data += str(spd)+','+str(yawRate)
-      self.dataPub.publish(dataMsg)
+      if self.inExclusionZone == False:
+        dataMsg.data = 'ego,t,avOn,turnSig,x,y,th,'
+        dataMsg.data += str(msg.header.stamp.to_sec())+','
+        dataMsg.data += str(self.avEngaged)+','+str(self.turnSigState)+','
+        dataMsg.data += str(round(xyth[0]*100)/100)+','+str(round(xyth[1]*100)/100)+','+str(round(xyth[2]*10000)/10000)+','
+        dataMsg.data += str(spd)+','+str(yawRate)
+        self.dataPub.publish(dataMsg)
       self.prevDgpPose = xyth
       
+  def CanVCallback(self,msg):
+    tNow = time.time()
+    
+    if msg.TurnSignals == 0 and self.turnSigState > 0 and tNow - self.tTurnSigState > 1.2:
+      # Clear turn signal flag
+      self.turnSigState = 0
+      
+    elif (msg.TurnSignals > 0):
+      self.turnSigState = msg.TurnSignals
+      
+    self.tTurnSigState = tNow
+  
+  def ctrlStateCallback(self,msg):
+    if msg.Engaged == True:
+      self.avEngaged = 1
+    else:
+      self.avEngaged = 0
  
 if __name__ == '__main__':
     print ('Starting Bmap Recorder node.')
