@@ -318,74 +318,50 @@ class Interface:
   
   def drawPointCloudSeparate(self, wmStatus):
     if not wmStatus.cloud:
-        print("No point cloud data available!")
+        self.drawGrid(wmStatus.dgp)
         return
-
-    self.pointcloud_canvas.delete("all")
     
     x_vals, y_vals, z_vals = zip(*wmStatus.cloud)
-    print(f"X range: {min(x_vals):.2f} to {max(x_vals):.2f}")
-    print(f"Y range: {min(y_vals):.2f} to {max(y_vals):.2f}")
-    print(f"Z range: {min(z_vals):.2f} to {max(z_vals):.2f}")
     
-    points_drawn = 0
-    points_processed = 0
-    
-    x_proj_values = []
-    y_proj_values = []
-    
-    scale_factor = 2  
     center_x = wmStatus.dgp.centerPose[0,2]
     center_y = wmStatus.dgp.centerPose[1,2]
-    x_list = []
-    y_list = []
+    
+    points3d = []
+    max_distance = 10  # 30m radius
+    points_in_range = 0
+    total_points = len(wmStatus.cloud)
 
     for point in wmStatus.cloud:
         x, y, z = point
         
         # Convert from site frame to car frame
-        pt_global = np.array([x, y,1])
+        pt_global = np.array([x, y, 1])
         pt_carFrame = np.dot(wmStatus.dgp.poseInv, pt_global)
         x_car, y_car = pt_carFrame[0], pt_carFrame[1]
         
-        # # Adjusted projection with scaling and offset
-        # x_proj = self.canvasWidth/2 + x_car * scale_factor
-        # y_proj = self.canvasHeight/2 - y_car * scale_factor
+        # Check if point is within 30m radius
+        distance = np.sqrt(x_car**2 + y_car**2)
+        if distance <= max_distance:
+            points3d.append([x_car, y_car, 0])  # Using 0 for z as we're projecting to 2D
+            points_in_range += 1
+
+    points3d = np.array(points3d)
+
+    if len(points3d) > 0:
+        points2d, _ = cv2.projectPoints(points3d,
+                                        self.rvec, self.tvec.reshape(-1,1),
+                                        self.cMtx,
+                                        None)
         
-        # x_proj_values.append(x_proj)
-        # y_proj_values.append(y_proj)
-        
-        # # Color based on height (z-value)
-        # color_val = int(255 * (z - min(z_vals)) / (max(z_vals) - min(z_vals)))
-        # colorval = f"#{color_val:02x}{color_val:02x}{color_val:02x}"
+        dotRadius = 2
+        for point in points2d:
+            x = self.windowWidth - point[0][0]
+            y = point[0][1]
+            if 0 <= x < self.canvasWidth and 0 <= y < self.canvasHeight:
+                self.tab2_canvas.create_oval(x-dotRadius, y-dotRadius, x+dotRadius, y+dotRadius, fill='blue', outline='blue')
 
-        # # Draw the point
-        # point_size = 2
-        # self.pointcloud_canvas.create_oval(x_proj - point_size, y_proj - point_size,
-        #                                    x_proj + point_size, y_proj + point_size,
-        #                                    fill=colorval, outline=colorval)
-        # points_drawn += 1
-        # points_processed += 1
-
-        x_list.append(x_car)
-        y_list.append(y_car)
-
-    x_arr = np.asarray((x_list)).reshape(-1,1)
-    y_arr = np.asarray((y_list)).reshape(-1,1)
-    points3d = np.hstack((x_arr,y_arr,np.zeros((np.shape(x_arr)[0],1))))
-
-
-
-    points2d,_ = cv2.projectPoints(points3d,
-                                self.rvec,self.tvec.reshape(-1,1),
-                                self.cMtx,
-                                None)
-    dotRadius=2
-    for i in range(np.shape(x_arr)[0]):
-      
-      x = self.windowWidth-points2d[i,0,0]
-      y = points2d[i,0,1]
-      self.tab2_canvas.create_oval(x-dotRadius,y-dotRadius,x+dotRadius,y+dotRadius)
+    print(f"Drew {points_in_range} points out of {total_points} from the point cloud")
+    print(f"Filtered out {total_points - points_in_range} points outside 30m radius")
         
 
   
@@ -518,7 +494,7 @@ class Interface:
     
     # Draw grid
     #self.drawGrid1()
-    self.drawGrid(wmStatus.dgp)
+    # self.drawGrid(wmStatus.dgp)
     
     # Draw objects
     #if len(self.objsOfInterest) > 0: print(self.objsOfInterest)

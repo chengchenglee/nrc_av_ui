@@ -131,7 +131,7 @@ class WmStatus:
 
 
   def updateFromMqtt(self, data):
-    print(data)
+    # print(data)
     oldObjs = self.objs
     self.objs = []
     self.t = []
@@ -147,8 +147,7 @@ class WmStatus:
             a = a_element[0].split()
             dgpData = np.zeros(objDataLen)
             
-            for i, element in enumerate(a):
-                print(f"Element {i}: {element}")
+
             
             x = float(a[1]) / self.pose_mult
             y = float(a[2]) / self.pose_mult
@@ -162,12 +161,12 @@ class WmStatus:
             dgpData[vIdx] = 0
             
             self.dgp = WmObject(-1, dgpData)
-            print(f"Processed 'a': x={x:.3f}, y={y:.3f}, yaw={yaw:.5f}")
+            # print(f"Processed 'a': x={x:.3f}, y={y:.3f}, yaw={yaw:.5f}")
         
         if o_element:
             o = o_element[0].split()
             num_objects = int(o[1])
-            print(f"Number of objects: {num_objects}")
+            # print(f"Number of objects: {num_objects}")
             
             for i in range(2, num_objects + 2):
                 if i < len(data):
@@ -197,16 +196,8 @@ class WmStatus:
 
                         self.objs.append(WmObject(objId,objData))
 
-                    
-                    
-
-                
 
 
-                    else:
-                        print(f"Insufficient data for object {i-1}")
-                else:
-                    print(f"Missing data for object {i-1}")
 
         if t_element:
           t_element = t_element[0]. split()
@@ -218,7 +209,7 @@ class WmStatus:
           self.maxCount = maxCount
           self.centerX = centerXInt / self.tile_mult
           self.centerY = centerYInt / self.tile_mult
-          print(f"Processed 't': tileLength={self.tileLength}, tileDiv={self.tileDiv}, numTiles={self.numTiles}, centerX={self.centerX}, centerY={self.centerY}")
+          # print(f"Processed 't': tileLength={self.tileLength}, tileDiv={self.tileDiv}, numTiles={self.numTiles}, centerX={self.centerX}, centerY={self.centerY}")
 
 
         if d_elements:
@@ -235,7 +226,7 @@ class WmStatus:
                         zValue = zValueInt / self.z_mult
                         self.cloud.append((x, y, zValue))
             
-            print(f"Processed 'd': Added {len(self.cloud)} points to the point cloud")
+            # print(f"Processed 'd': Added {len(self.cloud)} points to the point cloud")
            
         
         if not a_element and not o_element:
