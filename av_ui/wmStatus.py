@@ -26,7 +26,8 @@ thIdx = 2
 wIdx  = 3
 lIdx  = 4
 vIdx  = 5
-objDataLen = 6
+yrIdx = 6
+objDataLen = 7
 
 cornerOrder = [[-1,-1],[-1,1],[1,1],[1,-1]]
 
@@ -64,6 +65,9 @@ class WmObject:
     
     return cls(trObj.object_id,data)
   
+  def speed(self):
+    return self.data[vIdx]
+  
   def update(self,data):
     global xIdx,yIdx,thIdx,wIdx,lIdx,vIdx
     c,s = np.cos(data[thIdx]), np.sin(data[thIdx])
@@ -73,12 +77,45 @@ class WmObject:
                                 (s, c,  data[yIdx]),
                                 (0, 0,  1)))
     self.poseInv = inv(self.centerPose)
+    
+  def reset(self,obj):
+    self.data = obj.data
+    self.centerPose = obj.centerPose
+    self.poseInv = obj.poseInv
+    
+  def accel(self,data):
+    dt = data[0]
+    self.data[vIdx]  = max(0., min(10., self.data[vIdx] + dt*data[1]))
+    length = max(0.5,self.data[lIdx])
+    yawRate = self.data[vIdx]*np.tan(data[2]/length)
+    self.data[yrIdx] = max(-5, min(5, yawRate))
+    
+    #print(self.data[vIdx],self.data[yrIdx])
+    
+  def simulate(self,dt):
+    # Update pose
+    dx = dt*self.data[vIdx]*np.cos(self.data[thIdx])
+    dy = dt*self.data[vIdx]*np.sin(self.data[thIdx])
+    dth = dt*self.data[yrIdx]
+    self.data[xIdx]  += dx
+    self.data[yIdx]  += dy
+    self.data[thIdx] += dth
+    
+    # Recompute transform matrices
+    c,s = np.cos(self.data[thIdx]), np.sin(self.data[thIdx])
+    self.centerPose = np.array(((c, -s, self.data[xIdx]),
+                                (s, c,  self.data[yIdx]),
+                                (0, 0,  1)))
+    self.poseInv = inv(self.centerPose)
   
   def toStr(self):
     return dataToStr(self.object_id,self.data)
   
   def xyth(self):
     return [self.data[xIdx],self.data[yIdx],self.data[thIdx]]
+  
+  def xythvw(self):
+    return [self.data[xIdx],self.data[yIdx],self.data[thIdx],self.data[vIdx],self.data[yrIdx]]
   
   def cornersInFrame(self,frame):
     pose = np.dot(frame.poseInv,self.centerPose)

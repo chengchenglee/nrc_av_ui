@@ -5,8 +5,8 @@ import os
 from nrc_msgs.msg import FailureModeRequest
 from subsystem import Subsystem
 import rospy
-from MultiSetDest import MultiSetDest
-from MultiSetDest import MULTI_DEST_LIST
+#from MultiSetDest import MultiSetDest
+#from MultiSetDest import MULTI_DEST_LIST
 
 # Gui
 if sys.version_info[0] < 3:
@@ -42,7 +42,8 @@ class Interface:
     
     self.teleopMenu = []
 
-    self.MultiDestList = self.load_multi_destList(MULTI_DEST_LIST)
+    #self.MultiDestList = self.load_multi_destList(MULTI_DEST_LIST)
+    self.MultiDestList = []
   
   def onClosing(self):
     print("OnClosing")
@@ -347,7 +348,12 @@ class Interface:
     else:
       return "#D0D0D0"
   
-  def updateSnpText(self,fileTransfer):
+  def updateSnpText(self,fileTransfer, isConnected):
+    
+    if not isConnected:
+      self.snpTextBox.configure(text=' MQTT Not Connected ')
+      return
+    
     newText = ''
     if fileTransfer.state[0] == 'Requested' or fileTransfer.state[0] == 'Wait':
       newText = ''.join(fileTransfer.state)
@@ -359,6 +365,10 @@ class Interface:
       newText = 'Snapshot: Sending '+str(MB_sent)+' / '+str(MB_total)+' MB '
     else:
       newText = fileTransfer.state[0]
+    
+    if newText == 'Idle':
+      newText += ', '+str(fileTransfer.snapsSent)+' snaps sent. '
+      newText +=      str(fileTransfer.bmapsSent)+' bmaps sent.'
     
     self.snpTextBox.configure(text=newText)
   

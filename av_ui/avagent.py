@@ -19,11 +19,12 @@ import loader as Loader
 from nrc_msgs.msg import InterventionRequest
 from std_msgs.msg import Int16MultiArray
 from nrc_msgs.msg import TrackedObjectSet,DynamicPoseWithCovar
+from visualization_msgs.msg import Marker, MarkerArray
 from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import String
 
 import numpy as np
-import tf.transformations
+#import tf.transformations
 import time
 from cloud_connection import CloudConnection
 import json, ast
@@ -73,7 +74,7 @@ class AvAgent:
     printDebug = int(verbose)
     self.subsystems = Loader.read_subsystems(text, printDebug)
     self.mapName = Loader.getField(text,'mapName','Franklin.set')
-    self.mqttConfig = Loader.getField(text,'mqttConfig','local')
+    #self.mqttConfig = Loader.getField(text,'mqttConfig','local')
     self.useGui  = int(Loader.getField(text,'useGui',1))
     self.sendWm  = int(Loader.getField(text,'sendWm',0))
     self.sendSnapshots  = int(Loader.getField(text,'sendSnapshots',0))
@@ -92,7 +93,7 @@ class AvAgent:
 
     # Prepare cloud connection
     self.cloud = CloudConnection(self.name, self.broker)
-    self.cloud.updateConfig(text)
+    #self.cloud.updateConfig(text)
     
     # Prepare variables for uploading snapshots
     self.lastSnapshotRepoMsg = 0
@@ -106,8 +107,10 @@ class AvAgent:
     rospy.init_node('listener', anonymous=True)  # AvAgent Node
     Loader.subscribe_health_msgs(self.subsystems)
     self.avLedStatusPub = rospy.Publisher("ailsv_av_led",Int16MultiArray,queue_size=1)
+    self.teleopPub      = rospy.Publisher("ailsv_teleop",MarkerArray, queue_size=1)
     self.poseSub     = rospy.Subscriber("/dynamic_global_pose",     DynamicPoseWithCovar,self.pose_callback,queue_size=1)
     self.pose10hzSub = rospy.Subscriber("/dynamic_global_pose_10Hz",DynamicPoseWithCovar,self.pose10hz_callback,queue_size=1)
+    self.gps2hzSub   = rospy.Subscriber("/gps_state/gps_state_oxts_2hz",DynamicPoseWithCovar,self.gps2hz_callback,queue_size=1)
     self.wmStringSub = rospy.Subscriber("/WmCompressor/wm_string",String,self.compressed_wm_callback,queue_size=1)
     if self.sendWm == 1: 
       self.wmStatusSub = rospy.Subscriber("pc_processor/multi_object_tracker/tracked_object_set", TrackedObjectSet, self.wmStatus.updateObjs, queue_size = 1)
@@ -119,7 +122,7 @@ class AvAgent:
       print('Subscribed to ffmpeg packets.')
 
     # Setup mqtt publishers and subscribers
-    self.cloud.init(self.mqttConfig)
+    self.cloud.init()
     qos = 1
     self.cloud.subscribe(['cmd/'+self.name+'/remote'],qos)
     self.cloud.subscribe(['cmd/'+self.name+'/teleop'],qos)
@@ -128,8 +131,12 @@ class AvAgent:
     self.cloud.subscribe(['wyp/'+self.name+'/remote'],qos)
 
   def pose_callback(self, msg):
-    orientation_list = [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
-    (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(orientation_list)
+    #orientation_list = [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
+    #(roll, pitch, yaw) = tf.transformations.euler_from_quaternion(orientation_list)
+    q = msg.pose.orientation
+    siny_cosp = 2 * (q.w * q.z + q.x * q.y)
+    cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z)
+    yaw = np.arctan2(siny_cosp, cosy_cosp)
     
     self.heartbeat.pos_x.value = msg.pose.position.x
     self.heartbeat.pos_y.value = msg.pose.position.y
@@ -137,14 +144,22 @@ class AvAgent:
     
   def pose10hz_callback(self, msg):
     self.poseSub.unregister()
-    orientation_list = [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
-    (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(orientation_list)
+    #orientation_list = [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
+    #(roll, pitch, yaw) = tf.transformations.euler_from_quaternion(orientation_list)
+    q = msg.pose.orientation
+    siny_cosp = 2 * (q.w * q.z + q.x * q.y)
+    cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z)
+    yaw = np.arctan2(siny_cosp, cosy_cosp)
     
     self.heartbeat.pos_x.value = msg.pose.position.x
     self.heartbeat.pos_y.value = msg.pose.position.y
     self.heartbeat.pos_th.value = yaw
   def compressed_wm_callback(self,msg):
     self.compressed_wm_string = msg
+  def gps2hz_callback(self,msg):
+    self.heartbeat.lat = msg.Latitude
+    self.heartbeat.lon = msg.Longitude
+    
   def nextMsgCount(self):
     self.mqttMsgCount += 1
     if self.mqttMsgCount >=1000: self.mqttMsgCount = 1
@@ -363,7 +378,10 @@ class AvAgent:
               
       elif 'teleop' in m['topic']:
         stamp = time.time()
+        rosTime = rospy.Time.now()
         self.teleopCmds.fromMsg(m['data'],stamp)
+        ma = self.teleopCmds.toRosMsg(rosTime)
+        self.teleopPub.publish(ma)
             
       # Heartbeat from remote snapshot database
       elif 'snp/remote_server/heartbeat' in m['topic']:
