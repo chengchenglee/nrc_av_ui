@@ -189,7 +189,7 @@ class CloudConnection:
       client = mqtt_client.Client(client_id, clean_session=True)
       client.username_pw_set(self.configInfo['MQTT_USER'], self.configInfo['MQTT_PASSWORD'])
       
-      if self.configInfo['MQTT_PORT'] == 30203 or self.configInfo['MQTT_PORT'] == 8883:
+      if self.configInfo['MQTT_TLS']:
           # enable SSL
           context = ssl.SSLContext(self.configInfo['PROTOCOL'])
           # do not check the cert hostname
