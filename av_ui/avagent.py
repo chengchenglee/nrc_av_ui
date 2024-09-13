@@ -81,6 +81,8 @@ class AvAgent:
     self.broker = Loader.getField(text, 'broker', 'ncal')
     self.agentType = Loader.getField(text, 'agentType', 'AV4')
     self.agentUrdf = Loader.getField(text, 'agentUrdf', 'leaf')
+    self.imgTopic  = Loader.getField(text, 'imgTopic', '/tower_cam_front/image_cropped2/compressed')
+    self.wmTopic   = Loader.getField(text, 'wmTopic', '/pc_processor/multi_object_tracker/tracked_object_set')
     self.rosparams = Loader.getSubConfigs(text, 'ROSParams')
     self.printTimeDebug = max(int(Loader.getField(text,'printTimeDebug',0)), int(verbose))
     self.heartbeat = HeartbeatData(self.name,self.agentType)
@@ -113,14 +115,11 @@ class AvAgent:
     self.gps2hzSub   = rospy.Subscriber("/gps_state/gps_state_oxts_2hz",DynamicPoseWithCovar,self.gps2hz_callback,queue_size=1)
     self.wmStringSub = rospy.Subscriber("/WmCompressor/wm_string",String,self.compressed_wm_callback,queue_size=1)
     if self.sendWm == 1: 
-      self.wmStatusSub = rospy.Subscriber("pc_processor/multi_object_tracker/tracked_object_set", TrackedObjectSet, self.wmStatus.updateObjs, queue_size = 1)
+      self.wmStatusSub = rospy.Subscriber(self.wmTopic, TrackedObjectSet, self.wmStatus.updateObjs, queue_size = 1)
     
     if ffmpegTransportExists:
       #self.imgStreamSub   = rospy.Subscriber("/tower_cam_front/stream/ffmpeg", FFMPEGPacket,              self.sendImgStreamPkt, queue_size = 1)
-      if False:
-        self.imgFrameSub    = rospy.Subscriber("/tower_cam_front/image_cropped2/compressed", CompressedImage , self.sendImgFramePkt, queue_size = 1)
-      else:
-        self.imgFrameSub    = rospy.Subscriber("/tower_cam_front/image_stamped/compressed", CompressedImage , self.sendImgFramePkt, queue_size = 1)
+      self.imgFrameSub    = rospy.Subscriber(self.imgTopic, CompressedImage , self.sendImgFramePkt, queue_size = 1)
       self.imgStreamData  = ImgStreamData()
       print('Subscribed to ffmpeg packets.')
 
