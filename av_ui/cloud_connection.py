@@ -63,8 +63,18 @@ class CloudConnection:
     self.clientId = self.name+'_'+time.strftime("%Y-%m-%d-%H-%M-%S")
     self.filename = rospkg.RosPack().get_path('nrc_av_ui')+'/config/'+mqtt_filename
     self.isConnected = False
-    self.configInfo = self.loadBrokerConfigs()
-    print(self.configInfo)
+    self.configInfo = {}
+    if 'MQTT_SERVER' in os.environ:
+        self.configInfo['MQTT_SERVER'] = os.environ['MQTT_SERVER']
+        self.configInfo['MQTT_PORT'] = int(os.environ['MQTT_PORT'])
+        self.configInfo['MQTT_USER'] = os.environ['MQTT_USER']
+        self.configInfo['MQTT_PASSWORD'] = os.environ['MQTT_PASSWORD']
+        self.configInfo['MQTT_TLS'] = True
+        if 'MQTT_TLS' in os.environ:
+            self.configInfo['MQTT_TLS'] = os.environ['MQTT_TLS'].lower() == 'true'
+
+    else:
+        self.configInfo = self.loadBrokerConfigs()
     self.configInfo['PROTOCOL'] = ssl.PROTOCOL_TLSv1_2
     self.client = []
     self.mailbox = []
