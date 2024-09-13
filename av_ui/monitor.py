@@ -59,13 +59,13 @@ class Monitor:
     if self.name == "ARD" or self.name == "PMU":
       self.data = data.data[:]
     elif self.name == "DGP":
-      self.data[0] = data.pose.position.x
-      self.data[1] = data.pose.position.y
-      q = data.pose.orientation
-      self.data[2] = np.arctan2(2.0 * (q.w*q.z + q.x*q.y),
-                          1.0 - 2.0 * (q.y*q.y + q.z*q.z))
-      v = np.sqrt(data.twist.linear.x*data.twist.linear.x + data.twist.linear.y*data.twist.linear.y)
-      self.data[3] = v
+      #self.data[0] = data.pose.position.x
+      #self.data[1] = data.pose.position.y
+      #q = data.pose.orientation
+      #self.data[2] = np.arctan2(2.0 * (q.w*q.z + q.x*q.y),
+                          #1.0 - 2.0 * (q.y*q.y + q.z*q.z))
+      #v = np.sqrt(data.twist.linear.x*data.twist.linear.x + data.twist.linear.y*data.twist.linear.y)
+      #self.data[3] = v
       
       if 'INIT' in data.status_message or 'LOCKING' in data.status_message:
         self.customLedValue = 5  # Purple, init or locking

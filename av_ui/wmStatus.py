@@ -150,8 +150,14 @@ class WmStatus:
   
   def setDgp(self,data):
     global lIdx, wIdx
-    data[lIdx] = 3.7
-    data[wIdx] = 1.5
+    data = np.zeros(objDataLen)
+    data[xIdx]  = data[0]
+    data[yIdx]  = data[1]
+    data[thIdx] = data[2]
+    data[lIdx]  = 3.7
+    data[wIdx]  = 1.5
+    data[vIdx]  = data[3]
+    data[yrIdx] = data[4]
     self.dgp.update(data)
     
   def getWmStr(self):
