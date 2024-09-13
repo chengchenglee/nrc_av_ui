@@ -21,6 +21,7 @@ from std_msgs.msg import Int16MultiArray
 from nrc_msgs.msg import TrackedObjectSet,DynamicPoseWithCovar
 from visualization_msgs.msg import Marker, MarkerArray
 from sensor_msgs.msg import CompressedImage
+from std_msgs.msg import String
 
 import numpy as np
 #import tf.transformations
@@ -65,6 +66,7 @@ class AvAgent:
     self.mqttMsgCount = 0
     self.msgCountTime = []
     self.avgRndTripMsgTime = 0.5
+    self.compressed_wm_string = []
 
     # Load the agent configuration
     with open(self.filename, 'r') as file:
@@ -79,6 +81,8 @@ class AvAgent:
     self.broker = Loader.getField(text, 'broker', 'ncal')
     self.agentType = Loader.getField(text, 'agentType', 'AV4')
     self.agentUrdf = Loader.getField(text, 'agentUrdf', 'leaf')
+    self.imgTopic  = Loader.getField(text, 'imgTopic', '/tower_cam_front/image_cropped2/compressed')
+    self.wmTopic   = Loader.getField(text, 'wmTopic', '/pc_processor/multi_object_tracker/tracked_object_set')
     self.rosparams = Loader.getSubConfigs(text, 'ROSParams')
     self.printTimeDebug = max(int(Loader.getField(text,'printTimeDebug',0)), int(verbose))
     self.heartbeat = HeartbeatData(self.name,self.agentType)
@@ -109,12 +113,13 @@ class AvAgent:
     self.poseSub     = rospy.Subscriber("/dynamic_global_pose",     DynamicPoseWithCovar,self.pose_callback,queue_size=1)
     self.pose10hzSub = rospy.Subscriber("/dynamic_global_pose_10Hz",DynamicPoseWithCovar,self.pose10hz_callback,queue_size=1)
     self.gps2hzSub   = rospy.Subscriber("/gps_state/gps_state_oxts_2hz",DynamicPoseWithCovar,self.gps2hz_callback,queue_size=1)
+    self.wmStringSub = rospy.Subscriber("/WmCompressor/wm_string",String,self.compressed_wm_callback,queue_size=1)
     if self.sendWm == 1: 
-      self.wmStatusSub = rospy.Subscriber("pc_processor/multi_object_tracker/tracked_object_set", TrackedObjectSet, self.wmStatus.updateObjs, queue_size = 1)
+      self.wmStatusSub = rospy.Subscriber(self.wmTopic, TrackedObjectSet, self.wmStatus.updateObjs, queue_size = 1)
     
     if ffmpegTransportExists:
       #self.imgStreamSub   = rospy.Subscriber("/tower_cam_front/stream/ffmpeg", FFMPEGPacket,              self.sendImgStreamPkt, queue_size = 1)
-      self.imgFrameSub    = rospy.Subscriber("/tower_cam_front/image_cropped2/compressed", CompressedImage , self.sendImgFramePkt, queue_size = 1)
+      self.imgFrameSub    = rospy.Subscriber(self.imgTopic, CompressedImage , self.sendImgFramePkt, queue_size = 1)
       self.imgStreamData  = ImgStreamData()
       print('Subscribed to ffmpeg packets.')
 
@@ -127,9 +132,7 @@ class AvAgent:
     self.cloud.subscribe(['snp/'+self.name+'/resPartList'],qos)
     self.cloud.subscribe(['wyp/'+self.name+'/remote'],qos)
 
-  def pose_callback(self, msg):
-    #orientation_list = [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
-    #(roll, pitch, yaw) = tf.transformations.euler_from_quaternion(orientation_list)
+  def parseDgp(self,msg):
     q = msg.pose.orientation
     siny_cosp = 2 * (q.w * q.z + q.x * q.y)
     cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z)
@@ -142,24 +145,17 @@ class AvAgent:
     v = np.sqrt(msg.twist.linear.x**2 + msg.twist.linear.y**2)
     self.heartbeat.spd.value = round(v*100.)/100.
     self.heartbeat.yawRate.value = round(msg.twist.angular.z*1000.)/1000.
+
+  def pose_callback(self, msg):
+    self.parseDgp(msg)
     
   def pose10hz_callback(self, msg):
     self.poseSub.unregister()
-    #orientation_list = [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
-    #(roll, pitch, yaw) = tf.transformations.euler_from_quaternion(orientation_list)
-    q = msg.pose.orientation
-    siny_cosp = 2 * (q.w * q.z + q.x * q.y)
-    cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z)
-    yaw = np.arctan2(siny_cosp, cosy_cosp)
+    self.parseDgp(msg)
     
-    self.heartbeat.pos_x.value = round(msg.pose.position.x*100.)/100.
-    self.heartbeat.pos_y.value = round(msg.pose.position.y*100.)/100.
-    self.heartbeat.pos_th.value = round(yaw*10000.)/10000.
-    
-    v = np.sqrt(msg.twist.linear.x**2 + msg.twist.linear.y**2)
-    self.heartbeat.spd.value = round(v*100.)/100.
-    self.heartbeat.yawRate.value = round(msg.twist.angular.z*1000.)/1000.
-    
+  def compressed_wm_callback(self,msg):
+    self.compressed_wm_string.append(msg)
+
   def gps2hz_callback(self,msg):
     self.heartbeat.lat = msg.Latitude
     self.heartbeat.lon = msg.Longitude
@@ -235,13 +231,16 @@ class AvAgent:
                self.heartbeat.pos_th.value,
                self.heartbeat.spd.value,
                self.heartbeat.yawRate.value]
-    self.wmStatus.setDgp(self.heartbeat)
+    self.wmStatus.setDgp(dgpData)
     
     # Send world model status (ego + other positions)
     qos=0
     topic = 'dt/'+self.name+'/wmState'
     payload = ''
-    payload += self.wmStatus.getWmStr()+'\n'
+    payload += self.wmStatus.getWmStr2()+'\n'
+    if len(self.compressed_wm_string) > 0:
+      payload += self.compressed_wm_string[0].data
+      self.compressed_wm_string = []
     self.cloud.publishCsv(topic,payload,qos)
   
   def sendImgStreamPkt(self,msg):
@@ -260,7 +259,7 @@ class AvAgent:
     # resize
     image = Image.open(io.BytesIO(msg.data))
     width, height = image.size
-    if False:
+    if True:
       image = image.resize((int(0.15*width),int(0.15*height)))
         
       # crop
