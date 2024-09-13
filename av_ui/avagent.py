@@ -66,7 +66,7 @@ class AvAgent:
     self.mqttMsgCount = 0
     self.msgCountTime = []
     self.avgRndTripMsgTime = 0.5
-    self.compressed_wm_string = ""
+    self.compressed_wm_string = []
 
     # Load the agent configuration
     with open(self.filename, 'r') as file:
@@ -117,7 +117,10 @@ class AvAgent:
     
     if ffmpegTransportExists:
       #self.imgStreamSub   = rospy.Subscriber("/tower_cam_front/stream/ffmpeg", FFMPEGPacket,              self.sendImgStreamPkt, queue_size = 1)
-      self.imgFrameSub    = rospy.Subscriber("/tower_cam_front/image_cropped2/compressed", CompressedImage , self.sendImgFramePkt, queue_size = 1)
+      if False:
+        self.imgFrameSub    = rospy.Subscriber("/tower_cam_front/image_cropped2/compressed", CompressedImage , self.sendImgFramePkt, queue_size = 1)
+      else:
+        self.imgFrameSub    = rospy.Subscriber("/tower_cam_front/image_stamped/compressed", CompressedImage , self.sendImgFramePkt, queue_size = 1)
       self.imgStreamData  = ImgStreamData()
       print('Subscribed to ffmpeg packets.')
 
@@ -152,7 +155,7 @@ class AvAgent:
     self.parseDgp(msg)
     
   def compressed_wm_callback(self,msg):
-    self.compressed_wm_string = msg
+    self.compressed_wm_string.append(msg)
 
   def gps2hz_callback(self,msg):
     self.heartbeat.lat = msg.Latitude
@@ -229,13 +232,16 @@ class AvAgent:
                self.heartbeat.pos_th.value,
                self.heartbeat.spd.value,
                self.heartbeat.yawRate.value]
-    self.wmStatus.setDgp(self.heartbeat)
+    self.wmStatus.setDgp(dgpData)
     
     # Send world model status (ego + other positions)
     qos=0
     topic = 'dt/'+self.name+'/wmState'
     payload = ''
-    payload += self.compressed_wm_string.data
+    payload += self.wmStatus.getWmStr2()+'\n'
+    if len(self.compressed_wm_string) > 0:
+      payload += self.compressed_wm_string[0].data
+      self.compressed_wm_string = []
     self.cloud.publishCsv(topic,payload,qos)
   
   def sendImgStreamPkt(self,msg):
@@ -254,7 +260,7 @@ class AvAgent:
     # resize
     image = Image.open(io.BytesIO(msg.data))
     width, height = image.size
-    if False:
+    if True:
       image = image.resize((int(0.15*width),int(0.15*height)))
         
       # crop

@@ -429,7 +429,7 @@ class Interface:
     center_y = wmStatus.dgp.centerPose[1,2]
     
     points3d = []
-    max_distance = 10  # 30m radius
+    max_distance = 200  # 30m radius
     points_in_range = 0
     total_points = len(wmStatus.cloud)
 
@@ -462,8 +462,8 @@ class Interface:
             if 0 <= x < self.canvasWidth and 0 <= y < self.canvasHeight:
                 self.tab2_canvas.create_oval(x-dotRadius, y-dotRadius, x+dotRadius, y+dotRadius, fill='blue', outline='blue')
 
-    print(f"Drew {points_in_range} points out of {total_points} from the point cloud")
-    print(f"Filtered out {total_points - points_in_range} points outside 30m radius")
+    #print(f"Drew {points_in_range} points out of {total_points} from the point cloud")
+    #print(f"Filtered out {total_points - points_in_range} points outside 30m radius")
         
 
   
@@ -703,7 +703,7 @@ class Interface:
   
     for obj in wmStatus.objs:
       self.drawBox(obj,wmStatus.dgp)
-    # self.drawGrid(wmStatus.dgp)
+
     self.drawPointCloudSeparate(wmStatus)
       
     # Draw ego

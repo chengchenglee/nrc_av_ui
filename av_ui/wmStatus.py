@@ -16,9 +16,10 @@ dataRounder = []
 dataRounder.append(100)   # x
 dataRounder.append(100)   # y
 dataRounder.append(10000) # th
-dataRounder.append(100)   # len
 dataRounder.append(100)   # width
+dataRounder.append(100)   # length
 dataRounder.append(100)   # speed
+dataRounder.append(10000)  # yawRate
 
 xIdx  = 0
 yIdx  = 1
@@ -42,7 +43,7 @@ def dataToStr(object_id,data):
 
 class WmObject:
   def __init__(self,objId,data):
-    global xIdx,yIdx,thIdx,wIdx,lIdx,vIdx
+    global xIdx,yIdx,thIdx,wIdx,lIdx,vIdx,yrIdx
     self.object_id = objId
     self.data = data[:]
     self.update(self.data)
@@ -137,7 +138,8 @@ class WmStatus:
     global objDataLen
     data = np.zeros(objDataLen)
     self.dgp = WmObject(-1,data)
-    self.objs = []
+    self.objs  = []
+    self.objs2 = []
     self.msgCount = 0
     self.agentMsgCount = 0
     self.pose_mult = 1000
@@ -148,19 +150,19 @@ class WmStatus:
     self.flag = False
     self.cloud = []
   
-  def setDgp(self,data):
-    global lIdx, wIdx
+  def setDgp(self,dataIn):
+    global xIdx,yIdx,thIdx,wIdx,lIdx,vIdx,yrIdx
     data = np.zeros(objDataLen)
-    data[xIdx]  = data[0]
-    data[yIdx]  = data[1]
-    data[thIdx] = data[2]
-    data[lIdx]  = 3.7
-    data[wIdx]  = 1.5
-    data[vIdx]  = data[3]
-    data[yrIdx] = data[4]
+    data[xIdx]  = dataIn[0]
+    data[yIdx]  = dataIn[1]
+    data[thIdx] = dataIn[2]
+    data[wIdx]  = 3.7
+    data[lIdx]  = 1.5
+    data[vIdx]  = dataIn[3]
+    data[yrIdx] = dataIn[4]
     self.dgp.update(data)
-    
-  def getWmStr(self):
+
+  def getWmStr2(self):
     dataStr = ''
     dataStr += 'a,'+dataToStr(-1,self.dgp.data)
     for obj in self.objs:
@@ -169,134 +171,181 @@ class WmStatus:
     
   def updateObj(self,oldObs,newObs):
     return WmObject.from_trackedObject(newObs)
-    
-
-
-
-  def updateFromMqtt(self, data):
-    # print(data)
+  
+  def updateFromMqtt2(self,data):
+    # Clear object list
     oldObjs = self.objs
     self.objs = []
-    self.t = []
     self.cloud = []
     
-    if isinstance(data, list) and len(data) > 1:
-        a_element = next((item for item in data if item[0].startswith('a')), None)
-        o_element = next((item for item in data if item[0].startswith('o')), None)
-        t_element = next((item for item in data if item[0].startswith('t')),None)
-        d_elements = [item[0].split() for item in data if item[0].startswith('d')]
-
-        if a_element:
-            a = a_element[0].split()
-            dgpData = np.zeros(objDataLen)
-            
-
-            
-            x = float(a[1]) / self.pose_mult
-            y = float(a[2]) / self.pose_mult
-            yaw = float(a[3]) / self.angle_mult
-            
-            dgpData[xIdx] = x
-            dgpData[yIdx] = y
-            dgpData[thIdx] = yaw
-            dgpData[wIdx] = 1.5
-            dgpData[lIdx] = 3.7
-            dgpData[vIdx] = 0
-            
-            self.dgp = WmObject(-1, dgpData)
-            # print(f"Processed 'a': x={x:.3f}, y={y:.3f}, yaw={yaw:.5f}")
+    # Parse new payload
+    for lineData in data:
+      if lineData[0] == 'a':
+        #print(lineData)
+        objDataCsv = lineData[2:]
+        dgpData = np.zeros(objDataLen)
+        for i in range(len(objDataCsv)):
+          dgpData[i] = float(objDataCsv[i])/dataRounder[i]
         
-        if o_element:
-            o = o_element[0].split()
-            num_objects = int(o[1])
-            # print(f"Number of objects: {num_objects}")
+        dgpData[wIdx] = 1.5
+        dgpData[lIdx] = 3.7
+        self.dgp = WmObject(-1,dgpData)
+        
+      # Line relates to observed road users
+      if lineData[0] == 'o':
+        objId = int(lineData[1])
+        objData = np.zeros(objDataLen)
+        objDataCsv = lineData[2:]
+        for i in range(len(objDataCsv)):
+          objData[i] = float(objDataCsv[i])/dataRounder[i]
+        self.objs.append(WmObject(objId,objData))
+        
+      # Line relates to observed road users
+      if lineData[0] == 't':
+        tileLengthInt, tileDivInt, numTiles, numPixelsPerTileSide, maxCount, centerXInt, centerYInt = map(int, lineData[1:])
+        self.tileLength = tileLengthInt / self.tile_mult
+        self.tileDiv = tileDivInt / self.tile_mult
+        self.numTiles = numTiles
+        self.numPixelsPerTileSide = numPixelsPerTileSide
+        self.maxCount = maxCount
+        self.centerX = centerXInt / self.tile_mult
+        self.centerY = centerYInt / self.tile_mult
+        #print('New Tile (Length/Div/NumTiles/CenterX/CenterY):',self.tileLength,self.tileDiv,self.numTiles,self.centerX,self.centerY)
+
+      if lineData[0] == 'd':
+        minXInt, minYInt = map(int, lineData[1:3])
+        minX = minXInt / self.tile_mult
+        minY = minYInt / self.tile_mult
+        
+        for i in range(3, len(lineData), 4):
+          if i + 3 < len(lineData):
+            i_val, j_val, pctStatic, zValueInt = map(int, lineData[i:i+4])
+            x = minX + i_val * self.tileDiv + self.tileDiv / 2.0
+            y = minY + j_val * self.tileDiv + self.tileDiv / 2.0
+            zValue = zValueInt / self.z_mult
+            self.cloud.append((x, y, zValue))
+      
+    self.msgCount += 1
+    if self.msgCount >= 100: self.msgCount = 1
+    
+  #def updateFromMqtt(self, data):
+    #print(data)
+    #oldObjs = self.objs
+    #self.objs = []
+    #self.t = []
+    #self.cloud = []
+    
+    #if isinstance(data, list) and len(data) > 1:
+        #a_element = next((item for item in data if item[0].startswith('a')), None)
+        #o_element = next((item for item in data if item[0].startswith('o')), None)
+        #t_element = next((item for item in data if item[0].startswith('t')),None)
+        #d_elements = [item[0].split() for item in data if item[0].startswith('d')]
+
+        #if a_element:
+            #a = a_element[0].split()
+            #dgpData = np.zeros(objDataLen)
             
-            for i in range(2, num_objects + 2):
-                if i < len(data):
-                    obj_data = data[i][0].split()
-                    if len(obj_data) >= 14:
-                        obj_id = int(obj_data[0])
-                        x = float(obj_data[1]) / self.pose_mult
-                        y = float(obj_data[2]) / self.pose_mult
-                        z = float(obj_data[3]) / self.pose_mult
-                        yaw = float(obj_data[4]) / self.angle_mult
-                        shape_x = float(obj_data[5]) / 1
-                        shape_y = float(obj_data[6]) / 1
-                        shape_z = float(obj_data[7]) / 1
-                        vel_x = float(obj_data[8]) / self.vel_mult
-                        vel_y = float(obj_data[9]) / self.vel_mult
-                        vel_z = float(obj_data[10]) / self.vel_mult
+
+            
+            #x = float(a[1]) / self.pose_mult
+            #y = float(a[2]) / self.pose_mult
+            #yaw = float(a[3]) / self.angle_mult
+            
+            #dgpData[xIdx] = x
+            #dgpData[yIdx] = y
+            #dgpData[thIdx] = yaw
+            #dgpData[wIdx] = 1.5
+            #dgpData[lIdx] = 3.7
+            #dgpData[vIdx] = 0
+            
+            #self.dgp = WmObject(-1, dgpData)
+            ## print(f"Processed 'a': x={x:.3f}, y={y:.3f}, yaw={yaw:.5f}")
+        
+        #if o_element:
+            #o = o_element[0].split()
+            #num_objects = int(o[1])
+            ## print(f"Number of objects: {num_objects}")
+            
+            #for i in range(2, num_objects + 2):
+                #if i < len(data):
+                    #obj_data = data[i][0].split()
+                    #if len(obj_data) >= 14:
+                        #obj_id = int(obj_data[0])
+                        #x = float(obj_data[1]) / self.pose_mult
+                        #y = float(obj_data[2]) / self.pose_mult
+                        #z = float(obj_data[3]) / self.pose_mult
+                        #yaw = float(obj_data[4]) / self.angle_mult
+                        #shape_x = float(obj_data[5]) / 1
+                        #shape_y = float(obj_data[6]) / 1
+                        #shape_z = float(obj_data[7]) / 1
+                        #vel_x = float(obj_data[8]) / self.vel_mult
+                        #vel_y = float(obj_data[9]) / self.vel_mult
+                        #vel_z = float(obj_data[10]) / self.vel_mult
 
 
-                        objId = obj_id
-                        objData = np.zeros(objDataLen)
-                        objData[xIdx] = x
-                        objData[yIdx] = y
-                        objData[thIdx] = yaw
-                        objData[wIdx] = shape_y
-                        objData[lIdx] = shape_x
-                        objData[vIdx] = math.sqrt(vel_x**2 + vel_y**2) 
+                        #objId = obj_id
+                        #objData = np.zeros(objDataLen)
+                        #objData[xIdx] = x
+                        #objData[yIdx] = y
+                        #objData[thIdx] = yaw
+                        #objData[wIdx] = shape_y
+                        #objData[lIdx] = shape_x
+                        #objData[vIdx] = math.sqrt(vel_x**2 + vel_y**2) 
 
-                        self.objs.append(WmObject(objId,objData))
+                        #self.objs.append(WmObject(objId,objData))
 
-
-
-
-        if t_element:
-          t_element = t_element[0]. split()
-          tileLengthInt, tileDivInt, numTiles, numPixelsPerTileSide, maxCount, centerXInt, centerYInt = map(int, t_element[1:])
-          self.tileLength = tileLengthInt / self.tile_mult
-          self.tileDiv = tileDivInt / self.tile_mult
-          self.numTiles = numTiles
-          self.numPixelsPerTileSide = numPixelsPerTileSide
-          self.maxCount = maxCount
-          self.centerX = centerXInt / self.tile_mult
-          self.centerY = centerYInt / self.tile_mult
-          # print(f"Processed 't': tileLength={self.tileLength}, tileDiv={self.tileDiv}, numTiles={self.numTiles}, centerX={self.centerX}, centerY={self.centerY}")
+        #if t_element:
+          #t_element = t_element[0]. split()
+          #tileLengthInt, tileDivInt, numTiles, numPixelsPerTileSide, maxCount, centerXInt, centerYInt = map(int, t_element[1:])
+          #self.tileLength = tileLengthInt / self.tile_mult
+          #self.tileDiv = tileDivInt / self.tile_mult
+          #self.numTiles = numTiles
+          #self.numPixelsPerTileSide = numPixelsPerTileSide
+          #self.maxCount = maxCount
+          #self.centerX = centerXInt / self.tile_mult
+          #self.centerY = centerYInt / self.tile_mult
+          ## print(f"Processed 't': tileLength={self.tileLength}, tileDiv={self.tileDiv}, numTiles={self.numTiles}, centerX={self.centerX}, centerY={self.centerY}")
 
 
-        if d_elements:
-            for d_element in d_elements:
-                minXInt, minYInt = map(int, d_element[1:3])
-                minX = minXInt / self.tile_mult
-                minY = minYInt / self.tile_mult
+        #if d_elements:
+            #for d_element in d_elements:
+                #minXInt, minYInt = map(int, d_element[1:3])
+                #minX = minXInt / self.tile_mult
+                #minY = minYInt / self.tile_mult
                 
-                for i in range(3, len(d_element), 4):
-                    if i + 3 < len(d_element):
-                        i_val, j_val, pctStatic, zValueInt = map(int, d_element[i:i+4])
-                        x = minX + i_val * self.tileDiv + self.tileDiv / 2.0
-                        y = minY + j_val * self.tileDiv + self.tileDiv / 2.0
-                        zValue = zValueInt / self.z_mult
-                        self.cloud.append((x, y, zValue))
+                #for i in range(3, len(d_element), 4):
+                    #if i + 3 < len(d_element):
+                        #i_val, j_val, pctStatic, zValueInt = map(int, d_element[i:i+4])
+                        #x = minX + i_val * self.tileDiv + self.tileDiv / 2.0
+                        #y = minY + j_val * self.tileDiv + self.tileDiv / 2.0
+                        #zValue = zValueInt / self.z_mult
+                        #self.cloud.append((x, y, zValue))
             
-            # print(f"Processed 'd': Added {len(self.cloud)} points to the point cloud")
+            ## print(f"Processed 'd': Added {len(self.cloud)} points to the point cloud")
            
         
-        if not a_element and not o_element:
-            print("No 'a' or 'o' elements found in the data")
-    else:
-        print("Unexpected data format")
-
-
-
+        #if not a_element and not o_element:
+            #print("No 'a' or 'o' elements found in the data")
+    #else:
+        #print("Unexpected data format")
 
   def updateObjs(self,tosMsg):
-    if False:
-      newObj = TrackedObject()
-      newObj.object_id = 1
-      newObj.pose.pose.position.x = 5046.137126332932
-      newObj.pose.pose.position.y = -2573.2902247623047
-      newObj.pose.pose.position.z = 0.0
-      newObj.pose.pose.orientation.x = 0.0
-      newObj.pose.pose.orientation.y = 0.0
-      newObj.pose.pose.orientation.z = -0.29226166635523215
-      newObj.pose.pose.orientation.w = 0.9563383911457612
-      newObj.shape_parameters.x = 5.0
-      newObj.shape_parameters.y = 2.5
+    #if False:
+      #newObj = TrackedObject()
+      #newObj.object_id = 1
+      #newObj.pose.pose.position.x = 5046.137126332932
+      #newObj.pose.pose.position.y = -2573.2902247623047
+      #newObj.pose.pose.position.z = 0.0
+      #newObj.pose.pose.orientation.x = 0.0
+      #newObj.pose.pose.orientation.y = 0.0
+      #newObj.pose.pose.orientation.z = -0.29226166635523215
+      #newObj.pose.pose.orientation.w = 0.9563383911457612
+      #newObj.shape_parameters.x = 5.0
+      #newObj.shape_parameters.y = 2.5
       
-      tosMsg.objects = []
-      tosMsg.objects.append(newObj)
-    
+      #tosMsg.objects = []
+      #tosMsg.objects.append(newObj)
+        
     newObjs = []
     for newObs in tosMsg.objects:
       if 70000 <= newObs.object_id and newObs.object_id < 80000: continue
@@ -307,3 +356,8 @@ class WmStatus:
           newObjs.append(self.updateObj(oldObs,newObs))
           matchedObj = True
           break
+      
+      if not matchedObj:
+        newObjs.append(WmObject.from_trackedObject(newObs))
+      
+    self.objs = newObjs
