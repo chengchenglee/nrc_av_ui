@@ -7,7 +7,7 @@ Configuration:
   sendWm: 1
   sendSnapshots: 1
   Map: Franklin.set
-  broker: ncal
+  broker: emqx
 
 Subsystem:
   CAR:
@@ -213,6 +213,10 @@ Subsystem:
     Commands:
       - Name: WM
         Command: roslaunch nrc_wm2_svcs leaf_pred.launch
+        Type: Software
+        LaunchTime: 1.0
+      - Name: WM_Compressor
+        Command: rosrun nrc_wm2_svcs wm_compressor
         Type: Software
         LaunchTime: 1.0
     Diagnostic:
