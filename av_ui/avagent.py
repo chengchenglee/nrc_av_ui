@@ -201,7 +201,7 @@ class AvAgent:
       updatedRndTripTime = avgTime/numCount
       
     # Update average
-    self.avgRndTripMsgTime = 0.7*self.avgRndTripMsgTime + 0.3*updatedRndTripTime
+    self.avgRndTripMsgTime = 0.7*self.avgRndTripMsgTime + 0.3*updatedRndTripTime/2
 
   def sendStatusCsv(self):
     # Heartbeat message
