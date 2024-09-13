@@ -226,8 +226,7 @@ class BmapHistRecorder:
       
     elif (msg.TurnSignals > 0):
       self.turnSigState = msg.TurnSignals
-      
-    self.tTurnSigState = tNow
+      self.tTurnSigState = tNow
   
   def ctrlStateCallback(self,msg):
     if msg.Engaged == True:

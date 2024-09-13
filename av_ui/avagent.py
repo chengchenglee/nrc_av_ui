@@ -130,32 +130,30 @@ class AvAgent:
     self.cloud.subscribe(['snp/'+self.name+'/resPartList'],qos)
     self.cloud.subscribe(['wyp/'+self.name+'/remote'],qos)
 
-  def pose_callback(self, msg):
-    #orientation_list = [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
-    #(roll, pitch, yaw) = tf.transformations.euler_from_quaternion(orientation_list)
+  def parseDgp(self,msg):
     q = msg.pose.orientation
     siny_cosp = 2 * (q.w * q.z + q.x * q.y)
     cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z)
     yaw = np.arctan2(siny_cosp, cosy_cosp)
     
-    self.heartbeat.pos_x.value = msg.pose.position.x
-    self.heartbeat.pos_y.value = msg.pose.position.y
-    self.heartbeat.pos_th.value = yaw
+    self.heartbeat.pos_x.value = round(msg.pose.position.x*100.)/100.
+    self.heartbeat.pos_y.value = round(msg.pose.position.y*100.)/100.
+    self.heartbeat.pos_th.value = round(yaw*10000.)/10000.
+    
+    v = np.sqrt(msg.twist.linear.x**2 + msg.twist.linear.y**2)
+    self.heartbeat.spd.value = round(v*100.)/100.
+    self.heartbeat.yawRate.value = round(msg.twist.angular.z*1000.)/1000.
+
+  def pose_callback(self, msg):
+    self.parseDgp(msg)
     
   def pose10hz_callback(self, msg):
     self.poseSub.unregister()
-    #orientation_list = [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
-    #(roll, pitch, yaw) = tf.transformations.euler_from_quaternion(orientation_list)
-    q = msg.pose.orientation
-    siny_cosp = 2 * (q.w * q.z + q.x * q.y)
-    cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z)
-    yaw = np.arctan2(siny_cosp, cosy_cosp)
+    self.parseDgp(msg)
     
-    self.heartbeat.pos_x.value = msg.pose.position.x
-    self.heartbeat.pos_y.value = msg.pose.position.y
-    self.heartbeat.pos_th.value = yaw
   def compressed_wm_callback(self,msg):
     self.compressed_wm_string = msg
+
   def gps2hz_callback(self,msg):
     self.heartbeat.lat = msg.Latitude
     self.heartbeat.lon = msg.Longitude
@@ -225,14 +223,19 @@ class AvAgent:
     self.cloud.publishCsv(topic,data,qos)
   
   def sendWmStatus(self):
-    # print("im here in wm status")
+    # Copy ego pose
+    dgpData = [self.heartbeat.pos_x.value,
+               self.heartbeat.pos_y.value,
+               self.heartbeat.pos_th.value,
+               self.heartbeat.spd.value,
+               self.heartbeat.yawRate.value]
+    self.wmStatus.setDgp(self.heartbeat)
+    
     # Send world model status (ego + other positions)
     qos=0
     topic = 'dt/'+self.name+'/wmState'
     payload = ''
-    
     payload += self.compressed_wm_string.data
-    # print("string is here" , self.compressed_wm_string)
     self.cloud.publishCsv(topic,payload,qos)
   
   def sendImgStreamPkt(self,msg):
@@ -471,9 +474,9 @@ class AvAgent:
         self.ardState = s.ardData[:]
       
       # Copy dgp data to wmStatus
-      if len(s.dgpData) > 0:
-        self.dgpState = s.dgpData[:]
-        self.wmStatus.setDgp(self.dgpState)
+      #if len(s.dgpData) > 0:
+        #self.dgpState = s.dgpData[:]
+        #self.wmStatus.setDgp(self.dgpState)
       
       # Start/Stop subsystems based on Arduino request
       if s.trigger == 'ARD' and s.triggerBit != -1 and s.triggerBit < len(self.ardState):
