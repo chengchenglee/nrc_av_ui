@@ -261,7 +261,7 @@ Subsystem:
         Type: Software
         LaunchTime: 3.0
       - Name: Trajectory Planner
-        Command: roslaunch nrc_ralp_svcs leaf_planner.launch include_follower:=true include_reactive_follower:=false
+        Command: roslaunch nrc_ralp_svcs leaf_planner.launch
         Type: Software
         LaunchTime: 3.0
     Diagnostic:

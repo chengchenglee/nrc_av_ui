@@ -379,11 +379,11 @@ class AvAgent:
           if len(lineData) >= 3 and lineData[0] == 's':
             for s in self.subsystems:
               cmd = lineData[2]
-              if s.name == lineData[1]:
-                if cmd == '0' or cmd == '1':
-                  if s.shouldBeStarted != int(cmd):
-                    print("Remote cmd:",s.name, int(cmd))
-                    s.shouldBeStarted = int(cmd)
+              #if s.name == lineData[1]:
+                #if cmd == '0' or cmd == '1':
+                  #if s.shouldBeStarted != int(cmd):
+                    #print("Remote cmd:",s.name, int(cmd))
+                    #s.shouldBeStarted = int(cmd)
           elif len(lineData) >= 2 and lineData[0] == 'w':
             if int(lineData[1]) == 1:
               self.remoteWmDisplayLastReq = time.time()
