@@ -1,16 +1,12 @@
 Configuration:
   Name: fvla-infrapod
-  agentType: RSU
   Map: Franklin.set
   useGui: 0
   sendWm: 1
   broker: doris
 
-AgentConfigs:
-  pose: [4852.11280000001, -2229.1606, 0, 1.1519]
-
 Subsystem:
-  IV:
+  LIDAR:
     Type: Sensor
     Description: command to start innovusion node
     Trigger: Startup, StartRequest, ARDX, or PMUX
@@ -49,7 +45,7 @@ Subsystem:
         NomWarnErrRate: 10, 7, 1
     Commands:
       - Name: PCP
-        Command: roslaunch nrc_pcp_svcs pc_processor.launch > /dev/null
+	Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Foxtrot:=false Infra_Tripod:=true
         NodeName: pc_processor_ros_node
         Type: Algorithm
         LaunchTime: 1
@@ -59,45 +55,43 @@ Subsystem:
     Depends:
       - Launch: Innovusion
         Run:    
-
+  
   Bridge:
     Type: Software
-    Description: ROS traffic over MQTT
+    Description: convert ros messages to mqtt
     Trigger:
       - Source: Startup
     Commands:
-      - Name: ROS-MQTT-Bridge
-        Command: bash $HOME/projects/fvla-infrapod/launch_mqtt.sh
-        NodeName: mqtt_client_local
-        Type: Software
+      - Name: MQTT
+        Command: rosrun ros_mqtt_parser ros_mqtt_node _config_file:=$(rospack find ros_mqtt_parser)/config/config.yaml
+        Type: Algorithm
         LaunchTime: 3.0
     Diagnostic:
       Retry: 3
       Timeout: 3
-      Depends:
+    Depends:
       - Launch:
         Run:
-  
+
   TOSTF:
     Type: Algorithm
     Description: Transform TOS to map frame
     Trigger:
       - Source: Startup
     Commands:
-      - Name: TrackedObjectSinglePoint
-        Command: python ${HOME}/projects/fvla-infrapod/calibration_scripts/trackedobjsinglepoint.py
+      - Name: TrackedObjectSetMap
+        Command: python ${HOME}/projects/fvla-infrapod/calibration_scripts/FY_24_calib_scripts/infrapod_code/publish_TOS_map.py 1
         Type: Algorithm
         LaunchTime: 3.0
     HealthTopics:
-      - HealthTopic: /pc_processor/multi_object_tracker/tracked_object_set_calibrated
+      - HealthTopic: /pc_processor/multi_object_tracker/tracked_object_set_map_frame_1
         HealthName: TOSTF
         HealthTopicType: TrackedObjectSet
         NomWarnErrRate: 10, 7, 1
     Diagnostic:
       Retry: 3
       Timeout: 3
-      Depends:
-      - Launch:
+    Depends:
       - Launch:
         Run: 
 
@@ -107,20 +101,41 @@ Subsystem:
     Trigger:
       - Source: Startup
     Commands:
-      - Name: DrivableArea
-        Command: python ${HOME}/projects/fvla-infrapod/calibration_scripts/get_drivable_points.py
+      - Name: DAMap
+        Command: python ${HOME}/projects/fvla-infrapod/calibration_scripts/FY_24_calib_scripts/infrapod_code/publish_DABP_map.py 1
         Type: Algorithm
         LaunchTime: 3.0
     HealthTopics:
-      - HealthTopic: /drivable_area_boundary_points_map_frame
+      - HealthTopic: /drivable_area_boundary_points_map_frame_1
         HealthName: DATF
         HealthTopicType: PointCloud2
         NomWarnErrRate: 10, 7, 1
     Diagnostic:
       Retry: 3
       Timeout: 3
-      Depends:
+    Depends:
       - Launch:
+        Run:  
+
+  VATF:
+    Type: Algorithm
+    Description: Transform visible space ray points to map frame
+    Trigger:
+      - Source: Startup
+    Commands:
+      - Name: VisibleSpaceRayPointsMap
+        Command: python ${HOME}/projects/fvla-infrapod/calibration_scripts/FY_24_calib_scripts/infrapod_code/publish_VARP_map.py 1
+        Type: Algorithm
+        LaunchTime: 3.0
+    HealthTopics:
+      - HealthTopic: /pc_processor/visible_space/visible_space_ray_points_map_frame_1
+        HealthName: VSRPTF
+        HealthTopicType: VisibleSpacePoints
+        NomWarnErrRate: 10, 7, 1
+    Diagnostic:
+      Retry: 3
+      Timeout: 3
+    Depends:
       - Launch:
         Run:  
 
@@ -136,7 +151,7 @@ Subsystem:
         NomWarnErrRate: 5, 2, 1
     Commands:
       - Name: F9R
-        Command: cd ${HOME}/projects/fvla-infrapod/ && ./start_gps.sh 36
+        Command: python ${HOME}/projects/fvla-infrapod/gps/publish_pose.py
         NodeName: ublox_gps_F9R
         Type: Software
         LaunchTime: 3
@@ -154,7 +169,7 @@ Subsystem:
       - Source: Startup
     Commands:
       - Name: Start Camera
-        Command: cd ${HOME}/projects/fvla-infrapod/ && ./start_camera.sh 
+        Command: bash ${HOME}/projects/fvla-infrapod/start_camera.sh 
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -171,7 +186,7 @@ Subsystem:
       - Source: Startup
     Commands:
       - Name: MQTT Telemetry
-        Command: cd ${HOME}/projects/fvla-infrapod/ && ./start_telemetry.sh 
+        Command: bash ${HOME}/projects/fvla-infrapod/start_telemetry.sh 
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
