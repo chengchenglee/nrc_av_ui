@@ -26,9 +26,24 @@ class Monitor:
     self.msgCount = 0
     self.statusText = ""
     self.data = np.zeros(5)
+    self.nodeRate   = 0
+    self.nodeStatus = 0
 
   def setRates(self,rates):
     self.good, self.failing, self.failed = rates
+
+  def readStatusStr(self,statusStr):
+    lines = statusStr.split('\n')
+    data = []
+    for line in lines:
+      lineData = line.split(',')
+      data.append(list(lineData))
+      for i in range(len(self.data)):
+        if len(lineData) < 2: continue
+        if lineData[0] == 'r':
+          self.nodeRate = float(lineData[1])
+        elif lineData[0] == 's':
+          self.nodeStatus = int(lineData[1])
 
   def msgCallback(self, data):
     current_time = time.time()
@@ -44,13 +59,13 @@ class Monitor:
     if self.name == "ARD" or self.name == "PMU":
       self.data = data.data[:]
     elif self.name == "DGP":
-      self.data[0] = data.pose.position.x
-      self.data[1] = data.pose.position.y
-      q = data.pose.orientation
-      self.data[2] = np.arctan2(2.0 * (q.w*q.z + q.x*q.y),
-                          1.0 - 2.0 * (q.y*q.y + q.z*q.z))
-      v = np.sqrt(data.twist.linear.x*data.twist.linear.x + data.twist.linear.y*data.twist.linear.y)
-      self.data[3] = v
+      #self.data[0] = data.pose.position.x
+      #self.data[1] = data.pose.position.y
+      #q = data.pose.orientation
+      #self.data[2] = np.arctan2(2.0 * (q.w*q.z + q.x*q.y),
+                          #1.0 - 2.0 * (q.y*q.y + q.z*q.z))
+      #v = np.sqrt(data.twist.linear.x*data.twist.linear.x + data.twist.linear.y*data.twist.linear.y)
+      #self.data[3] = v
       
       if 'INIT' in data.status_message or 'LOCKING' in data.status_message:
         self.customLedValue = 5  # Purple, init or locking
@@ -61,6 +76,7 @@ class Monitor:
     elif "health" in self.topic:
       self.customLedValue = -1
       for diagStatus in data.status:
+        self.readStatusStr(diagStatus.message)
         if diagStatus.level == 4 or diagStatus.level == 5:
           self.customLedValue = max(self.customLedValue, diagStatus.level)
     
@@ -69,16 +85,33 @@ class Monitor:
     tDiffFailed = min(5, 3*(1/self.failed))
     current_time = time.time()
     tDiff = min(10, max(0.005, current_time-self.tLastRvcd))
-    rate = min(200, max(0, 1/self.avgTimeDiff))
     
-    self.msgText = "MsgCount: " + str(self.msgCount) + ", Rate: " + str(round(rate,2))+", "+self.statusText
+    # Node is self reporting status
+    if self.nodeRate > 0 and self.nodeStatus > 0:
+      tDiffFailing = 1.1
+      tDiffFailed = 2.5
+      rate = min(200, max(0, 1/self.avgTimeDiff))
+      self.msgText = "Msgs: " + str(self.msgCount) + ", H-Rate: "+str(round(rate,2))+", AlgRate: " + str(round(self.nodeRate,2))+" "+self.statusText
+      
+      healthMsgStatus = 2
+      if tDiff > tDiffFailed or self.avgTimeDiff >= tDiffFailed:
+        healthMsgStatus = 1
+      elif tDiff < tDiffFailing and self.avgTimeDiff < tDiffFailing:
+        healthMsgStatus = 3
+      
+      self.status = min(self.nodeStatus,healthMsgStatus)
     
-    if tDiff > tDiffFailed or self.avgTimeDiff >= tDiffFailed:
-      self.status = 1
-    elif tDiff < tDiffFailing and self.avgTimeDiff < tDiffFailing:
-      self.status = 3
+    # Determine rate and status from health message rate
     else:
-      self.status = 2
+      rate = min(200, max(0, 1/self.avgTimeDiff))
+      self.msgText = "MsgCount: " + str(self.msgCount) + ", Rate: " + str(round(rate,2))+", "+self.statusText
+    
+      if tDiff > tDiffFailed or self.avgTimeDiff >= tDiffFailed:
+        self.status = 1
+      elif tDiff < tDiffFailing and self.avgTimeDiff < tDiffFailing:
+        self.status = 3
+      else:
+        self.status = 2
 
     if self.status <= 1:
       if isStarted == 0:

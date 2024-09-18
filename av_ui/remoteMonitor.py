@@ -13,7 +13,7 @@ import time
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-b', '--broker', default='ncal')
+parser.add_argument('-b', '--broker', default='emqx')
 args, uargs = parser.parse_known_args()
 
 running = True
@@ -48,26 +48,33 @@ def parseMsgs(messages):
         for a in monitoredAgents:
           if agentName in a.name:
             a.tLastMsg = time.time()
+            a.agentMsgCount = hb.msgCount.value
             
     # Received a status update from an agent
     elif "status" in msg['topic']:
-      agentData = MonitoredAgent()
-      agentData.parseMsgPayloadCsv(msg['data'])
+      updatedAgentData = MonitoredAgent()
+      updatedAgentData.parseMsgPayloadCsv(msg['data'])
   
       found = False
       for a in monitoredAgents:
-        if a.name == agentData.name:
+        if a.name == updatedAgentData.name:
           found = True
-          a.update(agentData.subsystems)
+          a.update(updatedAgentData)
       
       if not found:
-        monitoredAgents.append(agentData)
+        monitoredAgents.append(updatedAgentData)
         
     # Received a world model state from an agent
     elif "wmState" in msg['topic']:
       for a in monitoredAgents:
         if a.name in msg['topic']:
-          a.wmStatus.updateFromMqtt(msg['data'])
+          a.updateWmFromMqtt(msg['data'])
+          break
+        
+    elif "imgStream" in msg['topic']:
+      for a in monitoredAgents:
+        if a.name in msg['topic']:
+          a.updateImgFromMqtt(msg['data'])
           break
 
 # Only subscribe to agent wmState if we've selected them on teleop tab
@@ -75,30 +82,45 @@ def updateTeleopSubs():
   global cloud, gui, subscribedTopics
   
   # If teleop tab has no agent selected, unsubscribe from all wmState topics
+  # We rebuild the list of subscribed topics because python
   newSubscribedTopics = []
+  
+  # Remove wm and img stream topics
   if gui.selectedAgent == 'None':
     for topic in subscribedTopics:
       if 'wmState' in topic:
         cloud.unsubscribe([topic])
+      elif 'imgStream' in topic:
+        cloud.unsubscribe([topic])
       else:
         newSubscribedTopics.append(topic)
   
-  # Subscribe to the relevant wmState topics
+  # Add wm and img stream topics
   else:
     foundSub = False
     for topic in subscribedTopics:
-      if 'wmState' in topic:
+      
+      # Found a wm/img subscription
+      if ('wmState' in topic) or ('imgStream' in topic):
+        
+        # ... it is the one we want to monitor
         if gui.selectedAgent in topic:
           foundSub = True
+          
+        # ... but it's not the vehicle we want to monitor
         else:
           cloud.unsubscribe([topic])
+          
+      # Not a wm/img topic, so want to keep
       else:
         newSubscribedTopics.append(topic)
     
-    topic = 'dt/'+gui.selectedAgent+'/wmState'
-    if not foundSub:
-      cloud.subscribe([topic])
-    newSubscribedTopics.append(topic)
+    wmTopics = ['dt/'+gui.selectedAgent+'/wmState','dt/'+gui.selectedAgent+'/imgStream']
+    for wmTopic in wmTopics:
+      if not foundSub:
+        qos = 0
+        cloud.subscribe([wmTopic],qos)
+      newSubscribedTopics.append(wmTopic)
   
   subscribedTopics = newSubscribedTopics[:]
 
@@ -110,7 +132,8 @@ def updateStatusSubs():
       if t == ts:
         alreadySubscribed = True
     if not alreadySubscribed:
-      cloud.subscribe([t])
+      qos = 0
+      cloud.subscribe([t],qos)
       subscribedTopics.append(t)
 
 if True:
@@ -120,10 +143,11 @@ if True:
   
   updateSubs = 0
   updatePubs = 0
+  updateTeleopCmd = 0
   while running:
     # Update everything
     if time.time() > updateSubs:
-      nextUpdate = time.time()+0.05
+      updateSubs = time.time()+0.05
       
       # Update agent wmState subscriptions
       updateTeleopSubs()
@@ -137,11 +161,30 @@ if True:
       
       # Only update the teleop canvas if we've selected an agent
       isTeleopTab = gui.tab_control.tab(gui.tab_control.select(),"text") == 'Teleop'
-      if (not gui.selectedAgent == 'None') and isTeleopTab:
-        for a in monitoredAgents:
-          if a.name == gui.selectedAgent:
-            a.wmDisplayOn = 1
-            gui.updateCanvas(a.wmStatus)
+      for ma in monitoredAgents:
+        if isTeleopTab and ma.name == gui.selectedAgent:
+          ma.wmDisplayOn = 1
+          ma.teleopOn = gui.isTeleop
+          kbitsPerSecIn = cloud.msgInStats.kbitsPerSec
+          gui.updateCanvas(ma.wmStatus,ma.imgStreamData,ma.stateMsgCount,kbitsPerSecIn)
+        else:
+          ma.wmDisplayOn = 0
+          ma.teleopOn = 0
+          ma.teleopCmdData.commands = []
+      if not isTeleopTab:
+        gui.teleopCmds = []
+        gui.isTeleop = 0
+    
+    if time.time() > updateTeleopCmd:
+      updateTeleopCmd = time.time() + 0.1
+      
+      # Publish commands
+      isTeleopTab = gui.tab_control.tab(gui.tab_control.select(),"text") == 'Teleop'
+      for ma in monitoredAgents:
+        if isTeleopTab and ma.name == gui.selectedAgent:
+          gui.transferTeleopCmds(ma)
+          qos=0
+          cloud.publishCsv(ma.teleopTopic, ma.getTeleopCmd(),qos)
     
     if time.time() > updatePubs:
       updatePubs = time.time() + 1.0

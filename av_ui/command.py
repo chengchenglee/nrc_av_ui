@@ -12,7 +12,8 @@ class Command:
     self.launchTime = 30
     self.started = False
     self.pid = []
-    self.childPids = []
+    self.foundPid = 0
+    #self.childPids = []
     
   def start(self):
     print(self.command)
@@ -30,19 +31,24 @@ class Command:
     if (self.started):
       command = "pkill -TERM -P"+str(self.pid)
       os.system(command)
-      self.started = False
+      self.started  = False
+      self.foundPid = 0
       time.sleep(0.25)
       return
         
   def updateStatus(self):
     if self.pid:
       self.childPids = []
-      try:
-        parent = psutil.Process(self.pid)
-      except psutil.NoSuchProcess:
-        return
+      success = True
+      if self.foundPid < 20:
+        try:
+          parent = psutil.Process(self.pid)
+        except psutil.NoSuchProcess:
+          success = False
+      
+        self.foundPid += 1
 
-      children = parent.children(recursive=True)
-      for child in children:
-        self.childPids.append(child.pid)
+      #children = parent.children(recursive=True)
+      #for child in children:
+      #  self.childPids.append(child.pid)
       #print(self.pid,self.childPids)

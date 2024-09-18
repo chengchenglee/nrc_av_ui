@@ -2,18 +2,28 @@ Configuration:
 
 Brokers:
   doris:
-    MQTT_SERVER: doris
+    MQTT_SERVER: doris.ail-sv.com
     MQTT_PORT: 8883
     MQTT_USER: sam_teleop
     MQTT_PASSWORD: yg#eo5cbAksD82qt
-    PROTOCOL: ssl.PROTOCOL_TLSv1_2
   
   ncal:
     MQTT_SERVER: mqtt-broker-ncal.nrcsv.com
     MQTT_PORT: 8883
     MQTT_USER: sam-teleop
     MQTT_PASSWORD: yg#eo5cbAksD82qt
-    PROTOCOL: ssl.PROTOCOL_TLSv1_2 
+    
+  emqx:
+    MQTT_SERVER: avt-mqtt.nrcsv.com
+    MQTT_PORT: 30203
+    MQTT_USER: av_team_client
+    MQTT_PASSWORD: atfRKyUeprZqjv9m8i
+  
+  quic:
+    MQTT_SERVER: 127.0.0.1
+    MQTT_PORT: 1883
+    MQTT_USER: quic_mqtt
+    MQTT_PASSWORD: A9g7bW#NyLQ4PIZr
 
   local:
     MQTT_SERVER: 127.0.0.1

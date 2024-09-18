@@ -5,8 +5,10 @@ Configuration:
   printTimeDebug: 0
   useGui: 1
   sendWm: 1
+  imgTopic: /tower_cam_front/image_stamped/compressed
+  wmTopic: /pc_processor/multi_object_tracker/tracked_object_set
   sendSnapshots: 0
-  broker: ccta_ads
+  broker: emqx
 
 Subsystem:
   Sim:
@@ -15,18 +17,28 @@ Subsystem:
     Trigger: Startup, StartRequest, ARDX, or PMUX
       - Source: StartRequest
     HealthTopics:
-      - HealthTopic: /CtrlStateFLG
+      - HealthTopic: /CtrlStateFLG_10hz
         HealthName: CAR
         HealthTopicType: CtrlStateFLG
-        NomWarnErrRate: 100, 70, 50
-      - HealthTopic: /dynamic_global_pose
+        NomWarnErrRate: 10, 7, 5
+      - HealthTopic: /dynamic_global_pose_10hz
         HealthName: DGP
         HealthTopicType: DynamicPoseWithCovar
-        NomWarnErrRate: 100, 80, 60
+        NomWarnErrRate: 10, 8, 6
     Commands:
       - Name: Simulator
         Command: rosrun nrc_sim SimpleatorSimNode __name:=SimpleSimNode
         NodeName: SimpleSimNode
+        Type: Software
+        LaunchTime: 1
+      - Name: DGP_Throttle
+        Command: rosrun topic_tools throttle messages /dynamic_global_pose 10.0 /dynamic_global_pose_10hz
+        NodeName: DGP_Throttle
+        Type: Software
+        LaunchTime: 1
+      - Name: CSF_Throttle
+        Command: rosrun topic_tools throttle messages /CtrlStateFLG 10.0 /CtrlStateFLG_10hz
+        NodeName: CSF_Throttle
         Type: Software
         LaunchTime: 1
       - Name: TfSys
@@ -54,9 +66,9 @@ Subsystem:
         HealthName: TLR
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 1, 0.6, 0.3
-      - HealthTopic: /ailsv_virtual_objects
+      - HealthTopic: /VirtualVehs/health
         HealthName: Virtual
-        HealthTopicType: TrackedObjectSet
+        HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
       - HealthTopic: /master_filter/health
         HealthName: WOS
@@ -113,13 +125,13 @@ Subsystem:
     Trigger:
       - Source: StartRequest
     HealthTopics:
-      - HealthTopic: /lane_planner_state
+      - HealthTopic: /trajectory_planner/health
         HealthName: TrajP
-        HealthTopicType: LanePlannerState
+        HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /lane_follower_state
+      - HealthTopic: /trajectory_follower/health
         HealthName: TrajC
-        HealthTopicType: TrajectoryControllerState
+        HealthTopicType: DiagnosticArray
         NomWarnErrRate: 100, 60, 10
     Commands:
       - Name: Trajectory Planner

@@ -14,7 +14,7 @@ import time
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-b', '--broker', default='ncal')
+parser.add_argument('-b', '--broker', default='emqx')
 args, uargs = parser.parse_known_args()
 
 running = True
@@ -39,6 +39,12 @@ def parseMsgs(messages):
       for t in subscribedTopics:
         if agentName in t:
           newAgent = False
+          #Check if the agent was initialized on a previous date
+          todaysDate = ''.join(time.strftime("%Y-%m-%d"))
+          if (snapshotStreams[agentName].getPathToBags().split('/'))[5] != todaysDate:
+            pathToBags = '/opt/data/snapshots/'+agentName+'/'+todaysDate+'/'
+            snapshotStreams[agentName] = FileInTransit(pathToBags)
+            print("Initializing snapshotStreams[agentName] again due to date change")
           break
       # If new agent, subscribe.  If not, update time stamp
       if newAgent == True:
@@ -63,7 +69,8 @@ def parseMsgs(messages):
         agentName = msg['topic'].split('/')[1]
         topic = 'snp/'+agentName+'/resPartList'
         payload = snapshotStreams[agentName].getPartialList()
-        cloud.publishCsv(topic,payload)
+        qos = 2
+        cloud.publishCsv(topic,payload,qos)
         print('Publish part files list: '+payload)
 
 def updateStatusSubs():
@@ -74,7 +81,8 @@ def updateStatusSubs():
       if t == ts:
         alreadySubscribed = True
     if not alreadySubscribed:
-      cloud.subscribe([t])
+      qos = 2
+      cloud.subscribe([t],qos)
       subscribedTopics.append(t)
 
 if True:
@@ -94,7 +102,8 @@ if True:
     if time.time() > nextHeartbeat:
       topic = 'snp/remote_server/heartbeat'
       data ='a,'+agentName
-      cloud.publishCsv(topic,data)
+      qos = 2
+      cloud.publishCsv(topic,data,qos)
       nextHeartbeat = time.time()+1
 
     time.sleep(0.05)

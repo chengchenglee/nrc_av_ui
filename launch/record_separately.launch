@@ -17,7 +17,7 @@
   <arg name="record_ralp_all" default="true"/>
   <arg name="record_ralp_follower" default="true"/>
   <arg name="record_validation" default="false"/>
-  <arg name="record_ipt" default="true"/>
+  <arg name="record_ipt" default="false"/>
   <arg name="record_tlr" default="false"/>
   <arg name="record_tlr_outputs" default="false"/> <!-- note: in order to record tlr outputs, both record_tlr and record_tlr_outputs must be set to true -->
   <arg name="record_aeva_pc" default="false"/>
@@ -33,7 +33,8 @@
   <arg name="system_front_tower_cameras_topics"
   default="/monitor_cam_front/image_stamped/compressed
   |/vehicle_state_ros
-  |/tower_cam_front/image_stamped/compressed
+  |/tower_cam_front/image_color/compressed
+  |/tower_cam_front/stream/ffmpeg
   |/front_camera/image_color/compressed
   |/lucid_cam_front/image_rect_color/compressed
   |/lucid_cam_front_left/image_rect_color/compressed
@@ -56,7 +57,7 @@
   
   <arg name="system_lidar_topics"
   default="/velodyne_packets
-  |/velodyne_points
+  |/pc_processor/labeled_pc
   |/luminar_front/pointCloud
   |/luminar_left/pointCloud
   |/luminar_right/pointCloud
@@ -265,56 +266,56 @@
   |/gps_state/gps_state_oxts
   |/gps_state/gps_state_ariya"/>
   
-  <node if="$(arg record_ipt)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_ipt" output="screen"
+  <node if="$(arg record_ipt)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_ipt" output="screen"
   args="-o $(arg prefix)_ipt -e $(arg ipt_topics)"/>  
 
-  <node if="$(arg record_system_front_tower_cameras)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_system_front_tower_cameras" output="screen"
+  <node if="$(arg record_system_front_tower_cameras)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_system_front_tower_cameras" output="screen"
   args="$(arg compression) -o $(arg prefix)_system_front_tower_cameras -e $(arg system_front_tower_cameras_topics)"  machine="$(arg record_machine)"/>
   
-  <node if="$(arg record_system_other_cameras)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_system_other_cameras" output="screen"
+  <node if="$(arg record_system_other_cameras)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_system_other_cameras" output="screen"
   args="$(arg compression) -o $(arg prefix)_system_other_cameras -e $(arg system_other_cameras_topics)" machine="$(arg record_machine)"/>
   
-  <node if="$(arg record_system_lidar)" pkg="nrc_svcs" type="rosbagrecord_lz4.sh" name="rosbag_record_system_lidar" output="screen"
-  args="$(arg compression) -o $(arg prefix)_system_lidar -e $(arg system_lidar_topics)" machine="$(arg record_machine)"/>
+  <node if="$(arg record_system_lidar)" pkg="nrc_av_ui" type="rosbagrecordLz4.sh" name="rosbag_record_system_lidar" output="screen"
+  args="-o $(arg prefix)_system_lidar -e $(arg system_lidar_topics)" machine="$(arg record_machine)"/>
 
-  <node if="$(arg record_system_main)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_for_system_main" output="screen"
+  <node if="$(arg record_system_main)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_for_system_main" output="screen"
   args="$(arg compression) -o $(arg prefix)_system_main -e $(arg system_main_topics)" machine="$(arg record_machine)"/>  
     
-  <node if="$(arg record_pc_processor_all)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_pc_processor_all" output="screen"
+  <node if="$(arg record_pc_processor_all)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_pc_processor_all" output="screen"
   args="$(arg compression) -o $(arg prefix)_pc_processor_all -e $(arg pc_processor_all_topics)" machine="$(arg record_machine)"/>  
 
-  <node if="$(arg record_wm_all)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_wm_all" output="screen"
+  <node if="$(arg record_wm_all)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_wm_all" output="screen"
   args="$(arg compression) -o $(arg prefix)_wm_all -e $(arg wm_all_topics)" machine="$(arg record_machine)"/>  
   
-  <node if="$(arg record_dm_lite)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_dm_lite" output="screen"
+  <node if="$(arg record_dm_lite)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_dm_lite" output="screen"
   args="$(arg compression) -o $(arg prefix)_dm_lite -e $(arg dm_lite_topics)" machine="$(arg record_machine)"/>   
  
-  <node if="$(arg record_dm_all)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_dm_all" output="screen"
+  <node if="$(arg record_dm_all)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_dm_all" output="screen"
   args="$(arg compression) -o $(arg prefix)_dm_all -e $(arg dm_all_topics) -x $(arg ignore_dm_topics)" machine="$(arg record_machine)"/>   
  
-  <node if="$(arg record_ralp_all)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_ralp_all" output="screen"
+  <node if="$(arg record_ralp_all)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_ralp_all" output="screen"
   args="$(arg compression) -o $(arg prefix)_ralp_all -e $(arg ralp_all_topics)" machine="$(arg record_machine)"/>   
 
-  <node if="$(arg record_ralp_follower)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_ralp_follower" output="screen"
+  <node if="$(arg record_ralp_follower)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_ralp_follower" output="screen"
   args="$(arg compression) -o $(arg prefix)_ralp_follower -e $(arg ralp_follower_topics)" machine="$(arg record_machine)"/>   
   
-  <node if="$(arg record_validation)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_validation" output="screen"
+  <node if="$(arg record_validation)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_validation" output="screen"
   args="$(arg compression) -o $(arg prefix)_validation_$(arg suffix) -e $(arg validation_topics)" machine="$(arg record_machine)"/>   
 
-  <node if="$(arg record_aeva_pc)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_aeva_pc" output="screen"
+  <node if="$(arg record_aeva_pc)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_aeva_pc" output="screen"
   args="$(arg compression) -o $(arg prefix)_aeva_pc -e $(arg aeva_pc_topics)" machine="$(arg record_machine)"/>
 
-  <node if="$(arg record_aeva_ultrares_pc)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_aeva_ultrares_pc" output="screen"
+  <node if="$(arg record_aeva_ultrares_pc)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_aeva_ultrares_pc" output="screen"
   args="$(arg compression) -o $(arg prefix)_aeva_ultrares_pc -e $(arg aeva_ultrares_pc_topics)" machine="$(arg record_machine)"/>
 
-  <node if="$(arg record_aeva_other_outputs)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_aeva_other" output="screen"
+  <node if="$(arg record_aeva_other_outputs)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_aeva_other" output="screen"
   args="$(arg compression) -o $(arg prefix)_aeva_other -e $(arg aeva_other_topics)" machine="$(arg record_machine)"/>
 
-  <node if="$(arg record_innovusion)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_innovusion" output="screen"
+  <node if="$(arg record_innovusion)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_innovusion" output="screen"
   args="$(arg compression) -o $(arg prefix)_innovusion -e $(arg innovusion_topics)" machine="$(arg record_machine)"/>
 
   
-  <include if="$(arg record_tlr)" file="$(find nrc_svcs)/launch/record_tlr.launch">
+  <include if="$(arg record_tlr)" file="$(find nrc_av_ui)/launch/record_tlr.launch">
     <arg name="record_inputAndOutput" value="$(arg record_tlr_outputs)" machine="$(arg record_machine)"/>
   </include>
   
