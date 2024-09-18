@@ -60,7 +60,7 @@ class BmapHistRecorder:
     self.healthPub = rospy.Publisher('/bmap_recorder/health', DiagnosticArray, queue_size=10)
     self.dataPub   = rospy.Publisher('/bmap_recorder/data', String, queue_size=10)
     
-    rospy.Subscriber('/dynamic_global_pose', DynamicPoseWithCovar, self.dgpCallback)
+    rospy.Subscriber('/gps_state/dynamic_global_pose_oxts', DynamicPoseWithCovar, self.dgpCallback)
     rospy.Subscriber('/pc_processor/multi_object_tracker/tracked_object_set', TrackedObjectSet, self.tosCallback)
     rospy.Subscriber('/CAN_V_reader', CANVReader, self.CanVCallback)
     rospy.Subscriber('/CtrlStateFLG', CtrlStateFLG, self.ctrlStateCallback)
