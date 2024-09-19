@@ -18,7 +18,7 @@ from fileInTransit import FileInTransit
 import loader as Loader
 from nrc_msgs.msg import InterventionRequest
 from std_msgs.msg import Int16MultiArray
-from nrc_msgs.msg import TrackedObjectSet,DynamicPoseWithCovar
+from nrc_msgs.msg import TrackedObjectSet,DynamicPoseWithCovar,GpsState
 from visualization_msgs.msg import Marker, MarkerArray
 from sensor_msgs.msg import CompressedImage
 
@@ -108,7 +108,7 @@ class AvAgent:
     self.teleopPub      = rospy.Publisher("ailsv_teleop",MarkerArray, queue_size=1)
     self.poseSub     = rospy.Subscriber("/dynamic_global_pose",     DynamicPoseWithCovar,self.pose_callback,queue_size=1)
     self.pose10hzSub = rospy.Subscriber("/dynamic_global_pose_10Hz",DynamicPoseWithCovar,self.pose10hz_callback,queue_size=1)
-    self.gps2hzSub   = rospy.Subscriber("/gps_state/gps_state_oxts_2hz",DynamicPoseWithCovar,self.gps2hz_callback,queue_size=1)
+    self.gps2hzSub   = rospy.Subscriber("/gps_state/gps_state_oxts_2hz",GpsState,self.gps2hz_callback,queue_size=1)
     if self.sendWm == 1: 
       self.wmStatusSub = rospy.Subscriber("pc_processor/multi_object_tracker/tracked_object_set", TrackedObjectSet, self.wmStatus.updateObjs, queue_size = 1)
     
@@ -153,8 +153,8 @@ class AvAgent:
     self.heartbeat.pos_th.value = yaw
     
   def gps2hz_callback(self,msg):
-    self.heartbeat.lat = msg.Latitude
-    self.heartbeat.lon = msg.Longitude
+    self.heartbeat.lat.value = msg.Latitude
+    self.heartbeat.lon.value = msg.Longitude
     
   def nextMsgCount(self):
     self.mqttMsgCount += 1
