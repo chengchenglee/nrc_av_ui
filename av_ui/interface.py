@@ -42,6 +42,7 @@ class Interface:
     
     self.teleopMenu = []
 
+    #self.MultiDestList = self.load_multi_destList(MULTI_DEST_LIST)
     self.MultiDestList = []
   
   def onClosing(self):
@@ -102,9 +103,6 @@ class Interface:
     tab_control.add(tab5, text='Multi Destinations')
     tab_control.pack(expand=1, fill='both')
 
-    from ccta_utils.ccta_task_utility_tab import MULTI_DEST_TAB
-    tab_multi_dest_control = MULTI_DEST_TAB(tab5)
-    tab_multi_dest_control.create()
     buttonWidth = 7
 
   # Frame def
@@ -147,6 +145,11 @@ class Interface:
     lbl_dest.grid(row=1, sticky=Tkinter.W)
     destFrame = Tkinter.Frame(tab4, width=400, height=50)
     destFrame.grid(row=2,columnspan=10, sticky=Tkinter.W)
+    
+    lbl_multi_dest = Tkinter.Label(tab5, text="Set Multi Dest")
+    lbl_multi_dest.grid(row=1, sticky=Tkinter.W)
+    multiDestFrame = Tkinter.Frame(tab5, width=400, height=50)
+    multiDestFrame.grid(row=2,columnspan=10, sticky=Tkinter.W)
     
     vehValTitleRow = 1
     vehValButtonsRow = vehValTitleRow + 1
@@ -216,6 +219,31 @@ class Interface:
     self.textBox.grid(column=0, row=0, columnspan=10)
       
     self.windowOpen = True
+
+    #enable multi-destinations buttons in destinations tab..
+    multiDestRow = 1
+    for d in self.MultiDestList:
+      d.label = Tkinter.Button(multiDestFrame, text=d.multiDestName, width=commandWidth*4, padx=1, relief="raised", command=d.command)
+      d.label.grid(column=0, row=multiDestRow, sticky=Tkinter.W+Tkinter.E)
+      multiDestRow = multiDestRow + 1
+
+  def load_multi_destList(self, multi_dest_list = None):
+
+    if multi_dest_list is None:
+      return []
+    
+    #load multi-destinations buttons in destinations tab..
+    numMultiDestinations = 0
+    MultiDestList = []
+    for e in multi_dest_list:
+      nameIn  = e["name"]
+      destsIn = e["dests"]
+
+      MultiDestList.append(MultiSetDest(nameIn, destsIn))
+      numMultiDestinations = numMultiDestinations + 1
+    
+    return MultiDestList
+
 
     
   def retrieve_valInput(self):  
