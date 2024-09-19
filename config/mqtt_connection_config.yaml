@@ -42,3 +42,10 @@ Brokers:
     MQTT_USER: sam_teleop
     MQTT_PASSWORD: yg#eo5cbAksD82qt
     MQTT_TLS: true
+
+  ccm:
+    MQTT_SERVER: ccm-mqtt.nrcsv.com
+    MQTT_PORT: 30203
+    MQTT_USER: ccm_team
+    MQTT_PASSWORD: wiA97kgB0TyvXYhb
+    MQTT_TLS: true
