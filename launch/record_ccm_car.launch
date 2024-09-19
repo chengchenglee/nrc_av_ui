@@ -1,0 +1,49 @@
+<launch>
+  <machine name="ccm_host" address="ccm_host"/>
+  <machine name="local" address="localhost"/>
+  <arg name="record_machine" default="local"/>
+  <arg name="rosbag_dir" default="${env HOME}/bagfiles"/>
+  <!-- Enable / Disable subsystem recording -->
+  <arg name="record_system_main" default="true"/>
+
+  <arg name="prefix" default="ccm_test_log" />
+
+  <arg name="system_main_topics" 
+  default="/dynamic_global_pose
+  |/ccm_speed_plan
+  |/gps_state
+  |/ME3_ObjData
+  |/ME3_LKA_left
+  |/ME3_LKA_right
+  |/ME4_Lanes
+  |/ME4_Road_Edges
+  |/ME4_ObjData
+  |/ME4_Obj_rviz
+  |/ME4_SLD_Lines
+  |/ME4_SLD_Lines_rviz
+  |/ME4_TFL_Spot_Array
+  |/ME4_TFL_Structure_Array
+  |/ME4_TFL_rviz
+  |/ME4_TSR
+  |/ME4_(.*)
+  |/CAN_V_reader
+  |/ProPILOT_ACC_status
+  |/rl_ccm_control_inputs
+  |/acc_cmd
+  |/ME5_(.*)
+  |/ME4_Path_Prediction
+  |/ContiRadar_ObjData
+  |/controller_state
+  |/CtrlStateFLG
+  |/driver_input
+  |/Radar_ObjData
+  |/accel_state
+  |/radar
+  |/radar_bf" />
+  
+
+  <node if="$(arg record_system_main)" pkg="nrc_av_ui" type="rosbagrecord_ccm.sh" args="$(arg rosbag_dir) -o $(arg prefix) -e $(arg system_main_topics)" name="rosbag_record_for_system_main" output="screen"  machine="$(arg record_machine)"/>
+  <node pkg="nrc_av_ui" type="rosbagRecordMonitor.py" name="RosbagMonitor" args="-d $(arg rosbag_dir) -t BagfileHealth" machine="$(arg record_machine)" output="screen"/>
+
+
+</launch>
