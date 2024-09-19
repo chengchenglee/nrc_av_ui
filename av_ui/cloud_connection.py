@@ -64,7 +64,11 @@ class CloudConnection:
     self.filename = rospkg.RosPack().get_path('nrc_av_ui')+'/config/'+mqtt_filename
     self.isConnected = False
     self.configInfo = self.loadBrokerConfigs()
-    print(self.configInfo)
+    self.configInfo['MQTT_SERVER'] = os.environ['MQTT_SERVER'] if 'MQTT_SERVER' in os.environ else self.configInfo['MQTT_SERVER']
+    self.configInfo['MQTT_PORT'] = int(os.environ['MQTT_PORT']) if 'MQTT_PORT' in os.environ else self.configInfo['MQTT_PORT']
+    self.configInfo['MQTT_USER'] = os.environ['MQTT_USER'] if 'MQTT_USER' in os.environ else self.configInfo['MQTT_USER']
+    self.configInfo['MQTT_PASSWORD'] = os.environ['MQTT_PASSWORD'] if 'MQTT_PASSWORD' in os.environ else self.configInfo['MQTT_PASSWORD']
+    self.configInfo['MQTT_TLS'] = self.configInfo['MQTT_TLS'] = os.environ['MQTT_TLS'].lower() == 'true' if 'MQTT_TLS' in os.environ else self.configInfo['MQTT_TLS']
     self.configInfo['PROTOCOL'] = ssl.PROTOCOL_TLSv1_2
     self.client = []
     self.mailbox = []
@@ -189,7 +193,7 @@ class CloudConnection:
       client = mqtt_client.Client(client_id, clean_session=True)
       client.username_pw_set(self.configInfo['MQTT_USER'], self.configInfo['MQTT_PASSWORD'])
       
-      if self.configInfo['MQTT_PORT'] == 30203 or self.configInfo['MQTT_PORT'] == 8883:
+      if self.configInfo['MQTT_TLS']:
           # enable SSL
           context = ssl.SSLContext(self.configInfo['PROTOCOL'])
           # do not check the cert hostname
