@@ -64,14 +64,18 @@ class CloudConnection:
     self.filename = rospkg.RosPack().get_path('nrc_av_ui')+'/config/'+mqtt_filename
     self.isConnected = False
     self.configInfo = self.loadBrokerConfigs()
+    mqtt_optional_env_params = ['MQTT_SERVER', 'MQTT_PORT','MQTT_USER','MQTT_PASSWORD','MQTT_TLS']
+    if any(param in os.environ for param in mqtt_optional_env_params):
+      if all(param in os.environ for param in mqtt_optional_env_params):
+        self.configInfo['MQTT_SERVER'] = os.environ['MQTT_SERVER']
+        self.configInfo['MQTT_PORT'] = int(os.environ['MQTT_PORT'])
+        self.configInfo['MQTT_USER'] = os.environ['MQTT_USER']
+        self.configInfo['MQTT_PASSWORD'] = os.environ['MQTT_PASSWORD']
+        self.configInfo['MQTT_TLS'] = os.environ['MQTT_TLS'].lower() == 'true'
+      else:
+          raise ValueError(', '.join(mqtt_optional_env_params) +  ' must ALL be set if using MQTT environment variables')
     self.configInfo['PROTOCOL'] = ssl.PROTOCOL_TLSv1_2
-    if False and 'MQTT_SERVER' in os.environ:
-      self.configInfo['MQTT_SERVER'] = os.environ['MQTT_SERVER']
-      self.configInfo['MQTT_PORT'] = int(os.environ['MQTT_PORT'])
-      self.configInfo['MQTT_USER'] = os.environ['MQTT_USER']
-      self.configInfo['MQTT_PASSWORD'] = os.environ['MQTT_PASSWORD']
-      self.configInfo['MQTT_TLS'] = os.environ['MQTT_TLS'].lower() == 'true'
-    
+    print('MQTT config:',self.configInfo)
     self.client = []
     self.mailbox = []
     self.subscriptions = []
