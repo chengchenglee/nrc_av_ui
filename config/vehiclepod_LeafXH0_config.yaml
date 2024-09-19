@@ -94,9 +94,14 @@ Subsystem:
     Trigger:
       - Source: Startup
     Commands:
-      - Name: ROS-MQTT-Bridge
-        Command: roslaunch $HOME/projects/fvla-vehiclepod/nrc_ws/src/mqtt-client-config/launch/standalone_local.launch params_file:="$HOME/projects/fvla-vehiclepod/nrc_ws/src/mqtt-client-config/fvla-dev/test2/params_local_ego_fvla.yaml"
-        NodeName: mqtt_client_local
+      - Name: MQTT-ROS
+        Command: rosrun ros_mqtt_parser mqtt_ros_node _config_file:=$(rospack find ros_mqtt_parser)/config/ego_config.yaml
+        NodeName: mqtt_ros_node
+        Type: Software
+        LaunchTime: 3.0
+      - Name: ROS-MQTT
+        Command: rosrun ros_mqtt_parser ros_mqtt_node _config_file:=$(rospack find ros_mqtt_parser)/config/ego_config.yaml
+        NodeName: ros_mqtt_node
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
