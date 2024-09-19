@@ -48,6 +48,9 @@ SanbornBishopRanch() {
     rosparam set ycoordOffset 0.35
     rosparam set SANBORN_SLHACK_DX 0
     rosparam set SANBORN_SLHACK_DY 0
+
+    SIMINITIALPOSE="3987.900,-27296.471,2.013"  
+    rosparam set /simpulator_start_pose $SIMINITIALPOSE
 }
 
 MiniMap() {
