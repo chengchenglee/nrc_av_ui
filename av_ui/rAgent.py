@@ -175,7 +175,7 @@ class MonitoredAgent:
     self.subsystems.append(subsystem)
 
   def updateWmFromMqtt(self,msgData):
-    self.wmStatus.updateFromMqtt(msgData)
+    self.wmStatus.updateFromMqtt2(msgData)
 
   def updateImgFromMqtt(self,msgData):
     self.imgStreamData.fromMsg(msgData)

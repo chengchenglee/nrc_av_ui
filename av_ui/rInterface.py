@@ -119,6 +119,7 @@ class Interface:
     self.camPctTop = 0
     self.camPctIncr = 0.01
     self.tab2_img = []
+    self.pointcloud_canvas = None
     
     self.mouseclick = [0,0,0,False]
     
@@ -415,7 +416,57 @@ class Interface:
       x = self.windowWidth-points2d[i,0,0]
       y = points2d[i,0,1]
       self.tab2_canvas.create_oval(x-dotRadius,y-dotRadius,x+dotRadius,y+dotRadius,outline=colorval)
-      
+   
+  
+  def drawPointCloudSeparate(self, wmStatus):
+    if not wmStatus.cloud:
+        self.drawGrid(wmStatus.dgp)
+        return
+    
+    x_vals, y_vals, z_vals = zip(*wmStatus.cloud)
+    
+    center_x = wmStatus.dgp.centerPose[0,2]
+    center_y = wmStatus.dgp.centerPose[1,2]
+    
+    points3d = []
+    max_distance = 200  # 30m radius
+    points_in_range = 0
+    total_points = len(wmStatus.cloud)
+
+    for point in wmStatus.cloud:
+        x, y, z = point
+        
+        # Convert from site frame to car frame
+        pt_global = np.array([x, y, 1])
+        pt_carFrame = np.dot(wmStatus.dgp.poseInv, pt_global)
+        x_car, y_car = pt_carFrame[0], pt_carFrame[1]
+        
+        # Check if point is within 30m radius
+        distance = np.sqrt(x_car**2 + y_car**2)
+        if distance <= max_distance:
+            points3d.append([x_car, y_car, 0])  # Using 0 for z as we're projecting to 2D
+            points_in_range += 1
+
+    points3d = np.array(points3d)
+
+    if len(points3d) > 0:
+        points2d, _ = cv2.projectPoints(points3d,
+                                        self.rvec, self.tvec.reshape(-1,1),
+                                        self.cMtx,
+                                        None)
+        
+        dotRadius = 2
+        for point in points2d:
+            x = self.windowWidth - point[0][0]
+            y = point[0][1]
+            if 0 <= x < self.canvasWidth and 0 <= y < self.canvasHeight:
+                self.tab2_canvas.create_oval(x-dotRadius, y-dotRadius, x+dotRadius, y+dotRadius, fill='blue', outline='blue')
+
+    #print(f"Drew {points_in_range} points out of {total_points} from the point cloud")
+    #print(f"Filtered out {total_points - points_in_range} points outside 30m radius")
+        
+
+  
   def drawMsgStats(self,stateMsgCount,wmMsgCount,imgMsgCount,kbps):
     
     kbpsStr = str(round(kbps*10/8)/10)
@@ -644,11 +695,16 @@ class Interface:
     self.tvec = tvec
     
     # Draw grid
-    self.drawGrid(frame)
+    #self.drawGrid1()
+    # self.drawGrid(wmStatus.dgp)
+    
+    # Draw objects
+    #if len(self.objsOfInterest) > 0: print(self.objsOfInterest)
   
-    # Draw other road users
     for obj in wmStatus.objs:
-      self.drawBox(obj,frame)
+      self.drawBox(obj,wmStatus.dgp)
+
+    self.drawPointCloudSeparate(wmStatus)
       
     # Draw ego
     self.drawBox(wmStatus.dgp,frame)

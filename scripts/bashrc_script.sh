@@ -13,6 +13,8 @@ rvizPath=~/projects/nrc_ws/src/nrc_ralp/nrc_ralp_svcs/config/
 alias frontDisplay="rviz -d $rvizPath/FrontDisplay.rviz"
 alias manualDisplay="rviz -d $rvizPath/FrontDisplayManual.rviz"
 
+alias mountNfs="sudo mkdir -p /srv/nfs/avdata; sudo mount -t nfs 192.168.29.10:/AV_DATA /srv/nfs/avdata; echo \"NFS Mounted /srv/nfs/avdata\""
+
 # # start up shortcuts
 # alias gpsCheck="rostopic echo /dynamic_global_pose_conv | grep status_"
 # alias checkGps="rostopic echo /dynamic_global_pose_conv | grep status_"

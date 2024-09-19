@@ -5,6 +5,8 @@ Configuration:
   printTimeDebug: 0
   useGui: 1
   sendWm: 1
+  imgTopic: /tower_cam_front/image_stamped/compressed
+  wmTopic: /pc_processor/multi_object_tracker/tracked_object_set
   sendSnapshots: 0
   broker: emqx
 

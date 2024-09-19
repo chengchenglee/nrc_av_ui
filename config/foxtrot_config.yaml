@@ -7,7 +7,7 @@ Configuration:
   sendWm: 1
   sendSnapshots: 1
   Map: Franklin.set
-  broker: ncal
+  broker: emqx
 
 Subsystem:
   CAR:
@@ -215,6 +215,10 @@ Subsystem:
         Command: roslaunch nrc_wm2_svcs leaf_pred.launch
         Type: Software
         LaunchTime: 1.0
+      - Name: WM_Compressor
+        Command: rosrun nrc_wm2_svcs wm_compressor
+        Type: Software
+        LaunchTime: 1.0
     Diagnostic:
       LED: 5
       Retry: 3
@@ -257,7 +261,7 @@ Subsystem:
         Type: Software
         LaunchTime: 3.0
       - Name: Trajectory Planner
-        Command: roslaunch nrc_ralp_svcs leaf_planner.launch include_follower:=true include_reactive_follower:=false
+        Command: roslaunch nrc_ralp_svcs leaf_planner.launch
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
