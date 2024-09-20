@@ -24,14 +24,6 @@ class BRK_ACC_CLASS:
         self.ACC_OverrideTimer = 0
         self.ACC_Override_startTime = 0
         
-        #self.snapButtonTrig = False
-        #self.prev_snapButtonTrig = False    # Used for creating edge triggers when the flag changes value.
-        #self.snapButtonTrig_waitForTimerCallback = False
-        #self.snapButtonTrig_wasAutonomousAtRisingEdge = False     # Flag to check if AV was engaged or was autonomous at rising edge of trigger.
-        ##self.snapButtonTrig_wasAutonomousAtFallingEdge = False    # Flag to check if AV was engaged or was autonomous at falling edge of trigger.
-        #self.snapButtonTrigTimer = 0
-        #self.snapButtonTrig_startTime = 0
-
 
     def process_BRK_Override(self, wasAutonomous, writeSnapshot, prefixList, durationList, startTimeList):
         '''
@@ -136,54 +128,4 @@ class BRK_ACC_CLASS:
                 
         return writeSnapshot, prefixList, durationList, startTimeList
     
-
-    #def process_snapButtonTrig(self, wasAutonomous, writeSnapshot, prefixList, durationList, startTimeList):
-        #'''
-        #Only enter these 'if' statements a rising or a falling edge of the trigger is detected.
-        #Previous and current value of the trigger flag is false by start.
-        #When the trigger is true, current and previous values become different and these 'if' are executed.
-        #Once inside, the previous value is updated with the current value. Hence, this 'if' will not 
-        #executed again. 
-        #Then when the trigger is no longer there, the current value of the trigger is false, so the 
-        #previous and current values are again different and this 'if' is executed again.
-        #Then previous value is again made the same as current value (which is false now). So, both the 
-        #previous and current values of the trigger is again the same and again the 'if' will not be executed. 
-        #Until another trigger arrives.
-        #Rising edge of the trigger has current value as true and previous value as false.
-        #Falling edge of the trigger has current value as false and previous value as true.
-        #'''
-        
-        ##if wasAutonomous and (self.snapButtonTrig != self.prev_snapButtonTrig):
-        #if self.snapButtonTrig != self.prev_snapButtonTrig:
-            #print('Snapshot triggered by button press.')
-            ##writeSnapshot = True
-            #self.prev_snapButtonTrig = self.snapButtonTrig
-            
-            #if self.prev_snapButtonTrig:    # Rising edge.
-                #self.snapButtonTrig_startTime = rospy.Time.now()
-                #self.snapButtonTrig_wasAutonomousAtRisingEdge = wasAutonomous
-                #writeSnapshot = wasAutonomous              # Only true if there was a trigger and the av was autonomous at the rising edge of the trigger.
-            #else:                           # Falling edge.
-                #self.snapButtonTrigTimer = (rospy.Time.now() - self.snapButtonTrig_startTime).to_sec()
-                ##self.snapButtonTrig_wasAutonomousAtFallingEdge = wasAutonomous
-                
-                ## Sometimes av can get disengaged while an override is still active. If av was disengaged for the entire time of 
-                ## the duration of the override, or if wasAutonomous (which is false if av is engaged for anything less than 2 sec), 
-                ## then those overrides are ignored. But if the av was engaged during the rising edge of the trigger, then it will 
-                ## still record a even if the av was disengaged before the falling edge of the trigger. 
-                ## So, only record this trigger if the av was engaged at atleast one of the rising or falling edge of this trigger.
-                ##if self.snapButtonTrig_wasAutonomousAtRisingEdge or self.snapButtonTrig_wasAutonomousAtFallingEdge:
-                #if self.snapButtonTrig_wasAutonomousAtRisingEdge:
-                    #prefixList.append('snapButton')
-                    #durationList.append(self.snapButtonTrigTimer)
-                    #startTimeList.append(self.snapButtonTrig_startTime)
-
-                #self.snapButtonTrig_startTime = 0           # Reinitialize.
-                #self.snapButtonTrigTimer = 0
-                #self.snapButtonTrig_wasAutonomousAtRisingEdge = False
-                ##self.snapButtonTrig_wasAutonomousAtFallingEdge = False
-
-        #return writeSnapshot, prefixList, durationList, startTimeList
-
-
 

@@ -155,23 +155,22 @@ class CsvWriterAVinterface:
         
         self.brk_acc.BRK_Override_waitForTimerCallback = False
         self.brk_acc.ACC_Override_waitForTimerCallback = False
-        #self.brk_acc.snapButtonTrig_waitForTimerCallback = False
+
         self.soft_evnt.softwareEventTrig_waitForTimerCallback = False
         
        
         self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList = self.brk_acc.process_BRK_Override(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList)
         self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList = self.brk_acc.process_ACC_Override(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList)
-        #self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList = self.brk_acc.process_snapButtonTrig(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList)
         
         self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList = self.soft_evnt.process_softwareEventTrig(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList)
         
-        # Turns and lane changes are included in the snapshots only if there are some desired tracked objects 
-        # present near the AV during the beginning of the turn or lane change.
-        self.left_right.updateTurnSignalTrigR(self.timerInterval, self.yaw)
-        self.left_right.updateTurnSignalTrigL(self.timerInterval, self.yaw)
-        self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList = self.left_right.process_turnSignalTrigR(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList, \
-                                                                                                                             self.currentPose, self.trackedObjList)
-        self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList = self.left_right.process_turnSignalTrigL(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList, \
+        ## Turns and lane changes are included in the snapshots only if there are some desired tracked objects 
+        ## present near the AV during the beginning of the turn or lane change.
+        #self.left_right.updateTurnSignalTrigR(self.timerInterval, self.yaw)
+        #self.left_right.updateTurnSignalTrigL(self.timerInterval, self.yaw)
+        #self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList = self.left_right.process_turnSignalTrigR(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList, \
+                                                                                                                             #self.currentPose, self.trackedObjList)
+        #self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList = self.left_right.process_turnSignalTrigL(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList, \
                                                                                                                              self.currentPose, self.trackedObjList)
         
 
@@ -330,20 +329,6 @@ class CsvWriterAVinterface:
 
         self.lastPose = msg
 
-
-    #def DriverMarkerButtonCallback(self, data):
-        #'''
-        #The data in this callback has a value of 2 when the snapbutton is used 
-        #to trigger recording a snapshot. The snapbutton has multiple usage, so 
-        #other values will be for other purposes.
-        #'''
-        #if len(data.data) > 1:
-            #if data.data[1] == 2:
-                #self.brk_acc.snapButtonTrig = True
-                #self.brk_acc.snapButtonTrig_waitForTimerCallback = True
-            #else:
-                #if not self.brk_acc.snapButtonTrig_waitForTimerCallback:
-                    #self.brk_acc.snapButtonTrig = False
                     
         
     def CtrlStateFLGcallback(self, data):
@@ -459,7 +444,6 @@ class CsvWriterAVinterface:
         rospy.Subscriber('/dynamic_global_pose', DynamicPoseWithCovar, self.poseCallback)
         rospy.Subscriber('/ailsv_tracked_objects', TrackedObjectSet, self.trackedObjCallback)
         rospy.Subscriber('/CtrlStateFLG', CtrlStateFLG, self.CtrlStateFLGcallback)
-        #rospy.Subscriber('/ard_state', Int16MultiArray, self.DriverMarkerButtonCallback)
 
         rospy.Subscriber('/CAN_V_reader', CANVReader, self.CAN_V_readerCallback)
         
