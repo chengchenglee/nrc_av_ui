@@ -59,11 +59,9 @@ class SOFT_EVNT_CLASS:
                     dist = np.sqrt((self.softwareEventTrig_startPose.pose.position.x - currentPose.pose.position.x)**2 +
                                     (self.softwareEventTrig_startPose.pose.position.y - currentPose.pose.position.y)**2)
 
-                    # Sometimes av can get disengaged while an override is still active. If av was disengaged for the entire time of 
+                    # Sometimes av can get disengaged while an override is still active. If av is engaged for the entire time of 
                     # the duration of the override, or if wasAutonomous (which is false if av is engaged for anything less than 2 sec), 
-                    # then those overrides are ignored. But if the av was engaged during the rising edge of the trigger, then it will 
-                    # still record a even if the av was disengaged before the falling edge of the trigger. 
-                    # So, only record this trigger if the av was engaged at atleast one of the rising or falling edge of this trigger.
+                    # is true for the entire time of the override, only then the override is recorded in the snapshot. 
                     #if self.softwareEventTrig_wasAutonomousAtRisingEdge or self.softwareEventTrig_wasAutonomousAtFallingEdge:
                     if self.softwareEventTrig_wasAutonomousAtRisingEdge:
                         prefixList.append(str(self.softwareEventTrigName))
