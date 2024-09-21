@@ -17,7 +17,10 @@ class LEFT_RIGHT_CLASS:
         self.prev_turnSignalActiveR = False
         self.turnSignalActiveR_wasAutonomousAtRisingEdge = False
         #self.turnSignalActiveR_wasAutonomousAtFallingEdge = False
+        self.turnSignalActiveR_startCheckingForValidity = False
+        self.turnSignalActiveR_snapshotValid = False
         self.turnSignalActiveR_startTime = 0
+        self.turnSignalActiveR_startPose = None
         self.turnSignalActiveTimerR = 0
         self.trackedObjsPresentNearbyDuringTurnsR = False
         
@@ -31,7 +34,10 @@ class LEFT_RIGHT_CLASS:
         self.prev_turnSignalActiveL = False
         self.turnSignalActiveL_wasAutonomousAtRisingEdge = False
         #self.turnSignalActiveL_wasAutonomousAtFallingEdge = False
+        self.turnSignalActiveL_startCheckingForValidity = False
+        self.turnSignalActiveL_snapshotValid = False
         self.turnSignalActiveL_startTime = 0
+        self.turnSignalActiveL_startPose = None
         self.turnSignalActiveTimerL = 0
         self.trackedObjsPresentNearbyDuringTurnsL = False
         
@@ -101,7 +107,7 @@ class LEFT_RIGHT_CLASS:
                 
 
 
-    def process_turnSignalTrigR(self, wasAutonomous, writeSnapshot, prefixList, durationList, startTimeList, currentPose, trackedObjList):
+    def process_turnSignalTrigR(self, wasAutonomous, writeSnapshot, prefixList, durationList, startTimeList, distanceList, currentPose, trackedObjList):
         '''
         Only enter these 'if' statements a rising or a falling edge of the trigger is detected.
         Previous and current value of the trigger flag is false by start.
@@ -116,6 +122,14 @@ class LEFT_RIGHT_CLASS:
         Rising edge of the trigger has current value as true and previous value as false.
         Falling edge of the trigger has current value as false and previous value as true.
         '''
+        if self.turnSignalActiveR_startCheckingForValidity:
+            # Check if the av was autonomous all the way throughout the entire duration of the trigger.
+            self.turnSignalActiveR_snapshotValid &= wasAutonomous
+
+            # Turns and lane changes are included in the snapshots only if there are some desired tracked objects 
+            # present near the AV during anytime during the duration of the turn or lane change.
+            self.trackedObjsPresentNearbyDuringTurnsR = self.areTrackedObjsPresentNearby(currentPose, trackedObjList)
+            self.turnSignalActiveR_snapshotValid |= self.trackedObjsPresentNearbyDuringTurnsR            
 
         #if wasAutonomous and (self.turnSignalActiveR != self.prev_turnSignalActiveR):
         if self.turnSignalActiveR != self.prev_turnSignalActiveR:
@@ -123,18 +137,22 @@ class LEFT_RIGHT_CLASS:
             self.prev_turnSignalActiveR = self.turnSignalActiveR
 
             if self.prev_turnSignalActiveR:  # Rising edge.
-                # Turns and lane changes are included in the snapshots only if there are some desired tracked objects 
-                # present near the AV during the beginning of the turn or lane change.
+                self.turnSignalActiveR_startTime = rospy.Time.now()
+                self.turnSignalActiveR_startPose = currentPose
+                self.turnSignalActiveR_wasAutonomousAtRisingEdge = wasAutonomous
+                self.turnSignalActiveR_startCheckingForValidity = True
                 self.trackedObjsPresentNearbyDuringTurnsR = self.areTrackedObjsPresentNearby(currentPose, trackedObjList)
+                self.turnSignalActiveR_snapshotValid = wasAutonomous and self.trackedObjsPresentNearbyDuringTurnsR
 
-                if self.trackedObjsPresentNearbyDuringTurnsR:
-                    self.turnSignalActiveR_startTime = rospy.Time.now()
-                    self.turnSignalActiveR_wasAutonomousAtRisingEdge = wasAutonomous
-                    writeSnapshot = wasAutonomous              # Only true if there was a trigger and the av was autonomous at the rising edge of the trigger.
             else:                           # Falling edge.
-                if self.trackedObjsPresentNearbyDuringTurnsR:
+                if self.turnSignalActiveR_snapshotValid:
+                #if self.trackedObjsPresentNearbyDuringTurnsR:
+                    writeSnapshot = wasAutonomous              # Only true if there was a trigger and the av was autonomous at the rising edge of the trigger.
                     self.turnSignalActiveTimerR = (rospy.Time.now() - self.turnSignalActiveR_startTime).to_sec()
                     #self.turnSignalActiveR_wasAutonomousAtFallingEdge = wasAutonomous
+                    dist = np.sqrt((self.turnSignalActiveR_startPose.pose.position.x - currentPose.pose.position.x)**2 +
+                                    (self.turnSignalActiveR_startPose.pose.position.y - currentPose.pose.position.y)**2)
+
                     
                     # Sometimes av can get disengaged while an override is still active. If av was disengaged for the entire time of 
                     # the duration of the override, or if wasAutonomous (which is false if av is engaged for anything less than 2 sec), 
@@ -146,21 +164,24 @@ class LEFT_RIGHT_CLASS:
                         prefixList.append(self.turnEventNameR)
                         durationList.append(self.turnSignalActiveTimerR)
                         startTimeList.append(self.turnSignalActiveR_startTime)
+                        distanceList.append(dist)
 
-                    self.turnSignalActiveR_startTime = 0        # Reinitialize.
-                    self.turnSignalActiveTimerR = 0
-                    self.turnSignalActiveR_wasAutonomousAtRisingEdge = False
-                    #self.turnSignalActiveR_wasAutonomousAtFallingEdge = False
-                    self.turnEventNameR = ''
-                    self.yawAtEndR = None
-                    self.yawAtStartR = None
-                    self.trackedObjsPresentNearbyDuringTurnsR = False
+                self.turnSignalActiveR_startTime = 0        # Reinitialize.
+                self.turnSignalActiveR_startPose = None
+                self.turnSignalActiveTimerR = 0
+                self.turnSignalActiveR_wasAutonomousAtRisingEdge = False
+                #self.turnSignalActiveR_wasAutonomousAtFallingEdge = False
+                self.turnSignalActiveR_startCheckingForValidity = False
+                self.turnSignalActiveR_snapshotValid = False
+                self.turnEventNameR = ''
+                self.yawAtEndR = None
+                self.yawAtStartR = None
+                self.trackedObjsPresentNearbyDuringTurnsR = False
                 
-        return writeSnapshot, prefixList, durationList, startTimeList
+        return writeSnapshot, prefixList, durationList, startTimeList, distanceList
     
 
-
-    def process_turnSignalTrigL(self, wasAutonomous, writeSnapshot, prefixList, durationList, startTimeList, currentPose, trackedObjList):
+    def process_turnSignalTrigL(self, wasAutonomous, writeSnapshot, prefixList, durationList, startTimeList, distanceList, currentPose, trackedObjList):
         '''
         Only enter these 'if' statements a rising or a falling edge of the trigger is detected.
         Previous and current value of the trigger flag is false by start.
@@ -175,25 +196,37 @@ class LEFT_RIGHT_CLASS:
         Rising edge of the trigger has current value as true and previous value as false.
         Falling edge of the trigger has current value as false and previous value as true.
         '''
+        if self.turnSignalActiveL_startCheckingForValidity:
+            # Check if the av was autonomous all the way throughout the entire duration of the trigger.
+            self.turnSignalActiveL_snapshotValid &= wasAutonomous
 
+            # Turns and lane changes are included in the snapshots only if there are some desired tracked objects 
+            # present near the AV during anytime during the duration of the turn or lane change.
+            self.trackedObjsPresentNearbyDuringTurnsL = self.areTrackedObjsPresentNearby(currentPose, trackedObjList)
+            self.turnSignalActiveL_snapshotValid |= self.trackedObjsPresentNearbyDuringTurnsL
+            
         #if wasAutonomous and (self.turnSignalActiveL != self.prev_turnSignalActiveL):
         if self.turnSignalActiveL != self.prev_turnSignalActiveL:
             #writeSnapshot = True
             self.prev_turnSignalActiveL = self.turnSignalActiveL
             
             if self.prev_turnSignalActiveL:  # Rising edge.
-                # Turns and lane changes are included in the snapshots only if there are some desired tracked objects 
-                # present near the AV during the beginning of the turn or lane change.
+                self.turnSignalActiveL_startTime = rospy.Time.now()
+                self.turnSignalActiveL_startPose = currentPose
+                self.turnSignalActiveL_wasAutonomousAtRisingEdge = wasAutonomous
+                self.turnSignalActiveL_startCheckingForValidity = True
                 self.trackedObjsPresentNearbyDuringTurnsL = self.areTrackedObjsPresentNearby(currentPose, trackedObjList)
+                self.turnSignalActiveL_snapshotValid = wasAutonomous and self.trackedObjsPresentNearbyDuringTurnsL
                 
-                if self.trackedObjsPresentNearbyDuringTurnsL:
-                    self.turnSignalActiveL_startTime = rospy.Time.now()
-                    self.turnSignalActiveL_wasAutonomousAtRisingEdge = wasAutonomous
-                    writeSnapshot = wasAutonomous              # Only true if there was a trigger and the av was autonomous at the rising edge of the trigger.
             else:                           # Falling edge.
-                if self.trackedObjsPresentNearbyDuringTurnsL:
+                if self.turnSignalActiveL_snapshotValid:
+                #if self.trackedObjsPresentNearbyDuringTurnsL:
+                    writeSnapshot = wasAutonomous              # Only true if there was a trigger and the av was autonomous at the rising edge of the trigger.
                     self.turnSignalActiveTimerL = (rospy.Time.now() - self.turnSignalActiveL_startTime).to_sec()
                     #self.turnSignalActiveL_wasAutonomousAtFallingEdge = wasAutonomous
+                    dist = np.sqrt((self.turnSignalActiveL_startPose.pose.position.x - currentPose.pose.position.x)**2 +
+                                    (self.turnSignalActiveL_startPose.pose.position.y - currentPose.pose.position.y)**2)
+
                     
                     # Sometimes av can get disengaged while an override is still active. If av was disengaged for the entire time of 
                     # the duration of the override, or if wasAutonomous (which is false if av is engaged for anything less than 2 sec), 
@@ -205,17 +238,21 @@ class LEFT_RIGHT_CLASS:
                         prefixList.append(self.turnEventNameL)
                         durationList.append(self.turnSignalActiveTimerL)
                         startTimeList.append(self.turnSignalActiveL_startTime)
+                        distanceList.append(dist)
 
-                    self.turnSignalActiveL_startTime = 0        # Reinitialize.
-                    self.turnSignalActiveTimerL = 0
-                    self.turnSignalActiveL_wasAutonomousAtRisingEdge = False
-                    #self.turnSignalActiveL_wasAutonomousAtFallingEdge = False
-                    self.turnEventNameL = ''
-                    self.yawAtEndL = None
-                    self.yawAtStartL = None
-                    self.trackedObjsPresentNearbyDuringTurnsL = False
+                self.turnSignalActiveL_startTime = 0        # Reinitialize.
+                self.turnSignalActiveL_startPose = None
+                self.turnSignalActiveTimerL = 0
+                self.turnSignalActiveL_wasAutonomousAtRisingEdge = False
+                #self.turnSignalActiveL_wasAutonomousAtFallingEdge = False
+                self.turnSignalActiveL_startCheckingForValidity = False
+                self.turnSignalActiveL_snapshotValid = False
+                self.turnEventNameL = ''
+                self.yawAtEndL = None
+                self.yawAtStartL = None
+                self.trackedObjsPresentNearbyDuringTurnsL = False
                 
-        return writeSnapshot, prefixList, durationList, startTimeList
+        return writeSnapshot, prefixList, durationList, startTimeList, distanceList
     
     
     

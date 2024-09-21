@@ -54,6 +54,7 @@ class CsvWriterAVinterface:
         self.prefixList = []
         self.durationList = []
         self.startTimeList = []
+        self.distanceList = []
         self.snapshotUpdated = False
         self.filename = ''
         #self.csvDir = os.path.join(os.path.expanduser("~"), 'projects/disengagementData/bags/', time.strftime("%Y-%m-%d"))
@@ -72,6 +73,7 @@ class CsvWriterAVinterface:
         self.snapshotFutureDistanceTraveled = 0.0 # How much distance we traveled since the trigger
         self.snapshotDefaultFutureTimeHorizon = 20.0 # seconds
         self.snapshotMaxFutureTimeHorizon = 45.0 # seconds
+        
         # Record the past horizon at the time of trigger
         self.startedRecordingSnapshot = False
         self.triggerPastHorizon = self.snapshotDefaultPastTimeHorizon
@@ -99,11 +101,11 @@ class CsvWriterAVinterface:
         self.inExclusionZone = False
         for point in self.exclPoses:
             exclPose = np.zeros((3,3))
-            exclPose[0,0] =  np.cos(point[2])
-            exclPose[0,1] =  np.sin(point[2])
+            exclPose[0,0] = np.cos(point[2])
+            exclPose[0,1] = np.sin(point[2])
             exclPose[1,0] = -np.sin(point[2])
-            exclPose[1,1] =  np.cos(point[2])
-            exclPose[2,2] =  1
+            exclPose[1,1] = np.cos(point[2])
+            exclPose[2,2] = 1
             exclPose[0,2] = point[0]
             exclPose[1,2] = point[1]
             exclPoseInv = np.linalg.inv(exclPose)
@@ -159,19 +161,22 @@ class CsvWriterAVinterface:
         self.soft_evnt.softwareEventTrig_waitForTimerCallback = False
         
        
-        self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList = self.brk_acc.process_BRK_Override(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList)
-        self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList = self.brk_acc.process_ACC_Override(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList)
+        self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList, self.distanceList = self.brk_acc.process_BRK_Override(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, \
+                                                                                                                                            self.startTimeList, self.distanceList, self.currentPose)
+        self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList, self.distanceList = self.brk_acc.process_ACC_Override(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, \
+                                                                                                                                            self.startTimeList, self.distanceList, self.currentPose)
         
-        self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList = self.soft_evnt.process_softwareEventTrig(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList)
+        self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList, self.distanceList = self.soft_evnt.process_softwareEventTrig(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, \
+                                                                                                                                                    self.startTimeList, self.distanceList, self.currentPose)
         
         ## Turns and lane changes are included in the snapshots only if there are some desired tracked objects 
         ## present near the AV during the beginning of the turn or lane change.
         #self.left_right.updateTurnSignalTrigR(self.timerInterval, self.yaw)
         #self.left_right.updateTurnSignalTrigL(self.timerInterval, self.yaw)
-        #self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList = self.left_right.process_turnSignalTrigR(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList, \
-                                                                                                                             #self.currentPose, self.trackedObjList)
-        #self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList = self.left_right.process_turnSignalTrigL(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList, \
-                                                                                                                             #self.currentPose, self.trackedObjList)
+        #self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList, self.distanceList = self.left_right.process_turnSignalTrigR(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, \
+                                                                                                                                                #self.startTimeList, self.distanceList, self.currentPose, self.trackedObjList)
+        #self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList, self.distanceList = self.left_right.process_turnSignalTrigL(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, \
+                                                                                                                                                #self.startTimeList, self.distanceList, self.currentPose, self.trackedObjList)
         
 
         #print(self.prefixList)
@@ -179,11 +184,18 @@ class CsvWriterAVinterface:
         
         # Calculating the start time for this snapshot.
         if self.writeSnapshot:
-            # If just triggered the snapshot then record past horizon length
+            # If just triggered the snapshot then record past horizon length.
             if self.startedRecordingSnapshot == False:
                 self.startedRecordingSnapshot = True
+                
+                # Snapshot is triggered after the trigger is deactivated and the condiditons for recording snapshots (like wasAutonomous was active all the way through during the trigger) 
+                # is valid or not. But if the condiditons are valid then the snapshot timings and distances should be accounted for from the instance at the beginning of the trigger.
+                # Hence the writetime and the snapshotPasthorizon are modified to cater to the beginning of the trigger.
+                indexOfMinStartTime = self.startTimeList.index(min(self.startTimeList))
                 self.triggerPastHorizon = max(self.snapshotPastDistanceHorizonTimeDiff, self.snapshotDefaultPastTimeHorizon)
-                self.snapshotStartTime = rospy.Time.now() - rospy.Duration(self.triggerPastHorizon) # Where the snapshot starts from, not the trigger time
+                self.snapshotStartTime = rospy.Time.now() - rospy.Duration(self.triggerPastHorizon) - rospy.Duration(self.durationList[indexOfMinStartTime])    # Where the snapshot starts from, not the trigger time.
+                self.writeTime = self.durationList[indexOfMinStartTime]
+                self.snapshotFutureDistanceTraveled = self.distanceList[indexOfMinStartTime]
                 
             self.writeTime += self.timerInterval
 
@@ -199,8 +211,11 @@ class CsvWriterAVinterface:
                                           self.left_right.turnSignalActiveL)
 
             if anyTriggersStillActive:
-                self.writeTime = 0
-                self.snapshotFutureDistanceTraveled = 0.0
+                #self.writeTime = 0
+                #self.snapshotFutureDistanceTraveled = 0.0
+                indexOfMinStartTime = self.startTimeList.index(min(self.startTimeList))
+                self.writeTime = self.durationList[indexOfMinStartTime]
+                self.snapshotFutureDistanceTraveled = self.distanceList[indexOfMinStartTime]
             
             
         # Create and publish health message
