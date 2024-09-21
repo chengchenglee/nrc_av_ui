@@ -171,7 +171,7 @@ class CsvWriterAVinterface:
         #self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList = self.left_right.process_turnSignalTrigR(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList, \
                                                                                                                              #self.currentPose, self.trackedObjList)
         #self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList = self.left_right.process_turnSignalTrigL(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList, \
-                                                                                                                             self.currentPose, self.trackedObjList)
+                                                                                                                             #self.currentPose, self.trackedObjList)
         
 
         #print(self.prefixList)
