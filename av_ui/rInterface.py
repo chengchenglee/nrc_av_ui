@@ -288,13 +288,13 @@ class Interface:
         if not self.joyPad:
           keyStr = str(key).replace("'","")
           if 'up' in keyStr:
-            self.virtualVeh.accel([1,0])
+            self.virtualVeh.accel([0.1, 1,0])
           if 'down' in keyStr:
-            self.virtualVeh.accel([-1,0])
+            self.virtualVeh.accel([0.1, -1,0])
           if 'left' in keyStr:
-            self.virtualVeh.accel([0,0.3])
+            self.virtualVeh.accel([0.1, 0,0.3])
           if 'right' in keyStr:
-            self.virtualVeh.accel([0,-0.3])
+            self.virtualVeh.accel([0.1, 0,-0.3])
 
       self.listener = Listener(on_press=on_press)
       print('Start keyboard listener')
@@ -418,15 +418,15 @@ class Interface:
       self.tab2_canvas.create_oval(x-dotRadius,y-dotRadius,x+dotRadius,y+dotRadius,outline=colorval)
    
   
-  def drawPointCloudSeparate(self, wmStatus):
+  def drawPointCloudSeparate(self, wmStatus,frame):
     if not wmStatus.cloud:
-        self.drawGrid(wmStatus.dgp)
+        self.drawGrid(frame)
         return
     
     x_vals, y_vals, z_vals = zip(*wmStatus.cloud)
     
-    center_x = wmStatus.dgp.centerPose[0,2]
-    center_y = wmStatus.dgp.centerPose[1,2]
+    center_x = frame.centerPose[0,2]
+    center_y = frame.centerPose[1,2]
     
     points3d = []
     max_distance = 200  # 30m radius
@@ -438,7 +438,7 @@ class Interface:
         
         # Convert from site frame to car frame
         pt_global = np.array([x, y, 1])
-        pt_carFrame = np.dot(wmStatus.dgp.poseInv, pt_global)
+        pt_carFrame = np.dot(frame.poseInv, pt_global)
         x_car, y_car = pt_carFrame[0], pt_carFrame[1]
         
         # Check if point is within 30m radius
@@ -702,9 +702,9 @@ class Interface:
     #if len(self.objsOfInterest) > 0: print(self.objsOfInterest)
   
     for obj in wmStatus.objs:
-      self.drawBox(obj,wmStatus.dgp)
+      self.drawBox(obj,frame)
 
-    self.drawPointCloudSeparate(wmStatus)
+    self.drawPointCloudSeparate(wmStatus,frame)
       
     # Draw ego
     self.drawBox(wmStatus.dgp,frame)
