@@ -20,8 +20,7 @@ class SOFT_EVNT_CLASS:
         self.softwareEventTrigName = ''
 
         
-        
-    def process_softwareEventTrig(self, wasAutonomous, writeSnapshot, prefixList, durationList, startTimeList, distanceList, currentPose):
+    def process_softwareEventTrig(self, wasAutonomous, writeSnapshot, detailsDict, currentPose):
         '''
         Only enter these 'if' statements a rising or a falling edge of the trigger is detected.
         Previous and current value of the trigger flag is false by start.
@@ -64,10 +63,10 @@ class SOFT_EVNT_CLASS:
                     # is true for the entire time of the override, only then the override is recorded in the snapshot. 
                     #if self.softwareEventTrig_wasAutonomousAtRisingEdge or self.softwareEventTrig_wasAutonomousAtFallingEdge:
                     if self.softwareEventTrig_wasAutonomousAtRisingEdge:
-                        prefixList.append(str(self.softwareEventTrigName))
-                        durationList.append(self.softwareEventTrigTimer)
-                        startTimeList.append(self.softwareEventTrig_startTime)
-                        distanceList.append(dist)
+                        detailsDict['prefixList'].append(str(self.softwareEventTrigName))
+                        detailsDict['durationList'].append(self.softwareEventTrigTimer)
+                        detailsDict['startTimeList'].append(self.softwareEventTrig_startTime)
+                        detailsDict['distanceList'].append(dist)
 
                 self.softwareEventTrig_startTime = 0        # Reinitialize.
                 self.softwareEventTrig_startPose = None
@@ -78,4 +77,13 @@ class SOFT_EVNT_CLASS:
                 self.softwareEventTrig_snapshotValid = False
 
                 
-        return writeSnapshot, prefixList, durationList, startTimeList, distanceList
+        return writeSnapshot, detailsDict
+
+
+
+
+
+
+
+
+
