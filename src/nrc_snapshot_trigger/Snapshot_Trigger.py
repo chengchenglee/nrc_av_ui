@@ -54,7 +54,6 @@ class CsvWriterAVinterface:
         self.detailsDict = {'prefixList': [], 'durationList': [], 'startTimeList': [], 'distanceList': []}
         self.snapshotUpdated = False
         self.filename = ''
-        #self.csvDir = os.path.join(os.path.expanduser("~"), 'projects/disengagementData/bags/', time.strftime("%Y-%m-%d"))
         self.csvDir = os.path.join(os.path.expanduser("~"), '/opt/data/snapshots/', time.strftime("%Y-%m-%d"))
         print("csvDir:",self.csvDir)
         dirExists = os.path.isdir(self.csvDir)
@@ -182,10 +181,22 @@ class CsvWriterAVinterface:
                 # Snapshot is triggered after the trigger is deactivated and the condiditons for recording snapshots (like wasAutonomous was active all the way through during the trigger) 
                 # is valid or not. But if the condiditons are valid then the snapshot timings and distances should be accounted for from the instance at the beginning of the trigger.
                 # Hence the writetime and the snapshotPasthorizon are modified to cater to the beginning of the trigger.
+                
+                # The starttimes of the triggers are recorded in startTimeList, so to incorporate all the triggers, we check the earliest starttime among the startTimeList.
                 indexOfMinStartTime = self.detailsDict['startTimeList'].index(min(self.detailsDict['startTimeList']))
                 self.triggerPastHorizon = max(self.snapshotPastDistanceHorizonTimeDiff, self.snapshotDefaultPastTimeHorizon)
-                self.snapshotStartTime = rospy.Time.now() - rospy.Duration(self.triggerPastHorizon) - rospy.Duration(self.detailsDict['durationList'][indexOfMinStartTime])    # Where the snapshot starts from, not the trigger time.
+                
+                # Now the startedRecordingSnapshot flag is triggered after a trigger has completely happened. But the starttime of the snapshot will be from the 
+                # instance before the trigger started and should also include the past time and distance horizon. 
+                # So the duration of the triggerPastHorizon and the duration of the first trigger are subtracted from the current time instance to calculate the 
+                # start time of the trigger.
+                # Where the snapshot starts from, not the trigger time.
+                self.snapshotStartTime = rospy.Time.now() - rospy.Duration(self.triggerPastHorizon) - rospy.Duration(self.detailsDict['durationList'][indexOfMinStartTime])
+                
+                # The writeTime of the snapshot should also now include the duration of the first trigger (which has already happened completely).
                 self.writeTime = self.detailsDict['durationList'][indexOfMinStartTime]
+                
+                # The future distance travelled should now also include the distance the av has travelled after since the beginning of the first trigger.
                 self.snapshotFutureDistanceTraveled = self.detailsDict['distanceList'][indexOfMinStartTime]
                 
             self.writeTime += self.timerInterval
@@ -202,8 +213,8 @@ class CsvWriterAVinterface:
                                           self.left_right.Left.turnSignalActive)
 
             if anyTriggersStillActive:
-                #self.writeTime = 0
-                #self.snapshotFutureDistanceTraveled = 0.0
+                # Reset the writeTime and the snapshotFutureDistanceTraveled to the value of the first trigger, if there are more triggers active still.
+                # This is how the snapshot is extended.
                 indexOfMinStartTime = self.detailsDict['startTimeList'].index(min(self.detailsDict['startTimeList']))
                 self.writeTime = self.detailsDict['durationList'][indexOfMinStartTime]
                 self.snapshotFutureDistanceTraveled = self.detailsDict['distanceList'][indexOfMinStartTime]
@@ -270,9 +281,7 @@ class CsvWriterAVinterface:
 
             self.writeSnapshot = False
             self.writeTime = 0
-            self.detailsDict['prefixList'] = []
-            self.detailsDict['startTimeList'] = []
-            self.detailsDict['durationList'] = []
+            self.detailsDict = {'prefixList': [], 'durationList': [], 'startTimeList': [], 'distanceList': []}
             self.avEngaged_startTimeList = []
             self.avEngaged_stopTimeList = []
 
