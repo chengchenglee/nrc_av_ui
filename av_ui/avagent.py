@@ -114,6 +114,7 @@ class AvAgent:
     Loader.subscribe_health_msgs(self.subsystems)
     self.avLedStatusPub = rospy.Publisher("ailsv_av_led",Int16MultiArray,queue_size=1)
     self.teleopPub      = rospy.Publisher("ailsv_teleop",MarkerArray, queue_size=1)
+    self.wypPub         = rospy.Publisher("/mspf_waypoints", String, queue_size=1)
     self.poseSub     = rospy.Subscriber("/dynamic_global_pose",     DynamicPoseWithCovar,self.pose_callback,queue_size=1)
     self.pose10hzSub = rospy.Subscriber("/dynamic_global_pose_10Hz",DynamicPoseWithCovar,self.pose10hz_callback,queue_size=1)
     self.gps2hzSub   = rospy.Subscriber("/gps_state/gps_state_oxts_2hz",GpsState,self.gps2hz_callback,queue_size=1)
@@ -424,7 +425,10 @@ class AvAgent:
       elif 'wyp' in m['topic']:
         wp = WaypointData()
         wp.fromMsg(m)
-        
+        #publish waypoint message
+        wp_string = wp.toMsg()
+        self.wypPub.publish(wp_string)
+
       if receivedAgentMsgCount > -1:
         dt = self.getTxTime(receivedAgentMsgCount)
         self.updateAvgRndTripMsgTime()
