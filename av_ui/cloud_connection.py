@@ -161,9 +161,9 @@ class CloudConnection:
           msg['data'] = message.payload
         elif 'imgStream' in message.topic:
           msg['data'] = message.payload
-        elif 'wyp' in message.topic:
-          wyp_json = json.loads(message.payload.decode())
-          msg['data'] = wyp_json
+        # elif 'wyp' in message.topic:
+        #   wyp_json = json.loads(message.payload.decode())
+        #   msg['data'] = wyp_json
         else:
           # Parse csv data
           payloadCsv = message.payload
