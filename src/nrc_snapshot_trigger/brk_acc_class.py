@@ -53,7 +53,7 @@ class PEDAL:
                 self.override_snapshotValid = wasAutonomous
             else:                           # Falling edge.
                 if self.override_snapshotValid:
-                    writeSnapshot = True             # Only true if there was a trigger and the av was autonomous at the rising edge of the trigger.
+                    writeSnapshot = wasAutonomous             # Only true if there was a trigger and the av was autonomous at the rising edge of the trigger.
                     self.overrideTimer = (rospy.Time.now() - self.override_startTime).to_sec()
                     #self.override_wasAutonomousAtFallingEdge = wasAutonomous
                     dist = np.sqrt((self.override_startPose.pose.position.x - currentPose.pose.position.x)**2 +
