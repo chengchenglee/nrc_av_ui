@@ -138,5 +138,5 @@ class WaypointData:
       for wp in wps:
         self.waypoints.append(WaypointEntry([wp['posX'], wp['posY'], wp['posTh']]))
     
-    except json.JSONDecodeError:
-      print("Invalid JSON format for mspf waypoint message")
+    except Exception as e:
+      print(f"waypoint msg json object error: {e}")
