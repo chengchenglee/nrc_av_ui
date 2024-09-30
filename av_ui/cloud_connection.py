@@ -161,21 +161,23 @@ class CloudConnection:
           msg['data'] = message.payload
         elif 'imgStream' in message.topic:
           msg['data'] = message.payload
-        # elif 'wyp' in message.topic:
-        #   wyp_json = json.loads(message.payload.decode())
-        #   msg['data'] = wyp_json
         else:
-          # Parse csv data
-          payloadCsv = message.payload
-          #if type(payloadCsv) == 'bytes':
-          payloadCsv = message.payload.decode('utf-8')
+
+          try:
+            data = json.loads(message.payload.decode("utf-8"))
+          except json.JSONDecodeError:
+            
+            # Parse csv data
+            payloadCsv = message.payload
+            #if type(payloadCsv) == 'bytes':
+            payloadCsv = message.payload.decode('utf-8')
+            
+            data = []
+            lines = payloadCsv.split('\n')
+            for line in lines:
+              lineData = line.split(',')
+              data.append(list(lineData))
           
-          data = []
-          lines = payloadCsv.split('\n')
-          for line in lines:
-            lineData = line.split(',')
-            data.append(list(lineData))
-        
           msg['data'] = data
         
         with mutex:
