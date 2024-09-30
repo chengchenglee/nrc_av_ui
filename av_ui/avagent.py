@@ -424,7 +424,7 @@ class AvAgent:
               
       elif 'wyp' in m['topic']:
         wp = WaypointData()
-        wp.fromMsg(m)
+        wp.fromMsg(m['data'])
         #publish waypoint message
         wp_string = wp.toMsg()
         self.wypPub.publish(wp_string)
