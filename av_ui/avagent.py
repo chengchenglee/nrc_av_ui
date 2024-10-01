@@ -132,6 +132,7 @@ class AvAgent:
     self.cloud.init()
     qos = 1
     self.cloud.subscribe(['cmd/'+self.name+'/remote'],qos)
+    self.cloud.subscribe(['cmdOnce/'+self.name+'/remote'],2) # Used by FVLA telematics dashboard
     self.cloud.subscribe(['cmd/'+self.name+'/teleop'],qos)
     self.cloud.subscribe(['snp/remote_server/heartbeat'],qos)
     self.cloud.subscribe(['snp/'+self.name+'/resPartList'],qos)
@@ -380,11 +381,11 @@ class AvAgent:
           if len(lineData) >= 3 and lineData[0] == 's':
             for s in self.subsystems:
               cmd = lineData[2]
-              #if s.name == lineData[1]:
-                #if cmd == '0' or cmd == '1':
-                  #if s.shouldBeStarted != int(cmd):
+              if s.name == lineData[1]:
+                if cmd == '0' or cmd == '1':
+                  if s.shouldBeStarted != int(cmd):
                     #print("Remote cmd:",s.name, int(cmd))
-                    #s.shouldBeStarted = int(cmd)
+                    s.shouldBeStarted = int(cmd)
           elif len(lineData) >= 2 and lineData[0] == 'w':
             if int(lineData[1]) == 1:
               self.remoteWmDisplayLastReq = time.time()
