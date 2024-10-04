@@ -98,7 +98,7 @@ class Interface:
     self.windowOpen = False
     self.launchAllReq = False
     self.windowWidth  = 550
-    self.windowHeight = 930
+    self.windowHeight = 1000
     self.canvasWidth  = 550
     self.imgHeight    = 268
     self.canvasHeight = 400
@@ -110,9 +110,9 @@ class Interface:
     self.tab2_frame2 = []
     
     self.selectedAgent = 'None'
-    self.isTeleop = False
-    self.isRemoteDrv = False
-    #self.canvasDrawn = False
+    self.isTeleop     = False
+    self.stopAvByTele = False
+    self.isRemoteDrv  = False
     self.tab2_canvas = []
     self.canvasTime = 0
     self.canvasIncr = 1
@@ -255,6 +255,8 @@ class Interface:
     self.enTeleop     = Tkinter.Button(self.tab2_frame2, text='ENABLE TELEOP',\
                                        width=numButtons*self.bWidth+numButtons, height=2, padx=1, pady=1, relief="raised", command=self.setTeleop)
     self.enTeleop.grid(row=0, columnspan=5, sticky=Tkinter.W+Tkinter.E)
+    self.stopAvButton = Tkinter.Button(self.tab2_frame2, text='STOP_AV',\
+                                       width=numButtons*self.bWidth+numButtons, height=2, padx=1, pady=1, relief="raised", command=self.setStopAv)
     self.enRemoteDrv  = Tkinter.Button(self.tab2_frame2, text='REMOTE DRIVE',\
                                        width=numButtons*self.bWidth+numButtons, height=2, padx=1, pady=1, relief="raised", command=self.setRemoteDrv)
     self.lcLeftButton = Tkinter.Button(self.tab2_frame2, text='LC-LFT',\
@@ -836,14 +838,16 @@ class Interface:
         rowIdx += 1
       
     # Teleop Window
-    if self.isTeleop:  
+    if self.isTeleop:
+      self.stopAvButton.grid(column=0, columnspan=5, sticky=Tkinter.W+Tkinter.E)
       self.enRemoteDrv.grid(column=0, columnspan=5, sticky=Tkinter.W+Tkinter.E)
-      self.lcLeftButton.grid(column=0, row=2, sticky=Tkinter.W+Tkinter.E)
-      self.gaLeftButton.grid(column=1, row=2, sticky=Tkinter.W+Tkinter.E)
-      self.followButton.grid(column=2, row=2, sticky=Tkinter.W+Tkinter.E)
-      self.gaRghtButton.grid(column=3, row=2, sticky=Tkinter.W+Tkinter.E)
-      self.lcRghtButton.grid(column=4, row=2, sticky=Tkinter.W+Tkinter.E)
+      self.lcLeftButton.grid(column=0, row=3, sticky=Tkinter.W+Tkinter.E)
+      self.gaLeftButton.grid(column=1, row=3, sticky=Tkinter.W+Tkinter.E)
+      self.followButton.grid(column=2, row=3, sticky=Tkinter.W+Tkinter.E)
+      self.gaRghtButton.grid(column=3, row=3, sticky=Tkinter.W+Tkinter.E)
+      self.lcRghtButton.grid(column=4, row=3, sticky=Tkinter.W+Tkinter.E)
     else:
+      self.stopAvButton.grid_forget()
       self.enRemoteDrv.grid_forget()
       self.lcLeftButton.grid_forget()
       self.gaLeftButton.grid_forget()
@@ -857,12 +861,22 @@ class Interface:
   def setTeleop(self):
     if self.isTeleop:
       self.isTeleop = 0
+      self.stopAvByTele = False
+      self.stopAvButton.configure(text='STOP AV')
       self.isRemoteDrv = False
       self.enRemoteDrv.configure(text='ENABLE REMOTE DRIVE')
       self.enTeleop.configure(text='ENABLE TELEOP')
     else:
       self.isTeleop = 1
       self.enTeleop.configure(text='DISABLE TELEOP')
+  
+  def setStopAv(self):
+    if self.stopAvByTele:
+      self.stopAvByTele = False
+      self.stopAvButton.configure(text='STOP AV')
+    else:
+      self.stopAvByTele = True
+      self.stopAvButton.configure(text='CEASE STOPPING')
       
   def setRemoteDrv(self):
     if self.isRemoteDrv:
@@ -892,7 +906,12 @@ class Interface:
     for cmd in self.teleopCmds:
       if cmd.teleopType != 'ORU' and cmd.teleopType != 'remove':
         agent.teleopCmdData.commands.append(cmd)
-        
+    
+    if self.stopAvByTele:
+      newCmd = TeleopEntry()
+      newCmd.teleopType = 'STOP'
+      agent.teleopCmdData.commands.append(newCmd)
+    
     if self.isRemoteDrv:
       newCmd = TeleopEntry.fromOru(-2, self.virtualVeh.xythvw())
       newCmd.teleopType = 'FVV'
