@@ -68,7 +68,11 @@
   |/detection_recog_results/tower_cam_backLeft
   |/detection_recog_results/tower_cam_backRight
   |/radar
-  |/radar_bf"/>  
+  |/radar_bf
+  |/multi_object_tracker/timing/overall_processing_time
+  |/multi_object_tracker/timing/timing_diagnostics
+  |/pc_processor/timing/overall_processing_time
+  |/pc_processor/timing/timing_diagnostics"/>
 
   <arg name="system_main_topics" 
   default="/dynamic_global_pose
@@ -265,7 +269,8 @@
   |/gps_state/gps_state_f9r
   |/gps_state/dynamic_global_pose_oxts
   |/gps_state/gps_state_oxts
-  |/gps_state/gps_state_ariya"/>
+  |/gps_state/gps_state_ariya
+  |/ailsv_teleop"/>
   
   <node if="$(arg record_ipt)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_ipt" output="screen"
   args="-o $(arg prefix)_ipt -e $(arg ipt_topics)"/>  
