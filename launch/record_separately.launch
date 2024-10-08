@@ -122,7 +122,8 @@
   |/ibeo_object_set
   |/radar
   |/radar_bf
-  |/ailsv_av_status" />
+  |/ailsv_av_status
+  |/ailsv_teleop"/>
   
   <arg name="pc_processor_all_topics" 
   default="/drivable_area_boundary_points
