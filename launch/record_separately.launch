@@ -25,6 +25,7 @@
   <arg name="record_aeva_other_outputs" default="false"/>
   <arg name="record_innovusion" default="false"/>
   <arg name="record_disengagement_snapshots" default="false"/> <!-- turn this on for snapshot rosbags during disengagement/override-->
+  <arg name="record_arbe" default="false"/>
   
   <arg name="prefix" default="autonomy_log" />
   <arg name="compression" default="false" /> <!--bz2 compression -->
@@ -229,6 +230,9 @@
   <arg name="innovusion_topics"
   default="/iv_points"/>
 
+  <arg name="arbe_topics"
+  default="|/arbe/(.*)"/>
+
   <!-- (.*) does not work with snapshot rosbag command. So added a seperate snapshot main topics-->
   <arg name="snapshot_system_main_topics"
   default="|/CAN_V_reader
@@ -312,6 +316,9 @@
 
   <node if="$(arg record_innovusion)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_innovusion" output="screen"
   args="$(arg compression) -o $(arg prefix)_innovusion -e $(arg innovusion_topics)" machine="$(arg record_machine)"/>
+
+  <node if="$(arg record_arbe)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_arbe" output="screen"
+  args="$(arg compression) -o $(arg prefix)_arbe -e $(arg arbe_topics)" machine="$(arg record_machine)"/>
 
   
   <include if="$(arg record_tlr)" file="$(find nrc_svcs)/launch/record_tlr.launch">
