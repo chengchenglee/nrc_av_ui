@@ -7,7 +7,7 @@ Configuration:
   sendWm: 1
   sendSnapshots: 1
   Map: Franklin.set
-  broker: ncal
+  broker: emqx
 
 Subsystem:
   CAR:
@@ -16,7 +16,7 @@ Subsystem:
     Trigger: Startup, StartRequest, ARDX, or PMUX
       - Source: Startup
     HealthTopics:
-      - HealthTopic: /CtrlStateFLG
+      - HealthTopic: /CtrlStateFLG_10hz
         HealthName: CAR
         HealthTopicType: CtrlStateFLG
         NomWarnErrRate: 10, 6, 3
@@ -37,6 +37,11 @@ Subsystem:
         Command: roslaunch nrc_hw_svcs leaf_interface_arduino.launch arduino_machine:=node02
         Type: Software
         LaunchTime: 1.0
+      - Name: CSF_Throttle
+        Command: rosrun topic_tools throttle messages /CtrlStateFLG 10.0 /CtrlStateFLG_10hz
+        NodeName: CSF_Throttle
+        Type: Software
+        LaunchTime: 1
     Diagnostic:
       LED: 0
       Retry: 3
@@ -77,6 +82,11 @@ Subsystem:
         NodeName: MapMatch_node
         Type: Software
         LaunchTime: 3.0
+      - Name: GPS_Throttle
+        Command: rosrun topic_tools throttle messages /gps_state/gps_state_oxts 2.0 /gps_state/gps_state_oxts_2hz
+        NodeName: GPS_Throttle
+        Type: Software
+        LaunchTime: 1
     Diagnostic:
       LED: 1
       Retry: 3
@@ -122,21 +132,17 @@ Subsystem:
     Trigger:
       - Source: StartRequest
     HealthTopics:
-      - HealthTopic: /tower_cam_front/image_stamped/health_status
+      - HealthTopic: /tower_cam_front/camera_info
         HealthName: TCF
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /tower_cam_frontLeft/image_stamped/health_status
-        HealthName: TCFR
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /tower_cam_frontRight/image_stamped/health_status
-        HealthName: TCFL
-        HealthTopicType: DiagnosticArray
+        HealthTopicType: CameraInfo
         NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: TowerCam
-        Command: roslaunch nrc_hw_svcs pgr_gige_cameras.launch FrRCam:=true FrLCam:=true FrCam:=true BaRCam:=false BaLCam:=false BaCam:=false enableArduino:=true video_preprocess:=true leaf_foxtrot:=true
+        Command: roslaunch nrc_hw_svcs pgr_gige_cameras.launch FrRCam:=false FrLCam:=false FrCam:=true BaRCam:=false BaLCam:=false BaCam:=false enableArduino:=false leaf_foxtrot:=true
+        Type: Software
+        LaunchTime: 3.0
+      - Name: Helm
+        Command: roslaunch nrc_perc_svcs helm_perc.launch
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -209,6 +215,10 @@ Subsystem:
         Command: roslaunch nrc_wm2_svcs leaf_pred.launch
         Type: Software
         LaunchTime: 1.0
+      - Name: WM_Compressor
+        Command: rosrun nrc_wm2_svcs wm_compressor
+        Type: Software
+        LaunchTime: 1.0
     Diagnostic:
       LED: 5
       Retry: 3
@@ -231,10 +241,6 @@ Subsystem:
         HealthName: GOALS
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /prm/risk_field/health
-        HealthName: RSKFLD
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
       - HealthTopic: /trajectory_planner/health
         HealthName: TRP
         HealthTopicType: DiagnosticArray
@@ -242,7 +248,7 @@ Subsystem:
       - HealthTopic: /trajectory_follower/health
         HealthName: TRC
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 100, 60, 10
+        NomWarnErrRate: 50, 3, 10
     Commands:
       - Name: RouteWaypoints
         Command: rosrun nrc_wm2_svcs multi_set_dest_repeater.py
@@ -255,7 +261,7 @@ Subsystem:
         Type: Software
         LaunchTime: 3.0
       - Name: Trajectory Planner
-        Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=LeafFS
+        Command: roslaunch nrc_ralp_svcs leaf_planner.launch
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -284,13 +290,17 @@ Subsystem:
         HealthName: SBAG
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /bmap_recorder/health
+        HealthName: BMAP
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: BAG
         Command: roslaunch nrc_av_ui record_separately.launch record_machine:=node02
         Type: Software
         LaunchTime: 3.0
       - Name: SNAP
-        Command: roslaunch nrc_av_ui snapshotPipeline.launch
+        Command: roslaunch nrc_av_ui snapshotPipeline.launch recordBmapData:=true
         Type: Software
         LaunchTime: 3.0
     Diagnostic:

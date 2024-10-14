@@ -7,6 +7,7 @@ Configuration:
   sendWm: 0
   sendSnapshots: 0
   broker: doris
+  imgTopic: /zed2i/zed_node/left_raw/image_raw_color
 
 ROSParams:
   vehicleFeeder/sourceMode: MODE_DYNAMIC_POSE
@@ -21,8 +22,8 @@ Subsystem:
   CAR:
     Type: Sensor
     Description: Vehicle CAN
-    Trigger: Startup or StartRequest
-      - Source: StartRequest
+    Trigger:
+      - Source: Startup
     HealthTopics:
       - HealthTopic: /CtrlStateFLG
         HealthName: CAR
@@ -44,7 +45,7 @@ Subsystem:
     Type: Sensor
     Description: Raw GPS
     Trigger:
-      - Source: StartRequest
+      - Source: Startup
     HealthTopics:
       - HealthTopic: /dynamic_global_pose_F9R
         HealthName: F9R
@@ -58,6 +59,10 @@ Subsystem:
         HealthName: PE
         HealthTopicType: DynamicPoseWithCovar
         NomWarnErrRate: 100, 80, 60
+      - HealthTopic: /dynamic_global_pose_10Hz
+        HealthName: DGP
+        HealthTopicType: DynamicPoseWithCovar
+        NomWarnErrRate: 10, 5, 2
     Commands:
       - Name: F9R
         Command: roslaunch nrc_hw_svcs f9r.launch
@@ -67,10 +72,15 @@ Subsystem:
         Command: roslaunch nrc_svcs leaf_tf_subsystem.launch sanborn:=true
         Type: Software
         LaunchTime: 1.0
-        - Name: Pose Estimator
+      - Name: Pose Estimator
         Command: roslaunch pose_estimator pose_estimator.launch
         Type: Software
         LaunchTime: 1.0
+      - Name: DGP_Throttle
+        Command: rosrun topic_tools throttle messages /dynamic_global_pose 10.0 /dynamic_global_pose_10hz
+        NodeName: DGP_10Hz
+        Type: Software
+        LaunchTime: 1
     Diagnostic:
       Retry: 3
       Timeout: 5
@@ -82,11 +92,16 @@ Subsystem:
     Type: Software
     Description: ROS traffic over MQTT
     Trigger:
-      - Source: StartRequest
+      - Source: Startup
     Commands:
-      - Name: ROS-MQTT-Bridge
-        Command: roslaunch $HOME/projects/fvla-vehiclepod/nrc_ws/src/mqtt-client-config/launch/standalone_local.launch params_file:="$HOME/projects/fvla-vehiclepod/nrc_ws/src/mqtt-client-config/fvla-dev/test2/params_local_ego_fvla.yaml"
-        NodeName: mqtt_client_local
+      - Name: MQTT-ROS
+        Command: rosrun ros_mqtt_parser mqtt_ros_node _config_file:=$(rospack find ros_mqtt_parser)/config/ego_config.yaml
+        NodeName: mqtt_ros_node
+        Type: Software
+        LaunchTime: 3.0
+      - Name: ROS-MQTT
+        Command: rosrun ros_mqtt_parser ros_mqtt_node _config_file:=$(rospack find ros_mqtt_parser)/config/ego_config.yaml
+        NodeName: ros_mqtt_node
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -100,7 +115,7 @@ Subsystem:
     Type: Algorithm
     Description: Trajectory Follower
     Trigger:
-      - Source: StartRequest
+      - Source: Startup
     HealthTopics:
       - HealthTopic: /vehicle_trajectory_control
         HealthName: TRJ
@@ -132,7 +147,7 @@ Subsystem:
     Type: Algorithm
     Description: Health Monitor
     Trigger:
-      - Source: StartRequest
+      - Source: Startup
     Commands:
       - Name: Start Health Monitor
         Command: roslaunch health-monitor vehicle_health.launch config_file:=$HOME/projects/fvla-vehiclepod/src/configs/health-monitor/Vehicle_HealthCheck.yaml
@@ -149,10 +164,19 @@ Subsystem:
     Type: Sensor
     Description: Camera streaming
     Trigger:
-      - Source: StartRequest
+      - Source: Startup
+    HealthTopics:
+      - HealthTopic: /zed2i/zed_node/left_raw/image_raw_color
+        HealthName: CAM
+        HealthTopicType: Image
+        NomWarnErrRate: 10, 6, 3
     Commands:
-      - Name: Start Camera
-        Command: bash ${HOME}/projects/fvla-vehiclepod/scripts/3_start_camera.sh 
+      - Name: Zed Camera
+        Command: roslaunch zed_wrapper zed2i.launch
+        Type: Software
+        LaunchTime: 3.0
+      - Name: Streaming
+        Command: bash ${HOME}/projects/fvla-vehiclepod/scripts/3_start_camera_zed.sh NRC_Leaf_Hotel
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -166,10 +190,10 @@ Subsystem:
     Type: Software
     Description: Telemetry over MQTT
     Trigger:
-      - Source: StartRequest
+      - Source: Startup
     Commands:
       - Name: Telemetry
-        Command: bash ${HOME}/projects/fvla-vehiclepod/scripts/3_start_telemetry.sh 
+        Command: bash ${HOME}/projects/fvla-vehiclepod/scripts/3_start_telemetry.sh NRC_Leaf_Hotel
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -183,7 +207,7 @@ Subsystem:
     Type: Software
     Description: Automated recorder
     Trigger:
-      - Source: StartRequest
+      - Source: Startup
     Commands:
       - Name: Start Recorder
         Command: bash ${HOME}/projects/fvla-vehiclepod/scripts/4_start_recording.sh

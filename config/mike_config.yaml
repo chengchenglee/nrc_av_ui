@@ -5,8 +5,8 @@ Configuration:
   printTimeDebug: 0
   useGui: 1
   sendWm: 1
-  sendSnapshots: 0
-  broker: ncal
+  sendSnapshots: 1
+  broker: emqx
 
 Subsystem:
   CAR:
@@ -92,7 +92,7 @@ Subsystem:
         NomWarnErrRate: 15, 9, 3
     Commands:
       - Name: Cubtek_eth_raw_left
-        Command: sudo $HOME/projects/nrc_ws/devel/lib/nrc_hw_svcs/pcap eno1 45161 #Left cubtek radar
+        Command: sudo $HOME/projects/nrc_ws/devel/lib/nrc_hw_svcs/pcap eno4 45161 #Left cubtek radar
         Type: Software
         LaunchTime: 2.0
       - Name: Cubtek_eth_raw_right
@@ -116,7 +116,7 @@ Subsystem:
       Retry: 3
       Timeout: 5
     Depends:
-      - Launch:
+      - Launch:CAR
         Run:
 
   InnovusionPCP:
@@ -151,7 +151,7 @@ Subsystem:
       Retry: 3
       Timeout: 5
     Depends:
-      - Launch: EYEQ5
+      - Launch:
         Run:
 
   WM:
@@ -178,7 +178,7 @@ Subsystem:
         NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: WM
-        Command: roslaunch nrc_wm2_svcs leaf_pred.launch
+        Command: roslaunch nrc_wm2_svcs leaf_pred.launch vehicleType:=SV_AiCC frontLidarOnly:=true
         Type: Software
         LaunchTime: 1.0
     Diagnostic:
@@ -186,7 +186,7 @@ Subsystem:
       Retry: 3
       Timeout: 5
     Depends:
-      - Launch: LUMPCP
+      - Launch: InnovusionPCP
         Run:
 
   PLAN:
@@ -203,17 +203,13 @@ Subsystem:
         HealthName: GOALS
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /prm/risk_field/health
-        HealthName: RSKFLD
+      - HealthTopic: /trajectory_planner/health
+        HealthName: TRP
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /lane_planner_state
-        HealthName: TRP
-        HealthTopicType: LanePlannerState
-        NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /lane_follower_state
+      - HealthTopic: /trajectory_follower/health
         HealthName: TRC
-        HealthTopicType: TrajectoryControllerState
+        HealthTopicType: DiagnosticArray
         NomWarnErrRate: 100, 60, 10
     Commands:
       - Name: RouteWaypoints
@@ -221,12 +217,12 @@ Subsystem:
         Type: Software
         LaunchTime: 3.0
       - Name: AutoGoals
-        Command: roslaunch nrc_wm2_svcs leaf_route.launch inclRoutePlanner:=true
-        NodeName: Route Planning
+        Command: roslaunch nrc_wm2_svcs leaf_route.launch
+        NodeName: AutoGoals_node
         Type: Software
         LaunchTime: 3.0
       - Name: Trajectory Planning
-        Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=LeafFS
+        Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=AriyaFS
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -260,10 +256,10 @@ Subsystem:
         Command: roslaunch nrc_av_ui record_separately_mike.launch
         Type: Software
         LaunchTime: 3.0
-      #- Name: SNAP
-        #Command: roslaunch nrc_av_ui snapshotPipeline.launch
-        #Type: Software
-        #LaunchTime: 3.0
+      - Name: SNAP
+        Command: roslaunch nrc_av_ui snapshotPipeline.launch car:=Mike
+        Type: Software
+        LaunchTime: 3.0
     Diagnostic:
       LED: 7
       Retry: 0
