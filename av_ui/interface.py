@@ -5,6 +5,7 @@ import os
 from nrc_msgs.msg import FailureModeRequest
 from subsystem import Subsystem
 import rospy
+import subprocess
 #from MultiSetDest import MultiSetDest
 #from MultiSetDest import MULTI_DEST_LIST
 
@@ -63,6 +64,11 @@ class Interface:
     else:
       self.selectedMap = newName
       print ('New map name selected is ',self.selectedMap)
+      rospy.set_param('/map_name', newName)
+      # paramsForMap.sh will go away soon - MetricMapManager
+      # will use names from the menus to capture
+      # any specific parameter combinations required.
+      # Once this is done, the set_param() call above will be sufficient
       os.system("rosrun nrc_av_ui paramsForMap.sh "+newName)
   
   def setupWindow(self, agent):
@@ -171,9 +177,18 @@ class Interface:
 
     # use global map_name - global mapsel controls the menu selection
     mapsel = Tkinter.StringVar(allLaunchFrame);
-   
-    map_options = ['Sanborn2019MMv24','Sanborn2020PNHv2','Sanborn2022BRv2','MiniMap','SC_Cached','SanMiguel_Cached','Noe.set','Franklin.set','THill_Cached']
-    
+
+    # some people are not using workspace nrc_ws, so
+    # put workspace in one variable and try to use it
+    nrcWsPath = os.path.join(os.path.expanduser("~"), 'projects/nrc_ws')
+    mapMenuExePath = nrcWsPath + '/devel/lib/maav_algo/MapManager'
+    map_options = []
+    if os.path.isfile(mapMenuExePath) and os.access(mapMenuExePath, os.X_OK):
+      output = subprocess.check_output([mapMenuExePath,'--menu'])
+      map_options = output.decode().splitlines()
+    else:
+      map_options = ['Sanborn2019MMv24','Sanborn2020PNHv2','MiniMap','SC_Cached','SanMiguel_Cached','Noe.set','Franklin.set','THill_Cached','SCTile']
+
     try:
       check_map_name = rospy.get_param('/map_name')
       if (check_map_name in map_options):
