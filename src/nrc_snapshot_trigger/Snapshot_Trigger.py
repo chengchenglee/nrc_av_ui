@@ -209,7 +209,8 @@ class CsvWriterAVinterface:
             # This way the writeTime and future horizon will get extended beyond the last trigger that happened.
             # Basically, if any trigger happens within the future horizon, then the future horizon is reinitialized and then recalculated when there is 
             # no active trigger anymore.
-            anyTriggersStillActive = bool(self.brk_acc.BRK.override or self.brk_acc.ACC.override or self.soft_evnt.softwareEventTrig or self.left_right.Right.turnSignalActive or
+            swTriggerActive = abs(time.time() - self.soft_evnt.lastMsgReceived) < 0.5
+            anyTriggersStillActive = bool(self.brk_acc.BRK.override or self.brk_acc.ACC.override or swTriggerActive or self.left_right.Right.turnSignalActive or
                                           self.left_right.Left.turnSignalActive)
 
             if anyTriggersStillActive:
@@ -447,11 +448,7 @@ class CsvWriterAVinterface:
         if self.soft_evnt.softwareEventTrigName != '':
             self.soft_evnt.softwareEventTrig = True
             self.soft_evnt.softwareEventTrig_waitForTimerCallback = True
-        else:
-            if not self.soft_evnt.softwareEventTrig_waitForTimerCallback:
-                self.soft_evnt.softwareEventTrig = False
-            
-
+            self.soft_evnt.lastMsgReceived = time.time()
 
     def listener(self):
         rospy.Subscriber('/software_event_trigger', String, self.SoftwareEventTriggerCallback)
@@ -466,8 +463,6 @@ class CsvWriterAVinterface:
 
         while not rospy.is_shutdown():
             rospy.sleep(1)  # sleep for one second.
-        
-
         
 if __name__ == '__main__':
     print ('Starting Snapshot Trigger node.')

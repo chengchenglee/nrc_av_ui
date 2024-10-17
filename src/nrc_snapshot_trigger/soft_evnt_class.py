@@ -18,6 +18,7 @@ class SOFT_EVNT_CLASS:
         self.softwareEventTrig_startTime = 0
         self.softwareEventTrig_startPose = None
         self.softwareEventTrigName = ''
+        self.lastMsgReceived = 0.
 
         
     def process_softwareEventTrig(self, wasAutonomous, writeSnapshot, detailsDict, currentPose):

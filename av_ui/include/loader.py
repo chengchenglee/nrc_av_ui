@@ -3,9 +3,9 @@
 import rospy
 import sys
 
-from subsystem import Subsystem
-from monitor import Monitor
-from command import Command
+from include.subsystem import Subsystem
+from include.monitor import Monitor
+from include.command import Command
 
 from std_msgs.msg import *
 from sensor_msgs.msg import *
