@@ -90,7 +90,7 @@ Subsystem:
       Timeout: 5
       File:
     Depends:
-      - Launch: Sim
+      - Launch:
         Run:
 
   Goals:
@@ -148,5 +148,5 @@ Subsystem:
       Retry: 3
       Timeout: 5
     Depends:
-      - Launch: Goals
+      - Launch:
         Run:
