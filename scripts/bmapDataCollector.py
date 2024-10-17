@@ -8,7 +8,7 @@ import numpy as np
 from nrc_msgs.msg import CtrlStateFLG
 from nrc_msgs.msg import CANVReader
 from nrc_msgs.msg import DriverInput
-from nrc_msgs.msg import DynamicPoseWithCovar, TrackedObject, TrackedObjectSet
+from nrc_msgs.msg import DynamicPoseWithCovar, GpsState, TrackedObject, TrackedObjectSet
 import tf.transformations
 
 import time
@@ -46,6 +46,11 @@ class BmapHistRecorder:
     self.egoX  = 0
     self.egoY  = 0
     self.egoTh = 0
+    self.posFixInd = 5 # default RTK float
+    self.HDOP = 2      # default 2m
+    self.msgVersion = 1.1
+    
+    # Version 1.1: Add gps fix, gps HDOP
     
     # Places where we don't want to record
     self.exclPoses = []
@@ -61,6 +66,7 @@ class BmapHistRecorder:
     self.dataPub   = rospy.Publisher('/bmap_recorder/data', String, queue_size=10)
     
     rospy.Subscriber('/gps_state/dynamic_global_pose_oxts', DynamicPoseWithCovar, self.dgpCallback)
+    rospy.Subscriber('/gps_state/gps_state_oxts_2hz', GpsState, self.gpsStateCallback)
     rospy.Subscriber('/pc_processor/multi_object_tracker/tracked_object_set', TrackedObjectSet, self.tosCallback)
     rospy.Subscriber('/CAN_V_reader', CANVReader, self.CanVCallback)
     rospy.Subscriber('/CtrlStateFLG', CtrlStateFLG, self.ctrlStateCallback)
@@ -146,7 +152,8 @@ class BmapHistRecorder:
     # Check if delete or publish object track
     oldTracks = self.objHist
     self.objHist = []
-    objStr = ''
+    objStr = 'v,'+str(self.msgVersion)+'\n'
+    publishString = False
     for trkObj in oldTracks:
       dt = tNow - trkObj[-1].t
       if dt > 2.0:
@@ -155,11 +162,12 @@ class BmapHistRecorder:
         dist = np.sqrt(dx*dx + dy*dy)
         if dist > 20.:
           objStr += self.toString(trkObj)
+          publishString = True
       else:
         self.objHist.append(trkObj)
     
     # Publish data
-    if len(objStr) > 0:
+    if publishString:
       #print('Publish objects',objStr)
       dataMsg = String()
       dataMsg.data = objStr
@@ -209,13 +217,19 @@ class BmapHistRecorder:
       dataMsg = String()
       
       if self.inExclusionZone == False:
-        dataMsg.data = 'ego,t,avOn,turnSig,x,y,th,'
+        dataMsg.data = 'v,'+str(self.msgVersion)+'\n'
+        dataMsg.data += 'ego,t,avOn,turnSig,x,y,th,v,w,fix,hdop,'
         dataMsg.data += str(msg.header.stamp.to_sec())+','
         dataMsg.data += str(self.avEngaged)+','+str(self.turnSigState)+','
         dataMsg.data += str(round(xyth[0]*100)/100)+','+str(round(xyth[1]*100)/100)+','+str(round(xyth[2]*10000)/10000)+','
-        dataMsg.data += str(spd)+','+str(yawRate)
+        dataMsg.data += str(spd)+','+str(yawRate)+','
+        dataMsg.data += str(self.posFixInd)+','+str(self.HDOP)+','
         self.dataPub.publish(dataMsg)
       self.prevDgpPose = xyth
+      
+  def gpsStateCallback(self,msg):
+    self.posFixInd = msg.Pos_Fix_ind
+    self.HDOP = msg.HDOP
       
   def CanVCallback(self,msg):
     tNow = time.time()
