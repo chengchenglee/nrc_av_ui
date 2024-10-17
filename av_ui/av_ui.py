@@ -3,7 +3,7 @@
 import os
 import signal # Catch ctrl-c
 import sys
-from RoscoreObj import *
+from include.RoscoreObj import *
 
 from avagent import AvAgent
 from interface import Interface

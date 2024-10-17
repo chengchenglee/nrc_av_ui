@@ -3,10 +3,10 @@
 import json, ast
 from collections import OrderedDict
 import time
-from wmStatus import WmStatus
-from heartbeat_msg_defs import HeartbeatData
-from waypoints_msg_defs import WaypointData
-from ffmpeg_msg_defs import ImgStreamData
+from include.wmStatus import WmStatus
+from msgs.heartbeat_msg_defs import HeartbeatData
+from msgs.waypoints_msg_defs import WaypointData
+from msgs.ffmpeg_msg_defs import ImgStreamData
 from msgs.teleop_msg_defs import TeleopEntry, TeleopCmdData
 
 class MonitoredProcess:
