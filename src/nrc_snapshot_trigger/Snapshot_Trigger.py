@@ -51,12 +51,9 @@ class CsvWriterAVinterface:
         self.wasAutonomous = False
         self.writeSnapshot = False
         self.writeTime = 0
-        self.prefixList = []
-        self.durationList = []
-        self.startTimeList = []
+        self.detailsDict = {'prefixList': [], 'durationList': [], 'startTimeList': [], 'distanceList': []}
         self.snapshotUpdated = False
         self.filename = ''
-        #self.csvDir = os.path.join(os.path.expanduser("~"), 'projects/disengagementData/bags/', time.strftime("%Y-%m-%d"))
         self.csvDir = os.path.join(os.path.expanduser("~"), '/opt/data/snapshots/', time.strftime("%Y-%m-%d"))
         print("csvDir:",self.csvDir)
         dirExists = os.path.isdir(self.csvDir)
@@ -72,6 +69,7 @@ class CsvWriterAVinterface:
         self.snapshotFutureDistanceTraveled = 0.0 # How much distance we traveled since the trigger
         self.snapshotDefaultFutureTimeHorizon = 20.0 # seconds
         self.snapshotMaxFutureTimeHorizon = 45.0 # seconds
+        
         # Record the past horizon at the time of trigger
         self.startedRecordingSnapshot = False
         self.triggerPastHorizon = self.snapshotDefaultPastTimeHorizon
@@ -99,11 +97,11 @@ class CsvWriterAVinterface:
         self.inExclusionZone = False
         for point in self.exclPoses:
             exclPose = np.zeros((3,3))
-            exclPose[0,0] =  np.cos(point[2])
-            exclPose[0,1] =  np.sin(point[2])
+            exclPose[0,0] = np.cos(point[2])
+            exclPose[0,1] = np.sin(point[2])
             exclPose[1,0] = -np.sin(point[2])
-            exclPose[1,1] =  np.cos(point[2])
-            exclPose[2,2] =  1
+            exclPose[1,1] = np.cos(point[2])
+            exclPose[2,2] = 1
             exclPose[0,2] = point[0]
             exclPose[1,2] = point[1]
             exclPoseInv = np.linalg.inv(exclPose)
@@ -123,7 +121,7 @@ class CsvWriterAVinterface:
     def timerCallback(self, data):            # Interval decided by timerInterval.
         
         if self.avEngaged and self.inExclusionZone == False:
-            if (not self.brk_acc.BRK_Override) and (not self.brk_acc.ACC_Override):
+            if (not self.brk_acc.BRK.override) and (not self.brk_acc.ACC.override):
                 self.avEngagedTimer += self.timerInterval
         else:
             self.avEngagedTimer = 0.0
@@ -153,38 +151,53 @@ class CsvWriterAVinterface:
         # the timerCallback function. This forces the override flags to stay high till the control reaches back to 
         # the timerCallback function so that they can get recorded in the snapshots.
         
-        self.brk_acc.BRK_Override_waitForTimerCallback = False
-        self.brk_acc.ACC_Override_waitForTimerCallback = False
-        #self.brk_acc.snapButtonTrig_waitForTimerCallback = False
+        self.brk_acc.BRK.override_waitForTimerCallback = False
+        self.brk_acc.ACC.override_waitForTimerCallback = False
+
         self.soft_evnt.softwareEventTrig_waitForTimerCallback = False
         
        
-        self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList = self.brk_acc.process_BRK_Override(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList)
-        self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList = self.brk_acc.process_ACC_Override(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList)
-        #self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList = self.brk_acc.process_snapButtonTrig(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList)
+        self.writeSnapshot, self.detailsDict = self.brk_acc.BRK.process_override(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose)
+        self.writeSnapshot, self.detailsDict = self.brk_acc.ACC.process_override(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose)
         
-        self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList = self.soft_evnt.process_softwareEventTrig(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList)
+        self.writeSnapshot, self.detailsDict = self.soft_evnt.process_softwareEventTrig(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose)
         
-        # Turns and lane changes are included in the snapshots only if there are some desired tracked objects 
-        # present near the AV during the beginning of the turn or lane change.
-        self.left_right.updateTurnSignalTrigR(self.timerInterval, self.yaw)
-        self.left_right.updateTurnSignalTrigL(self.timerInterval, self.yaw)
-        self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList = self.left_right.process_turnSignalTrigR(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList, \
-                                                                                                                             self.currentPose, self.trackedObjList)
-        self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList = self.left_right.process_turnSignalTrigL(self.wasAutonomous, self.writeSnapshot, self.prefixList, self.durationList, self.startTimeList, \
-                                                                                                                             self.currentPose, self.trackedObjList)
-        
+        ## Turns and lane changes are included in the snapshots only if there are some desired tracked objects 
+        ## present near the AV during the beginning of the turn or lane change.
+        #self.writeSnapshot, self.detailsDict = self.left_right.Right.processSignal(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose, self.trackedObjList, self.timerInterval, self.yaw)
+        #self.writeSnapshot, self.detailsDict = self.left_right.Left.processSignal(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose, self.trackedObjList, self.timerInterval, self.yaw)
 
-        #print(self.prefixList)
+
+
+        #print(self.detailsDict['prefixList'])
         
         
         # Calculating the start time for this snapshot.
         if self.writeSnapshot:
-            # If just triggered the snapshot then record past horizon length
+            # If just triggered the snapshot then record past horizon length.
             if self.startedRecordingSnapshot == False:
                 self.startedRecordingSnapshot = True
+                
+                # Snapshot is triggered after the trigger is deactivated and the condiditons for recording snapshots (like wasAutonomous was active all the way through during the trigger) 
+                # is valid or not. But if the condiditons are valid then the snapshot timings and distances should be accounted for from the instance at the beginning of the trigger.
+                # Hence the writetime and the snapshotPasthorizon are modified to cater to the beginning of the trigger.
+                
+                # The starttimes of the triggers are recorded in startTimeList, so to incorporate all the triggers, we check the earliest starttime among the startTimeList.
+                indexOfMinStartTime = self.detailsDict['startTimeList'].index(min(self.detailsDict['startTimeList']))
                 self.triggerPastHorizon = max(self.snapshotPastDistanceHorizonTimeDiff, self.snapshotDefaultPastTimeHorizon)
-                self.snapshotStartTime = rospy.Time.now() - rospy.Duration(self.triggerPastHorizon) # Where the snapshot starts from, not the trigger time
+                
+                # Now the startedRecordingSnapshot flag is triggered after a trigger has completely happened. But the starttime of the snapshot will be from the 
+                # instance before the trigger started and should also include the past time and distance horizon. 
+                # So the duration of the triggerPastHorizon and the duration of the first trigger are subtracted from the current time instance to calculate the 
+                # start time of the trigger.
+                # Where the snapshot starts from, not the trigger time.
+                self.snapshotStartTime = rospy.Time.now() - rospy.Duration(self.triggerPastHorizon) - rospy.Duration(self.detailsDict['durationList'][indexOfMinStartTime])
+                
+                # The writeTime of the snapshot should also now include the duration of the first trigger (which has already happened completely).
+                self.writeTime = self.detailsDict['durationList'][indexOfMinStartTime]
+                
+                # The future distance travelled should now also include the distance the av has travelled after since the beginning of the first trigger.
+                self.snapshotFutureDistanceTraveled = self.detailsDict['distanceList'][indexOfMinStartTime]
                 
             self.writeTime += self.timerInterval
 
@@ -196,12 +209,15 @@ class CsvWriterAVinterface:
             # This way the writeTime and future horizon will get extended beyond the last trigger that happened.
             # Basically, if any trigger happens within the future horizon, then the future horizon is reinitialized and then recalculated when there is 
             # no active trigger anymore.
-            anyTriggersStillActive = bool(self.brk_acc.BRK_Override or self.brk_acc.ACC_Override or self.soft_evnt.softwareEventTrig or self.left_right.turnSignalActiveR or
-                                          self.left_right.turnSignalActiveL)
+            anyTriggersStillActive = bool(self.brk_acc.BRK.override or self.brk_acc.ACC.override or self.soft_evnt.softwareEventTrig or self.left_right.Right.turnSignalActive or
+                                          self.left_right.Left.turnSignalActive)
 
             if anyTriggersStillActive:
-                self.writeTime = 0
-                self.snapshotFutureDistanceTraveled = 0.0
+                # Reset the writeTime and the snapshotFutureDistanceTraveled to the value of the first trigger, if there are more triggers active still.
+                # This is how the snapshot is extended.
+                indexOfMinStartTime = self.detailsDict['startTimeList'].index(min(self.detailsDict['startTimeList']))
+                self.writeTime = self.detailsDict['durationList'][indexOfMinStartTime]
+                self.snapshotFutureDistanceTraveled = self.detailsDict['distanceList'][indexOfMinStartTime]
             
             
         # Create and publish health message
@@ -229,7 +245,7 @@ class CsvWriterAVinterface:
             
         
             timeStamp = time.strftime('%Y-%m-%d-%H-%M-%S')      # Used to create the filename to save txt and bag files.
-            #prefix = '_'.join(self.prefixList)
+            #prefix = '_'.join(self.detailsDict['prefixList'])
             #self.filename = '{}_{}'.format(timeStamp, prefix)
             self.filename = '{}_snapshot'.format(timeStamp)
 
@@ -261,14 +277,11 @@ class CsvWriterAVinterface:
             except:
                 print("rosbag_snapshot package not found. Please install to record disengagement/override snapshot bagfiles")
                 
-            write_json.create_json_file(self.csvDir, self.filename, self.snapshotStartTime, self.avEngaged_startTimeList, self.avEngaged_stopTimeList, \
-                                        self.prefixList, self.durationList, self.startTimeList)
+            write_json.create_json_file(self.csvDir, self.filename, self.snapshotStartTime, self.avEngaged_startTimeList, self.avEngaged_stopTimeList, self.detailsDict)
 
             self.writeSnapshot = False
             self.writeTime = 0
-            self.prefixList = []
-            self.startTimeList = []
-            self.durationList = []
+            self.detailsDict = {'prefixList': [], 'durationList': [], 'startTimeList': [], 'distanceList': []}
             self.avEngaged_startTimeList = []
             self.avEngaged_stopTimeList = []
 
@@ -330,20 +343,6 @@ class CsvWriterAVinterface:
 
         self.lastPose = msg
 
-
-    #def DriverMarkerButtonCallback(self, data):
-        #'''
-        #The data in this callback has a value of 2 when the snapbutton is used 
-        #to trigger recording a snapshot. The snapbutton has multiple usage, so 
-        #other values will be for other purposes.
-        #'''
-        #if len(data.data) > 1:
-            #if data.data[1] == 2:
-                #self.brk_acc.snapButtonTrig = True
-                #self.brk_acc.snapButtonTrig_waitForTimerCallback = True
-            #else:
-                #if not self.brk_acc.snapButtonTrig_waitForTimerCallback:
-                    #self.brk_acc.snapButtonTrig = False
                     
         
     def CtrlStateFLGcallback(self, data):
@@ -353,22 +352,22 @@ class CsvWriterAVinterface:
         being zero when the trigger is no longer there.
         '''
         if bool(data.BRK_Override):
-            self.brk_acc.BRK_Override = True
-            self.brk_acc.BRK_Override_waitForTimerCallback = True
+            self.brk_acc.BRK.override = True
+            self.brk_acc.BRK.override_waitForTimerCallback = True
         else:
-            if not self.brk_acc.BRK_Override_waitForTimerCallback:
-                self.brk_acc.BRK_Override = False
+            if not self.brk_acc.BRK.override_waitForTimerCallback:
+                self.brk_acc.BRK.override = False
 
-        #self.brk_acc.BRK_Override = bool(data.BRK_Override)
+        #self.brk_acc.BRK.override = bool(data.BRK_Override)
 
         if bool(data.ACC):
-            self.brk_acc.ACC_Override = True
-            self.brk_acc.ACC_Override_waitForTimerCallback = True
+            self.brk_acc.ACC.override = True
+            self.brk_acc.ACC.override_waitForTimerCallback = True
         else:
-            if not self.brk_acc.ACC_Override_waitForTimerCallback:
-                self.brk_acc.ACC_Override = False
+            if not self.brk_acc.ACC.override_waitForTimerCallback:
+                self.brk_acc.ACC.override = False
 
-        #self.brk_acc.ACC_Override = bool(data.ACC)
+        #self.brk_acc.ACC.override = bool(data.ACC)
 
         if self.checkEngaged == True:
             self.avEngaged = bool(data.Engaged)
@@ -383,23 +382,23 @@ class CsvWriterAVinterface:
         being zero when the trigger is no longer there.
         '''
         #if self.car == "Mike":
-            #self.brk_acc.BRK_Override = bool(data.is_driver_accel)
-            #self.brk_acc.ACC_Override = bool(data.is_driver_brake)
+            #self.brk_acc.BRK.override = bool(data.is_driver_accel)
+            #self.brk_acc.ACC.override = bool(data.is_driver_brake)
 
         if self.car == "Mike":
             if bool(data.is_driver_accel):
-                self.brk_acc.BRK_Override = True
-                self.brk_acc.BRK_Override_waitForTimerCallback = True
+                self.brk_acc.BRK.override = True
+                self.brk_acc.BRK.override_waitForTimerCallback = True
             else:
-                if not self.brk_acc.BRK_Override_waitForTimerCallback:
-                    self.brk_acc.BRK_Override = False
+                if not self.brk_acc.BRK.override_waitForTimerCallback:
+                    self.brk_acc.BRK.override = False
 
             if bool(data.is_driver_brake):
-                self.brk_acc.ACC_Override = True
-                self.brk_acc.ACC_Override_waitForTimerCallback = True
+                self.brk_acc.ACC.override = True
+                self.brk_acc.ACC.override_waitForTimerCallback = True
             else:
-                if not self.brk_acc.ACC_Override_waitForTimerCallback:
-                    self.brk_acc.ACC_Override = False
+                if not self.brk_acc.ACC.override_waitForTimerCallback:
+                    self.brk_acc.ACC.override = False
 
 
     def CAN_V_readerCallback(self, data):
@@ -412,14 +411,14 @@ class CsvWriterAVinterface:
         
         # Separate turn signal indicators are created for the left and right turns.
         if val == 0:
-            self.left_right.turnSignalValR = False
-            self.left_right.turnSignalValL = False
+            self.left_right.Right.turnSignalVal = False
+            self.left_right.Left.turnSignalVal = False
         elif val == 1:
-            self.left_right.turnSignalValR = False
-            self.left_right.turnSignalValL = True
+            self.left_right.Right.turnSignalVal = False
+            self.left_right.Left.turnSignalVal = True
         elif val == 2:
-            self.left_right.turnSignalValR = True
-            self.left_right.turnSignalValL = False
+            self.left_right.Right.turnSignalVal = True
+            self.left_right.Left.turnSignalVal = False
 
         if self.car == "Mike":
             self.avEngaged = bool(data.Switch_MAIN)
@@ -459,7 +458,6 @@ class CsvWriterAVinterface:
         rospy.Subscriber('/dynamic_global_pose', DynamicPoseWithCovar, self.poseCallback)
         rospy.Subscriber('/ailsv_tracked_objects', TrackedObjectSet, self.trackedObjCallback)
         rospy.Subscriber('/CtrlStateFLG', CtrlStateFLG, self.CtrlStateFLGcallback)
-        #rospy.Subscriber('/ard_state', Int16MultiArray, self.DriverMarkerButtonCallback)
 
         rospy.Subscriber('/CAN_V_reader', CANVReader, self.CAN_V_readerCallback)
         

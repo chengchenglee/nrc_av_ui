@@ -118,6 +118,7 @@ class AvAgent:
     self.pose10hzSub = rospy.Subscriber("/dynamic_global_pose_10Hz",DynamicPoseWithCovar,self.pose10hz_callback,queue_size=1)
     self.gps2hzSub   = rospy.Subscriber("/gps_state/gps_state_oxts_2hz",GpsState,self.gps2hz_callback,queue_size=1)
     self.wmStringSub = rospy.Subscriber("/WmCompressor/wm_string",String,self.compressed_wm_callback,queue_size=1)
+
     if self.sendWm == 1: 
       self.wmStatusSub = rospy.Subscriber(self.wmTopic, TrackedObjectSet, self.parseWmMsg, queue_size = 1)
     
@@ -131,6 +132,7 @@ class AvAgent:
     self.cloud.init()
     qos = 1
     self.cloud.subscribe(['cmd/'+self.name+'/remote'],qos)
+    self.cloud.subscribe(['cmdOnce/'+self.name+'/remote'],2) # Used by FVLA telematics dashboard
     self.cloud.subscribe(['cmd/'+self.name+'/teleop'],qos)
     self.cloud.subscribe(['snp/remote_server/heartbeat'],qos)
     self.cloud.subscribe(['snp/'+self.name+'/resPartList'],qos)
@@ -161,8 +163,8 @@ class AvAgent:
     self.compressed_wm_string.append(msg)
 
   def gps2hz_callback(self,msg):
-    self.heartbeat.lat = msg.Latitude
-    self.heartbeat.lon = msg.Longitude
+    self.heartbeat.lat.value = msg.Latitude
+    self.heartbeat.lon.value = msg.Longitude
     
   def nextMsgCount(self):
     self.mqttMsgCount += 1
@@ -379,11 +381,11 @@ class AvAgent:
           if len(lineData) >= 3 and lineData[0] == 's':
             for s in self.subsystems:
               cmd = lineData[2]
-              #if s.name == lineData[1]:
-                #if cmd == '0' or cmd == '1':
-                  #if s.shouldBeStarted != int(cmd):
+              if s.name == lineData[1]:
+                if cmd == '0' or cmd == '1':
+                  if s.shouldBeStarted != int(cmd):
                     #print("Remote cmd:",s.name, int(cmd))
-                    #s.shouldBeStarted = int(cmd)
+                    s.shouldBeStarted = int(cmd)
           elif len(lineData) >= 2 and lineData[0] == 'w':
             if int(lineData[1]) == 1:
               self.remoteWmDisplayLastReq = time.time()

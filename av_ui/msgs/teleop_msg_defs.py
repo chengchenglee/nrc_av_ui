@@ -118,6 +118,9 @@ class TeleopCmdData:
         m.pose.orientation.x = cmd.values[POS_V_IDX]
         m.pose.orientation.y = cmd.values[POS_W_IDX]
         ma.markers.append(m)
+      elif cmd.teleopType == 'STOP':
+        m.text = cmd.teleopType
+        ma.markers.append(m)
     
     return ma
         
