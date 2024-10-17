@@ -82,7 +82,9 @@
   |/autoGoals_debug
   |/lead_vehicle
   |/prm/reference_path_data
-  |/prm/osp_constraints_lv_ids"/>
+  |/prm/osp_constraints_lv_ids
+  |/mspf_waypoints
+  |/driver_route_state"/>
 
   <arg name="cubtek_topics"
   default="/cubtek_PC_rviz_R
