@@ -11,6 +11,7 @@ from msgs.heartbeat_msg_defs import HeartbeatData
 from msgs.telemetry_msg_defs import TelemetryData
 from msgs.waypoints_msg_defs import WaypointData
 from msgs.teleop_msg_defs import TeleopCmdData
+from msgs.ffmpeg_msg_defs import ImgStreamData
 
 # Ros messages
 from nrc_msgs.msg import InterventionRequest
@@ -40,7 +41,6 @@ from PIL import Image
 ffmpegTransportExists = True
 try:
   from ffmpeg_image_transport_msgs.msg import FFMPEGPacket
-  from ffmpeg_msg_defs import ImgStreamData
 except ImportError:
   ffmpegTransportExists = False
 
@@ -124,11 +124,13 @@ class AvAgent:
     if self.sendWm == 1: 
       self.wmStatusSub = rospy.Subscriber(self.wmTopic, TrackedObjectSet, self.parseWmMsg, queue_size = 1)
     
-    if ffmpegTransportExists:
+    self.imgStreamData  = ImgStreamData()
+    #if ffmpegTransportExists:
       #self.imgStreamSub   = rospy.Subscriber("/tower_cam_front/stream/ffmpeg", FFMPEGPacket,              self.sendImgStreamPkt, queue_size = 1)
-      self.imgFrameSub    = rospy.Subscriber(self.imgTopic, CompressedImage , self.sendImgFramePkt, queue_size = 1)
-      self.imgStreamData  = ImgStreamData()
-      print('Subscribed to ffmpeg packets.')
+    #  print('Subscribed to ffmpeg packets.')
+    #else:
+    self.imgFrameSub    = rospy.Subscriber(self.imgTopic, CompressedImage , self.sendImgFramePkt, queue_size = 1)
+    print('Subscribed to jpeg packets: ',self.imgTopic)
 
     # Setup mqtt publishers and subscribers
     self.cloud.init()

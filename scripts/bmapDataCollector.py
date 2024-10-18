@@ -57,6 +57,18 @@ class BmapHistRecorder:
     self.exclPoses.append([4870.25,-2212.87,0.0194033,75.0,17.0])  #SVPG
     self.inExclusionZone = True
     
+    self.exclPoseInvs = []
+    for point in self.exclPoses:
+      exclPose = np.zeros((3,3))
+      exclPose[0,0] =  np.cos(point[2])
+      exclPose[0,1] =  np.sin(point[2])
+      exclPose[1,0] = -exclPose[0,1]
+      exclPose[1,1] =  exclPose[0,0]
+      exclPose[2,2] =  1
+      exclPose[0,2] = point[0]
+      exclPose[1,2] = point[1]
+      self.exclPoseInvs.append([np.linalg.inv(exclPose),point[3],point[4]])
+    
     self.diagMsg = DiagnosticArray()
     diagStatus = DiagnosticStatus()
     self.diagMsg.status.append(diagStatus)
@@ -65,7 +77,7 @@ class BmapHistRecorder:
     self.healthPub = rospy.Publisher('/bmap_recorder/health', DiagnosticArray, queue_size=10)
     self.dataPub   = rospy.Publisher('/bmap_recorder/data', String, queue_size=10)
     
-    rospy.Subscriber('/gps_state/dynamic_global_pose_oxts', DynamicPoseWithCovar, self.dgpCallback)
+    rospy.Subscriber('/gps_state/dynamic_global_pose_oxts_10hz', DynamicPoseWithCovar, self.dgpCallback)
     rospy.Subscriber('/gps_state/gps_state_oxts_2hz', GpsState, self.gpsStateCallback)
     rospy.Subscriber('/pc_processor/multi_object_tracker/tracked_object_set', TrackedObjectSet, self.tosCallback)
     rospy.Subscriber('/CAN_V_reader', CANVReader, self.CanVCallback)
@@ -130,6 +142,7 @@ class BmapHistRecorder:
     
     for msgObj in msg.objects:
       if msgObj.object_id >=10000: continue
+      if msgObj.classification < 3: continue
       foundObj = False
       for trkObj in self.objHist:
         if msgObj.object_id == trkObj[0].objId:
@@ -176,26 +189,28 @@ class BmapHistRecorder:
   def updateExclZone(self,msg):
     # Check if we're in an exclusion zone
     self.inExclusionZone = False
-    for point in self.exclPoses:
-      exclPose = np.zeros((3,3))
-      exclPose[0,0] =  np.cos(point[2])
-      exclPose[0,1] =  np.sin(point[2])
-      exclPose[1,0] = -np.sin(point[2])
-      exclPose[1,1] =  np.cos(point[2])
-      exclPose[2,2] =  1
-      exclPose[0,2] = point[0]
-      exclPose[1,2] = point[1]
-      exclPoseInv = np.linalg.inv(exclPose)
+    #for point in self.exclPoses:
+      #exclPose = np.zeros((3,3))
+      #exclPose[0,0] =  np.cos(point[2])
+      #exclPose[0,1] =  np.sin(point[2])
+      #exclPose[1,0] = -exclPose[0,1]
+      #exclPose[1,1] =  exclPose[0,0]
+      #exclPose[2,2] =  1
+      #exclPose[0,2] = point[0]
+      #exclPose[1,2] = point[1]
+      #exclPoseInv = np.linalg.inv(exclPose)
+      
+    for invPose in self.exclPoseInvs:
       
       egoPoint = np.zeros((3,1))
       egoPoint[0,0] = msg.pose.position.x
       egoPoint[1,0] = msg.pose.position.y
       egoPoint[2,0] = 1
       
-      relPoint = np.dot(exclPoseInv,egoPoint)
-      if abs(relPoint[0,0]) < point[3] and abs(relPoint[1,0]) < point[4]:
+      relPoint = np.dot(invPose[0],egoPoint)
+      if abs(relPoint[0,0]) < invPose[1] and abs(relPoint[1,0]) < invPose[2]:
         self.inExclusionZone = True
-        #print('In exclusion zone',round(relPoint[0,0]*10)/10,round(relPoint[1,0]*10)/10)
+        print('In exclusion zone',round(relPoint[0,0]*10)/10,round(relPoint[1,0]*10)/10)
   
   def dgpCallback(self,msg):
     # Places we don't want to record

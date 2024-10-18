@@ -86,7 +86,6 @@ class ImgStreamData:
     self.msgCount += 1
     if self.msgCount >= 100: self.msgCount = 1
     
-    #print('\nParse img stream data')
     headerStr = ''
     headerVec = []
     commaCount = 0

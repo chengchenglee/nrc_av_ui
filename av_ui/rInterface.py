@@ -3,7 +3,7 @@
 import sys, os, subprocess
 import time
 import numpy as np
-from numpy.linalg import inv
+#from scipy.linalg import inv
 import cv2
 
 # av agent includes
@@ -500,7 +500,6 @@ class Interface:
       #self.ffmpegProcess.stdin.close() # close stdin (flush and send EOF)
       #self.ffmpegProcess.stdin.wait() # close stdin (flush and send EOF)
       #time.sleep(0.2)
-      print('Done process frame: ', len(imgStreamData.ffmpegPkt))
       
       in_bytes = ''
       try:
