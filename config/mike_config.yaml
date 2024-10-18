@@ -19,6 +19,10 @@ Subsystem:
         HealthName: CAR
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /ard_state
+        HealthName: ARD
+        HealthTopicType: Int16MultiArray
+        NomWarnErrRate: 10, 8, 1
       - HealthTopic: /pmu_state
         HealthName: PMU
         HealthTopicType: Int16MultiArray
@@ -28,6 +32,10 @@ Subsystem:
         Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=5 CanAriyaSvITS3Consumer:=true CanAriyaSvITS3ConsumerCh:=0 CanAriyaSvITS4Consumer:=true CanAriyaSvITS4ConsumerCh:=1 CanAriyaSvITS5Consumer:=true CanAriyaSvITS5ConsumerCh:=3  CanAriyaSvWriter:=true CanAriyaSvWriterCh:=2 Eyeq5DevCh0:=true Eyeq5DevCh0Ch:=4 Eyeq5DevWrite:=true Eyeq5DevWriteCh:=4
         Type: Software
         LaunchTime: 5.0
+      - Name: ARD
+        Command: roslaunch nrc_hw_svcs leaf_interface_arduino.launch arduino_machine:=node02
+        Type: Software
+        LaunchTime: 1.0
     Diagnostic:
       LED: 0
       Retry: 3
@@ -147,7 +155,7 @@ Subsystem:
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
-      LED: 4
+      LED: 3
       Retry: 3
       Timeout: 5
     Depends:
@@ -182,20 +190,20 @@ Subsystem:
         Type: Software
         LaunchTime: 1.0
     Diagnostic:
-      LED: 5
+      LED: 4
       Retry: 3
       Timeout: 5
     Depends:
-      - Launch: InnovusionPCP
+      - Launch:
         Run:
 
-  PLAN:
+  GOAL:
     Type: Algorithm
     Description: AutoGoals
     Trigger:
       - Source: StartRequest
     HealthTopics:
-     - HealthTopic: /modia/route_plan/health
+      - HealthTopic: /modia/route_plan/health
         HealthName: ROUTE
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 1, 0.5, 0.2
@@ -203,6 +211,30 @@ Subsystem:
         HealthName: GOALS
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: RouteWaypoints
+        Command: rosrun nrc_wm2_svcs multi_set_dest_repeater.py
+        NodeName: RouteWaypoints
+        Type: Software
+        LaunchTime: 3.0
+      - Name: AutoGoals
+        Command: roslaunch nrc_wm2_svcs leaf_route.launch inclRoutePlanner:=true
+        NodeName: AutoGoals_node
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 5
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:
+  PLAN:
+    Type: Algorithm
+    Description: Planner
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
       - HealthTopic: /trajectory_planner/health
         HealthName: TRP
         HealthTopicType: DiagnosticArray
@@ -212,15 +244,6 @@ Subsystem:
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 100, 60, 10
     Commands:
-      - Name: RouteWaypoints
-        Command: rosrun nrc_wm2_svcs multi_set_dest_repeater.py
-        Type: Software
-        LaunchTime: 3.0
-      - Name: AutoGoals
-        Command: roslaunch nrc_wm2_svcs leaf_route.launch
-        NodeName: AutoGoals_node
-        Type: Software
-        LaunchTime: 3.0
       - Name: Trajectory Planning
         Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=AriyaFS
         Type: Software
@@ -230,7 +253,7 @@ Subsystem:
       Retry: 3
       Timeout: 5
     Depends:
-      - Launch: WM
+      - Launch:
         Run:
 
   BAG:
