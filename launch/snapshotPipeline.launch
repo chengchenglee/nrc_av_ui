@@ -39,7 +39,8 @@
   |/gps_state/gps_state_f9r
   |/gps_state/dynamic_global_pose_oxts
   |/gps_state/gps_state_oxts
-  |/gps_state/gps_state_ariya"/>
+  |/gps_state/gps_state_ariya
+  |/move_base_simple/goal"/>
   
   <arg name="snapshot_system_front_tower_cameras_topics"
   default="/snapshot/image/compressed
