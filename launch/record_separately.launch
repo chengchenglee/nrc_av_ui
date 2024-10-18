@@ -194,7 +194,8 @@
   |/point_of_no_return
   |/ailsv_osp_merge
   |/prm/reference_path_data
-  |/prm/osp_constraints_lv_ids"/>
+  |/prm/osp_constraints_lv_ids
+  |/prm/risk_classifier_output"/>
 
   <arg name="ralp_follower_topics"
   default="|/lane_follower_state
