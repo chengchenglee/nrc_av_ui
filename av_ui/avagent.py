@@ -67,6 +67,7 @@ class AvAgent:
     self.tLastImgSent = 0
     self.mqttMsgCount = 0
     self.msgCountTime = []
+    self.tZero = time.time()
     self.avgRndTripMsgTime = 0.5
     self.wmImgMinWaitTime = 0
     self.nextMinWaitPrint = 0
@@ -141,6 +142,7 @@ class AvAgent:
     self.cloud.subscribe(['snp/remote_server/heartbeat'],qos)
     self.cloud.subscribe(['snp/'+self.name+'/resPartList'],qos)
     self.cloud.subscribe(['wyp/'+self.name+'/remote'],qos)
+    self.cloud.subscribe(['dt/multi_dest_way_points/'+self.name],qos)
 
   def parseDgp(self,msg):
     q = msg.pose.orientation
@@ -174,6 +176,8 @@ class AvAgent:
     self.mqttMsgCount += 1
     if self.mqttMsgCount >=1000: self.mqttMsgCount = 1
     self.msgCountTime.append([self.mqttMsgCount,time.time(),5.0])
+    tStamp = round((time.time()-self.tZero)*1000)/1000
+    #print('Send msg: ', self.mqttMsgCount, tStamp)
     return self.mqttMsgCount
   
   def getTxTime(self,rxMsgCount):
@@ -182,15 +186,16 @@ class AvAgent:
         dt = time.time() - entry[1]
         if 0 < dt and dt < entry[2]:
           entry[2] = dt
+          dtZero = round((time.time()-self.tZero)*1000)/1000
+          #print('Rx msg: ',rxMsgCount,dtZero,round(dt*1000)/1000)
     
     oldList = self.msgCountTime
     newList = []
     for entry in self.msgCountTime:
       dtMeas = time.time() - entry[1]
-      if dtMeas < 5:
-        #if entry[2] < 5.0:
-        #  print('Estimated round trip:',entry[2])
+      if dtMeas < 5 and entry[2] < 5.0:
         newList.append(entry)
+    self.msgCountTime = newList
     
   def updateAvgRndTripMsgTime(self):
     updatedRndTripTime = 0.5
@@ -199,23 +204,26 @@ class AvAgent:
     numCount = 0.
     for entry in self.msgCountTime:
       dtMeas = time.time() - entry[1]
-      if dtMeas < 5 and entry[2] < 5.0:
-        avgTime += entry[2]
-        numCount += 1.
+      if dtMeas < 5:
+        if entry[2] < 5.0:
+          avgTime += entry[2]
+          numCount += 1.
+        elif dtMeas > self.avgRndTripMsgTime:
+          avgTime += 4.0
+          numCount += 1.
     
     if numCount > 0:
       updatedRndTripTime = avgTime/numCount
       
     # Update average
-    self.avgRndTripMsgTime = 0.7*self.avgRndTripMsgTime + 0.3*updatedRndTripTime/2
+    self.avgRndTripMsgTime = 0.7*self.avgRndTripMsgTime + 0.3*updatedRndTripTime
+    #print('=============== Avg round trip: ',numCount,round(self.avgRndTripMsgTime*1000)/1000)
 
   def sendStatusCsv(self):
     # Heartbeat message
-    qos = 1
+    qos = 0
     topic = "dt/agents/heartbeat"
     csvStr = self.heartbeat.toMsg(self.nextMsgCount())
-    #data = ''
-    #data +='a,'+self.name + ','+ str(self.x_position) + ',' + str(self.y_position) + ',' + str(self.th_heading)
     self.cloud.publishCsv(topic,csvStr,qos)
     
     # Telemetry message
@@ -225,6 +233,7 @@ class AvAgent:
     self.cloud.publishCsv(topic,csvStr,qos)
     
     # Subsystem status
+    qos = 0
     topic = "dt/"+self.name+"/status"
     data = ''
     data = 'a,'+self.name+'\n'
@@ -240,25 +249,26 @@ class AvAgent:
   
   def sendWmStatus(self):
     if self.passThroughWm and time.time() > self.timeNextWmSend:
-        # Copy ego pose
-        dgpData = [self.heartbeat.pos_x.value,
-                self.heartbeat.pos_y.value,
-                self.heartbeat.pos_th.value,
-                self.heartbeat.spd.value,
-                self.heartbeat.yawRate.value]
-        self.wmStatus.setDgp(dgpData)
-        
-        # Send world model status (ego + other positions)
-        qos=0
-        topic = 'dt/'+self.name+'/wmState'
-        payload = ''
-        payload += self.wmStatus.getWmStr2()+'\n'
-        if len(self.compressed_wm_string) > 0:
-          payload += self.compressed_wm_string[0].data
-          self.compressed_wm_string = []
-        self.cloud.publishCsv(topic,payload,qos)
-        
-        self.timeNextWmSend = time.time() + self.wmImgMinWaitTime
+      # Copy ego pose
+      dgpData = [self.heartbeat.pos_x.value,
+              self.heartbeat.pos_y.value,
+              self.heartbeat.pos_th.value,
+              self.heartbeat.spd.value,
+              self.heartbeat.yawRate.value]
+      self.wmStatus.setDgp(dgpData)
+      
+      # Send world model status (ego + other positions)
+      qos=0
+      topic = 'dt/'+self.name+'/wmState'
+      payload = ''
+      payload += self.wmStatus.getWmStr2()+'\n'
+      if len(self.compressed_wm_string) > 0:
+        payload += self.compressed_wm_string[0].data
+        self.compressed_wm_string = []
+      self.cloud.publishCsv(topic,payload,qos)
+      
+      self.timeNextWmSend = time.time() + self.wmImgMinWaitTime
+
   
   def sendImgStreamPkt(self,msg):
     if self.passThroughImg and time.time() > self.timeNextImgSend:
@@ -431,21 +441,24 @@ class AvAgent:
         wp = WaypointData()
         wp.fromMsg(m)
         
+      elif 'way' in m['topic']:
+        print(m['data'])
+        
       if receivedAgentMsgCount > -1:
         dt = self.getTxTime(receivedAgentMsgCount)
-        self.updateAvgRndTripMsgTime()
+        #self.updateAvgRndTripMsgTime()
         
     # Update wait time between sending wm stuff
     fullRateWm = self.remoteMonTeleoping or self.sendWm == 2
     lowRateWm  = self.remoteWmDisplayOn
-    self.wmImgMinWaitTime = max(0.1, min(2.0,round(self.avgRndTripMsgTime*100)/100))
+    self.wmImgMinWaitTime = max(0.09, min(2.0,self.avgRndTripMsgTime*0.5-0.2))
     if fullRateWm:
       if self.wmImgMinWaitTime > 0.2 and time.time() > self.nextMinWaitPrint:
         print('Delay sending wm due to network',self.wmImgMinWaitTime)
         self.nextMinWaitPrint = time.time() + 2.0
-      self.wmImgMinWaitTime = max(0.1, self.wmImgMinWaitTime)
+      self.wmImgMinWaitTime = max(0.09, self.wmImgMinWaitTime)
     else:
-      self.wmImgMinWaitTime = max(0.5, self.wmImgMinWaitTime)
+      self.wmImgMinWaitTime = max(0.49, self.wmImgMinWaitTime)
         
   def setLaunchAll(self):
     for s in self.subsystems:

@@ -53,7 +53,7 @@ class MsgStats:
       strOut = 'Mqtt '+self.typeStr+' stats (msg/sec, KBps): '\
                     +str(round(self.msgsPerSec))+', '\
                     +str(round(self.kbitsPerSec*10)/10)
-      print(strOut)
+      #print(strOut)
 
 class CloudConnection:
   def __init__(self,clientId, brokerName):

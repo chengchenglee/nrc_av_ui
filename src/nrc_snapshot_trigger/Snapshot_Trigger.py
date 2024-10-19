@@ -20,6 +20,7 @@ import subprocess
 import os
 import json
 import numpy as np
+from scipy.linalg import inv
 from collections import deque
 
 from brk_acc_class import BRK_ACC_CLASS
@@ -104,7 +105,7 @@ class CsvWriterAVinterface:
             exclPose[2,2] = 1
             exclPose[0,2] = point[0]
             exclPose[1,2] = point[1]
-            exclPoseInv = np.linalg.inv(exclPose)
+            exclPoseInv = inv(exclPose)
         
             egoPoint = np.zeros((3,1))
             egoPoint[0,0] = msg.pose.position.x

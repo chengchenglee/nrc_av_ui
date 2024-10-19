@@ -90,9 +90,10 @@ if True:
       prevTime = time.time()
 
     if time.time() > nextStSend:
-      nextStSend = time.time()+0.5
+      nextStSend = time.time()+1.0
       if agent.cloud.isConnected == True:
         agent.sendStatusCsv()
+      agent.updateAvgRndTripMsgTime()
       dtStamps[1] = round((time.time() - prevTime)*1000)/1000
       if debugTiming: print('Send status',dtStamps[1])
       prevTime = time.time()

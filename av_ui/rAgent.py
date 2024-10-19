@@ -67,6 +67,7 @@ class MonitoredAgent:
     self.name = []
     self.cmdsMode = 'Sync'
     self.cmdTopic = []
+    self.nextCmdMsgTime = 0
     self.cmdData = {}
     self.subsystems = []
     self.drawn = False
