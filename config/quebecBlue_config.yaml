@@ -5,7 +5,7 @@ Configuration:
   useGui: 1
   sendWm: 1
   sendSnapshots: 1
-  broker: ccta_ads
+  broker: ccm
 
 Subsystem:
   CCM-CAR:

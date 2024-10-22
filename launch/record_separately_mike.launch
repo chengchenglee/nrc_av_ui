@@ -129,7 +129,8 @@
   |/master_filter/object_database
   |/dds_object_databse_fused_data
   |/ailsv_tracked_objects
-  |/ailsv_predicted_trajectories"/>
+  |/ailsv_predicted_trajectories
+  |/prediction_error"/>
   
   <arg name="dm_lite_topics" 
   default="/drive_plan

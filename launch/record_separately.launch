@@ -25,6 +25,7 @@
   <arg name="record_aeva_other_outputs" default="false"/>
   <arg name="record_innovusion" default="false"/>
   <arg name="record_disengagement_snapshots" default="false"/> <!-- turn this on for snapshot rosbags during disengagement/override-->
+  <arg name="record_arbe" default="false"/>
   
   <arg name="prefix" default="autonomy_log" />
   <arg name="compression" default="false" /> <!--bz2 compression -->
@@ -68,7 +69,11 @@
   |/detection_recog_results/tower_cam_backLeft
   |/detection_recog_results/tower_cam_backRight
   |/radar
-  |/radar_bf"/>  
+  |/radar_bf
+  |/multi_object_tracker/timing/overall_processing_time
+  |/multi_object_tracker/timing/timing_diagnostics
+  |/pc_processor/timing/overall_processing_time
+  |/pc_processor/timing/timing_diagnostics"/>
 
   <arg name="system_main_topics" 
   default="/dynamic_global_pose
@@ -118,7 +123,8 @@
   |/ibeo_object_set
   |/radar
   |/radar_bf
-  |/ailsv_av_status" />
+  |/ailsv_av_status
+  |/ailsv_teleop"/>
   
   <arg name="pc_processor_all_topics" 
   default="/drivable_area_boundary_points
@@ -138,7 +144,8 @@
   |/master_filter/object_database
   |/dds_object_databse_fused_data
   |/ailsv_tracked_objects
-  |/ailsv_predicted_trajectories"/>
+  |/ailsv_predicted_trajectories
+  |/prediction_error"/>
   
   <arg name="dm_lite_topics" 
   default="/drive_plan
@@ -187,7 +194,8 @@
   |/point_of_no_return
   |/ailsv_osp_merge
   |/prm/reference_path_data
-  |/prm/osp_constraints_lv_ids"/>
+  |/prm/osp_constraints_lv_ids
+  |/prm/risk_classifier_output"/>
 
   <arg name="ralp_follower_topics"
   default="|/lane_follower_state
@@ -230,6 +238,9 @@
   <arg name="innovusion_topics"
   default="/iv_points"/>
 
+  <arg name="arbe_topics"
+  default="|/arbe/(.*)"/>
+
   <!-- (.*) does not work with snapshot rosbag command. So added a seperate snapshot main topics-->
   <arg name="snapshot_system_main_topics"
   default="|/CAN_V_reader
@@ -264,7 +275,8 @@
   |/gps_state/gps_state_f9r
   |/gps_state/dynamic_global_pose_oxts
   |/gps_state/gps_state_oxts
-  |/gps_state/gps_state_ariya"/>
+  |/gps_state/gps_state_ariya
+  |/ailsv_teleop"/>
   
   <node if="$(arg record_ipt)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_ipt" output="screen"
   args="-o $(arg prefix)_ipt -e $(arg ipt_topics)"/>  
@@ -313,6 +325,9 @@
 
   <node if="$(arg record_innovusion)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_innovusion" output="screen"
   args="$(arg compression) -o $(arg prefix)_innovusion -e $(arg innovusion_topics)" machine="$(arg record_machine)"/>
+
+  <node if="$(arg record_arbe)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_arbe" output="screen"
+  args="$(arg compression) -o $(arg prefix)_arbe -e $(arg arbe_topics)" machine="$(arg record_machine)"/>
 
   
   <include if="$(arg record_tlr)" file="$(find nrc_av_ui)/launch/record_tlr.launch">

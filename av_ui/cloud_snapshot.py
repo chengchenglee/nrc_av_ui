@@ -4,14 +4,14 @@ import os
 import signal # Catch ctrl-c
 import sys
 import json, ast
-
-from rAgent import *
-from cloud_connection import CloudConnection
-from collections import OrderedDict
-from rInterface import Interface
-from fileInTransit import FileInTransit
 import time
 import argparse
+from collections import OrderedDict
+
+from rAgent import *
+from rInterface import Interface
+from include.cloud_connection import CloudConnection
+from include.fileInTransit import FileInTransit
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-b', '--broker', default='emqx')

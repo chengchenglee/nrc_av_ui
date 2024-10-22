@@ -37,6 +37,11 @@ Subsystem:
         Type: Software
         LaunchTime: 1
       - Name: CSF_Throttle
+        Command: rosrun topic_tools throttle messages /gps_state/gps_state_oxts 2.0 /gps_state/gps_state_oxts_2hz
+        NodeName: CSF_Throttle
+        Type: Software
+        LaunchTime: 1
+      - Name: CSF_Throttle
         Command: rosrun topic_tools throttle messages /CtrlStateFLG 10.0 /CtrlStateFLG_10hz
         NodeName: CSF_Throttle
         Type: Software
@@ -85,7 +90,7 @@ Subsystem:
       Timeout: 5
       File:
     Depends:
-      - Launch: Sim
+      - Launch:
         Run:
 
   Goals:
@@ -143,5 +148,5 @@ Subsystem:
       Retry: 3
       Timeout: 5
     Depends:
-      - Launch: Goals
+      - Launch:
         Run:

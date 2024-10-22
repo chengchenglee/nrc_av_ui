@@ -3,10 +3,8 @@
 import sys
 import os
 from nrc_msgs.msg import FailureModeRequest
-from subsystem import Subsystem
+from include.subsystem import Subsystem
 import rospy
-#from MultiSetDest import MultiSetDest
-#from MultiSetDest import MULTI_DEST_LIST
 
 # Gui
 if sys.version_info[0] < 3:

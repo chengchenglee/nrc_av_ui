@@ -4,13 +4,13 @@ import os
 import signal # Catch ctrl-c
 import sys
 import json, ast
-
-from rAgent import *
-from cloud_connection import CloudConnection
 from collections import OrderedDict
-from rInterface import Interface
 import time
 import argparse
+
+from rAgent import *
+from include.cloud_connection import CloudConnection
+from rInterface import Interface
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-b', '--broker', default='emqx')
@@ -45,10 +45,11 @@ def parseMsgs(messages):
         topic = 'dt/'+agentName+'/status'
         newSubscriptions.append(topic)
       else:
-        for a in monitoredAgents:
-          if agentName in a.name:
-            a.tLastMsg = time.time()
-            a.agentMsgCount = hb.msgCount.value
+        for ma in monitoredAgents:
+          if agentName in ma.name:
+            ma.tLastMsg = time.time()
+            ma.agentMsgCount = hb.msgCount.value
+            ma.nextCmdMsgTime = time.time() # Send reply asap
             
     # Received a status update from an agent
     elif "status" in msg['topic']:
@@ -186,26 +187,26 @@ if True:
           qos=0
           cloud.publishCsv(ma.teleopTopic, ma.getTeleopCmd(),qos)
     
-    if time.time() > updatePubs:
-      updatePubs = time.time() + 1.0
+    for ma in monitoredAgents:
+      if time.time() > ma.nextCmdMsgTime:
+        ma.nextCmdMsgTime = time.time() + 1.5
 
-      # Publish commands
-      for ma in monitoredAgents:
+        # Publish commands
         qos=0
         cloud.publishCsv(ma.cmdTopic, ma.getCmdData(),qos)
         
-        if False:
-          waypoints = []
-          waypoints.append([0,1,2])
-          waypoints.append([3,4,5])
-          waypoints.append([6,7,8])
+        #if False:
+          #waypoints = []
+          #waypoints.append([0,1,2])
+          #waypoints.append([3,4,5])
+          #waypoints.append([6,7,8])
           
-          waypointsMsg = WaypointData(waypoints)
-          qos = 1
-          topic = "wyp/"+ma.name+"/remote"
-          csvStr = waypointsMsg.toMsg()
-          cloud.publishCsv(topic,csvStr,qos)
-          print('Publish waypoints...'+topic)
+          #waypointsMsg = WaypointData(waypoints)
+          #qos = 1
+          #topic = "wyp/"+ma.name+"/remote"
+          #csvStr = waypointsMsg.toMsg()
+          #cloud.publishCsv(topic,csvStr,qos)
+          #print('Publish waypoints...'+topic)
 
     time.sleep(0.01)
 

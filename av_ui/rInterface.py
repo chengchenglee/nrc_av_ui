@@ -1,13 +1,14 @@
 #!/usr/bin/python3
 
 import sys, os, subprocess
-from subsystem import Subsystem
 import time
 import numpy as np
-from numpy.linalg import inv
+#from scipy.linalg import inv
 import cv2
-#from scipy.spatial.transform import Rotation
-from wmStatus import WmObject
+
+# av agent includes
+from include.wmStatus import WmObject
+from include.subsystem import Subsystem
 
 keyboardListener = True
 try:
@@ -98,7 +99,7 @@ class Interface:
     self.windowOpen = False
     self.launchAllReq = False
     self.windowWidth  = 550
-    self.windowHeight = 930
+    self.windowHeight = 1000
     self.canvasWidth  = 550
     self.imgHeight    = 268
     self.canvasHeight = 400
@@ -110,9 +111,9 @@ class Interface:
     self.tab2_frame2 = []
     
     self.selectedAgent = 'None'
-    self.isTeleop = False
-    self.isRemoteDrv = False
-    #self.canvasDrawn = False
+    self.isTeleop     = False
+    self.stopAvByTele = False
+    self.isRemoteDrv  = False
     self.tab2_canvas = []
     self.canvasTime = 0
     self.canvasIncr = 1
@@ -255,6 +256,8 @@ class Interface:
     self.enTeleop     = Tkinter.Button(self.tab2_frame2, text='ENABLE TELEOP',\
                                        width=numButtons*self.bWidth+numButtons, height=2, padx=1, pady=1, relief="raised", command=self.setTeleop)
     self.enTeleop.grid(row=0, columnspan=5, sticky=Tkinter.W+Tkinter.E)
+    self.stopAvButton = Tkinter.Button(self.tab2_frame2, text='STOP_AV',\
+                                       width=numButtons*self.bWidth+numButtons, height=2, padx=1, pady=1, relief="raised", command=self.setStopAv)
     self.enRemoteDrv  = Tkinter.Button(self.tab2_frame2, text='REMOTE DRIVE',\
                                        width=numButtons*self.bWidth+numButtons, height=2, padx=1, pady=1, relief="raised", command=self.setRemoteDrv)
     self.lcLeftButton = Tkinter.Button(self.tab2_frame2, text='LC-LFT',\
@@ -288,13 +291,13 @@ class Interface:
         if not self.joyPad:
           keyStr = str(key).replace("'","")
           if 'up' in keyStr:
-            self.virtualVeh.accel([1,0])
+            self.virtualVeh.accel([0.1, 1,0])
           if 'down' in keyStr:
-            self.virtualVeh.accel([-1,0])
+            self.virtualVeh.accel([0.1, -1,0])
           if 'left' in keyStr:
-            self.virtualVeh.accel([0,0.3])
+            self.virtualVeh.accel([0.1, 0,0.3])
           if 'right' in keyStr:
-            self.virtualVeh.accel([0,-0.3])
+            self.virtualVeh.accel([0.1, 0,-0.3])
 
       self.listener = Listener(on_press=on_press)
       print('Start keyboard listener')
@@ -418,15 +421,15 @@ class Interface:
       self.tab2_canvas.create_oval(x-dotRadius,y-dotRadius,x+dotRadius,y+dotRadius,outline=colorval)
    
   
-  def drawPointCloudSeparate(self, wmStatus):
+  def drawPointCloudSeparate(self, wmStatus,frame):
     if not wmStatus.cloud:
-        self.drawGrid(wmStatus.dgp)
+        self.drawGrid(frame)
         return
     
     x_vals, y_vals, z_vals = zip(*wmStatus.cloud)
     
-    center_x = wmStatus.dgp.centerPose[0,2]
-    center_y = wmStatus.dgp.centerPose[1,2]
+    center_x = frame.centerPose[0,2]
+    center_y = frame.centerPose[1,2]
     
     points3d = []
     max_distance = 200  # 30m radius
@@ -438,7 +441,7 @@ class Interface:
         
         # Convert from site frame to car frame
         pt_global = np.array([x, y, 1])
-        pt_carFrame = np.dot(wmStatus.dgp.poseInv, pt_global)
+        pt_carFrame = np.dot(frame.poseInv, pt_global)
         x_car, y_car = pt_carFrame[0], pt_carFrame[1]
         
         # Check if point is within 30m radius
@@ -497,7 +500,6 @@ class Interface:
       #self.ffmpegProcess.stdin.close() # close stdin (flush and send EOF)
       #self.ffmpegProcess.stdin.wait() # close stdin (flush and send EOF)
       #time.sleep(0.2)
-      print('Done process frame: ', len(imgStreamData.ffmpegPkt))
       
       in_bytes = ''
       try:
@@ -702,9 +704,9 @@ class Interface:
     #if len(self.objsOfInterest) > 0: print(self.objsOfInterest)
   
     for obj in wmStatus.objs:
-      self.drawBox(obj,wmStatus.dgp)
+      self.drawBox(obj,frame)
 
-    self.drawPointCloudSeparate(wmStatus)
+    self.drawPointCloudSeparate(wmStatus,frame)
       
     # Draw ego
     self.drawBox(wmStatus.dgp,frame)
@@ -836,14 +838,16 @@ class Interface:
         rowIdx += 1
       
     # Teleop Window
-    if self.isTeleop:  
+    if self.isTeleop:
+      self.stopAvButton.grid(column=0, columnspan=5, sticky=Tkinter.W+Tkinter.E)
       self.enRemoteDrv.grid(column=0, columnspan=5, sticky=Tkinter.W+Tkinter.E)
-      self.lcLeftButton.grid(column=0, row=2, sticky=Tkinter.W+Tkinter.E)
-      self.gaLeftButton.grid(column=1, row=2, sticky=Tkinter.W+Tkinter.E)
-      self.followButton.grid(column=2, row=2, sticky=Tkinter.W+Tkinter.E)
-      self.gaRghtButton.grid(column=3, row=2, sticky=Tkinter.W+Tkinter.E)
-      self.lcRghtButton.grid(column=4, row=2, sticky=Tkinter.W+Tkinter.E)
+      self.lcLeftButton.grid(column=0, row=3, sticky=Tkinter.W+Tkinter.E)
+      self.gaLeftButton.grid(column=1, row=3, sticky=Tkinter.W+Tkinter.E)
+      self.followButton.grid(column=2, row=3, sticky=Tkinter.W+Tkinter.E)
+      self.gaRghtButton.grid(column=3, row=3, sticky=Tkinter.W+Tkinter.E)
+      self.lcRghtButton.grid(column=4, row=3, sticky=Tkinter.W+Tkinter.E)
     else:
+      self.stopAvButton.grid_forget()
       self.enRemoteDrv.grid_forget()
       self.lcLeftButton.grid_forget()
       self.gaLeftButton.grid_forget()
@@ -857,12 +861,22 @@ class Interface:
   def setTeleop(self):
     if self.isTeleop:
       self.isTeleop = 0
+      self.stopAvByTele = False
+      self.stopAvButton.configure(text='STOP AV')
       self.isRemoteDrv = False
       self.enRemoteDrv.configure(text='ENABLE REMOTE DRIVE')
       self.enTeleop.configure(text='ENABLE TELEOP')
     else:
       self.isTeleop = 1
       self.enTeleop.configure(text='DISABLE TELEOP')
+  
+  def setStopAv(self):
+    if self.stopAvByTele:
+      self.stopAvByTele = False
+      self.stopAvButton.configure(text='STOP AV')
+    else:
+      self.stopAvByTele = True
+      self.stopAvButton.configure(text='CEASE STOPPING')
       
   def setRemoteDrv(self):
     if self.isRemoteDrv:
@@ -892,7 +906,12 @@ class Interface:
     for cmd in self.teleopCmds:
       if cmd.teleopType != 'ORU' and cmd.teleopType != 'remove':
         agent.teleopCmdData.commands.append(cmd)
-        
+    
+    if self.stopAvByTele:
+      newCmd = TeleopEntry()
+      newCmd.teleopType = 'STOP'
+      agent.teleopCmdData.commands.append(newCmd)
+    
     if self.isRemoteDrv:
       newCmd = TeleopEntry.fromOru(-2, self.virtualVeh.xythvw())
       newCmd.teleopType = 'FVV'

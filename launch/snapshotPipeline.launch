@@ -39,7 +39,8 @@
   |/gps_state/gps_state_f9r
   |/gps_state/dynamic_global_pose_oxts
   |/gps_state/gps_state_oxts
-  |/gps_state/gps_state_ariya"/>
+  |/gps_state/gps_state_ariya
+  |/move_base_simple/goal"/>
   
   <arg name="snapshot_system_front_tower_cameras_topics"
   default="/snapshot/image/compressed
@@ -63,7 +64,8 @@
   |/master_filter/object_database
   |/dds_object_databse_fused_data
   |/ailsv_tracked_objects
-  |/ailsv_predicted_trajectories"/>
+  |/ailsv_predicted_trajectories
+  |/prediction_error"/>
 
   <arg name="snapshot_ralp_all_topics"
   default="/lane_planner_state
@@ -81,7 +83,9 @@
   |/autoGoals_debug
   |/lead_vehicle
   |/prm/reference_path_data
-  |/prm/osp_constraints_lv_ids"/>
+  |/prm/osp_constraints_lv_ids
+  |/mspf_waypoints
+  |/driver_route_state"/>
 
   <arg name="cubtek_topics"
   default="/cubtek_PC_rviz_R
