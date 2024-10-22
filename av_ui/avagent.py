@@ -142,7 +142,7 @@ class AvAgent:
     self.cloud.subscribe(['cmd/'+self.name+'/teleop'],qos)
     self.cloud.subscribe(['snp/remote_server/heartbeat'],qos)
     self.cloud.subscribe(['snp/'+self.name+'/resPartList'],qos)
-    self.cloud.subscribe(['wyp/'+self.name+'/remote'],qos)
+    self.cloud.subscribe(['cmd/'+self.name+'/mspfWaypoints'],qos)
     self.cloud.subscribe(['dt/multi_dest_way_points/'+self.name],qos)
 
   def parseDgp(self,msg):
