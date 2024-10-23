@@ -438,7 +438,7 @@ class AvAgent:
             else:
               self.fileInTransit.state.append([str(lineData[1]),int(lineData[2])+1])
               
-      elif 'wyp' in m['topic']:
+      elif 'mspfWaypoints' in m['topic']:
         wp = WaypointData()
         wp.fromMsg(m['data'])
         #publish waypoint message
