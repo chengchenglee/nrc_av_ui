@@ -12,15 +12,17 @@ import subprocess
 # Gui
 if sys.version_info[0] < 3:
   import Tkinter
-  import tkMessageBox # python 2.7 flavor
+  import tkMessageBox as messagebox # python 2.7 flavor
   import ttk
 else: # 3+
   if sys.version_info[1] < 6:
     import Tkinter # <3.6
     import ttk
+    from Tkinter import messagebox
   else:
     import tkinter as Tkinter # 3.6
     import tkinter.ttk as ttk
+    from tkinter import messagebox
     
 class Interface:
   def __init__(self, name, mapName):
@@ -57,10 +59,8 @@ class Interface:
       self.mapsel.set(self.selectedMap) # set it back
       title='No map change while running'
       msg  = 'Sorry Charlie - shut things down before changing the map'
-      if sys.version_info[0] == 3:
-        messagebox.showinfo(title, msg)
-      else:
-        tkMessageBox.showinfo(title, msg)
+      # need to make a 'popup' or 'modal' function
+      messagebox.showinfo(title, msg)
     else:
       self.selectedMap = newName
       print ('New map name selected is ',self.selectedMap)
@@ -199,6 +199,9 @@ class Interface:
     mapsel.set(self.selectedMap)
     m=Tkinter.OptionMenu(allLaunchFrame, mapsel, *map_options, command=self.updateMap)
     m.grid(column=3, row=2, sticky=Tkinter.W+Tkinter.E)
+
+    # save for later reference
+    self.mapsel = mapsel
 
     #button5 = Tkinter.Button(setConfigFrame, text="Demo", width=buttonWidth*2, padx=1, relief="raised",command=demoConfig)
     #button5.grid(column=1, row=1, sticky=Tkinter.W+Tkinter.E)
@@ -389,8 +392,10 @@ class Interface:
   
   def update(self,subsystems):
     msgText = []
+    status_sum = 0 # easy way to see if anything is running
     for s in subsystems:
       for m in s.monitors:
+        status_sum += m.status
         m.label.configure(bg=self.statusToColor(m.status))
         textStr = m.name+'\n'+str(m.msgCount)
         m.label.configure(text=textStr)
@@ -399,6 +404,7 @@ class Interface:
 
       s.startButton.configure(bg=self.statusToColor(s.status))
     
+    self.stack_active = (status_sum>0)
     if (msgText==[]):
       msgText = "No status messages to display"
     
