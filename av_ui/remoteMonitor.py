@@ -189,7 +189,7 @@ if True:
     
     for ma in monitoredAgents:
       if time.time() > ma.nextCmdMsgTime:
-        ma.nextCmdMsgTime = time.time() + 1.5
+        ma.nextCmdMsgTime = time.time() + 1.5  # Should not get to this, remoteAgent replies status as soon as rx
 
         # Publish commands
         qos=0

@@ -138,7 +138,7 @@ Subsystem:
         NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: TowerCam
-        Command: roslaunch nrc_hw_svcs pgr_gige_cameras.launch FrRCam:=false FrLCam:=false FrCam:=true BaRCam:=false BaLCam:=false BaCam:=false enableArduino:=false leaf_foxtrot:=true
+        Command: roslaunch nrc_hw_svcs lucid_gige_cameras.launch FrCam:=true
         Type: Software
         LaunchTime: 3.0
       - Name: Helm

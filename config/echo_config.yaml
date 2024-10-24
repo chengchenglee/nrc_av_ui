@@ -136,7 +136,7 @@ Subsystem:
         NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: LucidCamDriver
-        Command: roslaunch nrc_hw_svcs lucid_gige_cameras.launch
+        Command: roslaunch nrc_hw_svcs lucid_gige_cameras.launch allCams:=true
         Type: Software
         LaunchTime: 3.0
       - Name: Helm

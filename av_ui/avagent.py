@@ -304,11 +304,11 @@ class AvAgent:
         image.save(buffered, format='jpeg')
         msg.data = buffered.getvalue()
         
-      a = 1
       qos = 0
       topic = "dt/"+self.name+"/imgStream"
       mqttData = self.imgStreamData.toMsg(msg,width,height)
       self.cloud.publishCsv(topic,mqttData,qos)
+      #print('Send jpeg:',time.time()-self.tZero)
 
       self.timeNextImgSend = time.time() + self.wmImgMinWaitTime
     
@@ -451,7 +451,7 @@ class AvAgent:
     # Update wait time between sending wm stuff
     fullRateWm = self.remoteMonTeleoping or self.sendWm == 2
     lowRateWm  = self.remoteWmDisplayOn
-    self.wmImgMinWaitTime = max(0.09, min(2.0,self.avgRndTripMsgTime*0.5-0.2))
+    self.wmImgMinWaitTime = max(0.09, min(2.0,self.avgRndTripMsgTime*0.5-0.1))
     if fullRateWm:
       if self.wmImgMinWaitTime > 0.2 and time.time() > self.nextMinWaitPrint:
         print('Delay sending wm due to network',self.wmImgMinWaitTime)
