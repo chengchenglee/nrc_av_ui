@@ -33,9 +33,13 @@ Subsystem:
         Type: Software
         LaunchTime: 5.0
       - Name: ARD
-        Command: roslaunch nrc_hw_svcs leaf_interface_arduino.launch arduino_machine:=node02
+        Command: roslaunch nrc_hw_svcs leaf_interface_arduino.launch arduino_machine:=node02 vehicleType:=Ariya
         Type: Software
         LaunchTime: 1.0
+      - Name: Me2Yolo
+        Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch
+        Type: Software
+        LaunchTime: 3.0
     Diagnostic:
       LED: 0
       Retry: 3
@@ -142,16 +146,17 @@ Subsystem:
         HealthTopicType: PointCloud2
         NomWarnErrRate: 10, 7, 3
     Commands:
+      #- Name: InnovusionDriver
+        #Command: rosrun nrc_svcs  runInnovusion.sh > /dev/null
+        #Type: Software
+        #LaunchTime: 1.0
       - Name: InnovusionDriver
-        Command: rosrun nrc_svcs  runInnovusion.sh > /dev/null
+        Command: bash $HOME/projects/fvla-infrapod/nrc_ws/src/nrc_svcs/scripts/runInnovusionInfraPod.sh > /dev/null
+        NodeName: innovusion_nodelet_manager
         Type: Software
-        LaunchTime: 1.0
+        LaunchTime: 1
       - Name: PCP
         Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Foxtrot:=true do_curb_detection:=false do_curb_points_accumulation:=false include_curb_points_for_drivable_area:=false include_lateral_curb_points_for_drivable_area:=false include_accumulated_curb_points_for_drivable_area:=false srcgs/cluster_height_threshold:=0.3 dynamic_global_pose_topic_name:=/dynamic_global_pose
-        Type: Software
-        LaunchTime: 3.0
-      - Name: Me2Yolo
-        Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -256,11 +261,12 @@ Subsystem:
       - Launch:
         Run:
 
+
   BAG:
     Type: Algorithm
     Description: Record bagfiles
     Trigger:
-      - Source: ARD2
+      - Source: StartRequest
     HealthTopics:
       - HealthTopic: /BagfileHealth
         HealthName: BAG

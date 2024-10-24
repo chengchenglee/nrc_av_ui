@@ -22,7 +22,7 @@
   <arg name="record_aeva_ultrares_pc" default="false"/>
   <arg name="record_aeva_other_outputs" default="false"/>
   <arg name="record_innovusion" default="false"/>
-  <arg name="record_ariya_messages" default="true"/>
+  <arg name="record_ariya_messages" default="false"/>
   <arg name="record_cubtek_messages" default="true"/>
   
   <arg name="prefix" default="autonomy_log" />
@@ -296,5 +296,7 @@
   <include if="$(arg record_tlr)" file="$(find nrc_svcs)/launch/record_tlr.launch">
     <arg name="record_inputAndOutput" value="$(arg record_tlr_outputs)" machine="$(arg record_machine)"/>
   </include>
+  
+  <node pkg="nrc_av_ui" type="rosbagRecordMonitor.py" name="RosbagMonitor" args="-d /opt/data/rosbag/ -t BagfileHealth" machine="$(arg record_machine)" output="screen"/>
   
 </launch>
