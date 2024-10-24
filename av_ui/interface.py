@@ -24,6 +24,9 @@ else: # 3+
     import tkinter.ttk as ttk
     from tkinter import messagebox
     
+nrcWsPath = os.path.join(os.path.expanduser("~"), 'projects/nrc_ws')
+mapMenuExePath = nrcWsPath + '/devel/lib/maav_algo/MapManager'
+
 class Interface:
   def __init__(self, name, mapName):
     self.name = name
@@ -53,6 +56,27 @@ class Interface:
     self.windowOpen = False
     self.window.quit()
   
+  #######################################################################
+  # paramsForMap.sh is deprecated
+  # 'MapManager' program uses facilities in MetricMapManager to find all
+  #   relevant parameters for a given map name. This is required to use
+  #   the dynamically generated names from MetricMapManager
+  def updateMapParams(self, newName):
+    # use map name from menu to capture required parameters
+    if os.path.isfile(mapMenuExePath) and os.access(mapMenuExePath, os.X_OK):
+      # 'MapManager -rmap_name' outputs rosparams for map 'map_name'
+      output = subprocess.check_output([mapMenuExePath,'-r'+newName])
+      params = output.decode().splitlines()
+      for p in params:
+        apair = p.split(':')
+        if (len(apair)==2):
+          rospy.set_param(apair[0],apair[1])
+        else:
+          print('WARN: problem in MapManger -r param output')
+    else:
+      os.system("rosrun nrc_av_ui paramsForMap.sh "+newName)
+
+
   def updateMap(self, newName):
     #global map_name, stack_active, mapsel
     if self.stack_active:
@@ -65,11 +89,7 @@ class Interface:
       self.selectedMap = newName
       print ('New map name selected is ',self.selectedMap)
       rospy.set_param('/map_name', newName)
-      # paramsForMap.sh will go away soon - MetricMapManager
-      # will use names from the menus to capture
-      # any specific parameter combinations required.
-      # Once this is done, the set_param() call above will be sufficient
-      os.system("rosrun nrc_av_ui paramsForMap.sh "+newName)
+      self.updateMapParams(newName)
   
   def setupWindow(self, agent):
     # Setup window dimensions and title
@@ -180,8 +200,6 @@ class Interface:
 
     # some people are not using workspace nrc_ws, so
     # put workspace in one variable and try to use it
-    nrcWsPath = os.path.join(os.path.expanduser("~"), 'projects/nrc_ws')
-    mapMenuExePath = nrcWsPath + '/devel/lib/maav_algo/MapManager'
     map_options = []
     if os.path.isfile(mapMenuExePath) and os.access(mapMenuExePath, os.X_OK):
       output = subprocess.check_output([mapMenuExePath,'--menu'])
@@ -202,6 +220,8 @@ class Interface:
 
     # save for later reference
     self.mapsel = mapsel
+    # update map params
+    self.updateMapParams(self.selectedMap)
 
     #button5 = Tkinter.Button(setConfigFrame, text="Demo", width=buttonWidth*2, padx=1, relief="raised",command=demoConfig)
     #button5.grid(column=1, row=1, sticky=Tkinter.W+Tkinter.E)
