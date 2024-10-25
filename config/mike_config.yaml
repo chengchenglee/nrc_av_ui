@@ -250,7 +250,7 @@ Subsystem:
         NomWarnErrRate: 100, 60, 10
     Commands:
       - Name: Trajectory Planning
-        Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=AriyaFS
+        Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=AriyaFS vehicle_type_react:=AriyaFS_React
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
