@@ -206,10 +206,10 @@
   |/force_steering_components
   |/stanley_control
   |/lane_planner_combined_control_debug
-  |/hyperdrive_boundaries_publisher
+  |/hyperdrive_display_publisher
+  |/hyperdrive_debug_publisher
   |/hyperdrive_outputs
   |/hyperdrive_tube_output
-  |/hyperdrive_traj_publisher
   |/hyperdrive_blockage"/>
   
   <arg name="validation_topics"

@@ -170,10 +170,10 @@
   |/point_of_no_return
   |/ailsv_osp_merge
   |/hazard_zone
-  |/hyperdrive_boundaries_publisher
+  |/hyperdrive_display_publisher
+  |/hyperdrive_debug_publisher
   |/hyperdrive_outputs
   |/hyperdrive_tube_output
-  |/hyperdrive_traj_publisher
   |/SpeedPlanOccGridPanel
   |/perfect_decel
   |/arduino_perfect_decel
