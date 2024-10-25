@@ -94,14 +94,18 @@ Subsystem:
     Trigger:
       - Source: StartRequest
     HealthTopics:
-      - HealthTopic: /Cubtek/health
-        HealthName: NOD
+      - HealthTopic: /Cubtek/health_L
+        HealthName: NOD_L
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /cubtek_raw_points
-        HealthName: CAN
-        HealthTopicType: CubtekRadarArray
-        NomWarnErrRate: 15, 9, 3
+      - HealthTopic: /Cubtek/health_R
+        HealthName: NOD_R
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /cubtek_fuse_health
+        HealthName: TOS
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: Cubtek_eth_raw_left
         Command: sudo $HOME/projects/nrc_ws/devel/lib/nrc_hw_svcs/pcap eno4 45161 #Left cubtek radar
