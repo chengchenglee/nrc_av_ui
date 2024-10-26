@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
-from monitor import Monitor
-from command import Command
+from include.monitor import Monitor
+from include.command import Command
 import numpy as np
 
 class Subsystem:

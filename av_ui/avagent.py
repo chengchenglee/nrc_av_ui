@@ -7,15 +7,13 @@ import glob
 import rospy
 
 # mqtt messages
-from heartbeat_msg_defs import HeartbeatData
-from telemetry_msg_defs import TelemetryData
-from waypoints_msg_defs import WaypointData
+from msgs.heartbeat_msg_defs import HeartbeatData
+from msgs.telemetry_msg_defs import TelemetryData
+from msgs.waypoints_msg_defs import WaypointData
 from msgs.teleop_msg_defs import TeleopCmdData
+from msgs.ffmpeg_msg_defs import ImgStreamData
 
-from subsystem import Subsystem
-from wmStatus import WmStatus
-from fileInTransit import FileInTransit
-import loader as Loader
+# Ros messages
 from nrc_msgs.msg import InterventionRequest
 from std_msgs.msg import Int16MultiArray
 from nrc_msgs.msg import TrackedObjectSet,DynamicPoseWithCovar,GpsState
@@ -23,10 +21,15 @@ from visualization_msgs.msg import Marker, MarkerArray
 from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import String
 
+# av agent include files
+from include.subsystem import Subsystem
+from include.wmStatus import WmStatus
+from include.fileInTransit import FileInTransit
+import include.loader as Loader
+from include.cloud_connection import CloudConnection
+
 import numpy as np
-#import tf.transformations
 import time
-from cloud_connection import CloudConnection
 import json, ast
 from collections import OrderedDict
 import rospkg
@@ -38,7 +41,6 @@ from PIL import Image
 ffmpegTransportExists = True
 try:
   from ffmpeg_image_transport_msgs.msg import FFMPEGPacket
-  from ffmpeg_msg_defs import ImgStreamData
 except ImportError:
   ffmpegTransportExists = False
 
@@ -65,6 +67,7 @@ class AvAgent:
     self.tLastImgSent = 0
     self.mqttMsgCount = 0
     self.msgCountTime = []
+    self.tZero = time.time()
     self.avgRndTripMsgTime = 0.5
     self.wmImgMinWaitTime = 0
     self.nextMinWaitPrint = 0
@@ -118,23 +121,28 @@ class AvAgent:
     self.pose10hzSub = rospy.Subscriber("/dynamic_global_pose_10Hz",DynamicPoseWithCovar,self.pose10hz_callback,queue_size=1)
     self.gps2hzSub   = rospy.Subscriber("/gps_state/gps_state_oxts_2hz",GpsState,self.gps2hz_callback,queue_size=1)
     self.wmStringSub = rospy.Subscriber("/WmCompressor/wm_string",String,self.compressed_wm_callback,queue_size=1)
+
     if self.sendWm == 1: 
       self.wmStatusSub = rospy.Subscriber(self.wmTopic, TrackedObjectSet, self.parseWmMsg, queue_size = 1)
     
-    if ffmpegTransportExists:
+    self.imgStreamData  = ImgStreamData()
+    #if ffmpegTransportExists:
       #self.imgStreamSub   = rospy.Subscriber("/tower_cam_front/stream/ffmpeg", FFMPEGPacket,              self.sendImgStreamPkt, queue_size = 1)
-      self.imgFrameSub    = rospy.Subscriber(self.imgTopic, CompressedImage , self.sendImgFramePkt, queue_size = 1)
-      self.imgStreamData  = ImgStreamData()
-      print('Subscribed to ffmpeg packets.')
+    #  print('Subscribed to ffmpeg packets.')
+    #else:
+    self.imgFrameSub    = rospy.Subscriber(self.imgTopic, CompressedImage , self.sendImgFramePkt, queue_size = 1)
+    print('Subscribed to jpeg packets: ',self.imgTopic)
 
     # Setup mqtt publishers and subscribers
     self.cloud.init()
     qos = 1
     self.cloud.subscribe(['cmd/'+self.name+'/remote'],qos)
+    self.cloud.subscribe(['cmdOnce/'+self.name+'/remote'],2) # Used by FVLA telematics dashboard
     self.cloud.subscribe(['cmd/'+self.name+'/teleop'],qos)
     self.cloud.subscribe(['snp/remote_server/heartbeat'],qos)
     self.cloud.subscribe(['snp/'+self.name+'/resPartList'],qos)
     self.cloud.subscribe(['wyp/'+self.name+'/remote'],qos)
+    self.cloud.subscribe(['dt/multi_dest_way_points/'+self.name],qos)
 
   def parseDgp(self,msg):
     q = msg.pose.orientation
@@ -161,13 +169,15 @@ class AvAgent:
     self.compressed_wm_string.append(msg)
 
   def gps2hz_callback(self,msg):
-    self.heartbeat.lat = msg.Latitude
-    self.heartbeat.lon = msg.Longitude
+    self.heartbeat.lat.value = msg.Latitude
+    self.heartbeat.lon.value = msg.Longitude
     
   def nextMsgCount(self):
     self.mqttMsgCount += 1
     if self.mqttMsgCount >=1000: self.mqttMsgCount = 1
     self.msgCountTime.append([self.mqttMsgCount,time.time(),5.0])
+    tStamp = round((time.time()-self.tZero)*1000)/1000
+    #print('Send msg: ', self.mqttMsgCount, tStamp)
     return self.mqttMsgCount
   
   def getTxTime(self,rxMsgCount):
@@ -176,15 +186,16 @@ class AvAgent:
         dt = time.time() - entry[1]
         if 0 < dt and dt < entry[2]:
           entry[2] = dt
+          dtZero = round((time.time()-self.tZero)*1000)/1000
+          #print('Rx msg: ',rxMsgCount,dtZero,round(dt*1000)/1000)
     
     oldList = self.msgCountTime
     newList = []
     for entry in self.msgCountTime:
       dtMeas = time.time() - entry[1]
-      if dtMeas < 5:
-        #if entry[2] < 5.0:
-        #  print('Estimated round trip:',entry[2])
+      if dtMeas < 5 and entry[2] < 5.0:
         newList.append(entry)
+    self.msgCountTime = newList
     
   def updateAvgRndTripMsgTime(self):
     updatedRndTripTime = 0.5
@@ -193,23 +204,26 @@ class AvAgent:
     numCount = 0.
     for entry in self.msgCountTime:
       dtMeas = time.time() - entry[1]
-      if dtMeas < 5 and entry[2] < 5.0:
-        avgTime += entry[2]
-        numCount += 1.
+      if dtMeas < 5:
+        if entry[2] < 5.0:
+          avgTime += entry[2]
+          numCount += 1.
+        elif dtMeas > self.avgRndTripMsgTime:
+          avgTime += 4.0
+          numCount += 1.
     
     if numCount > 0:
       updatedRndTripTime = avgTime/numCount
       
     # Update average
-    self.avgRndTripMsgTime = 0.7*self.avgRndTripMsgTime + 0.3*updatedRndTripTime/2
+    self.avgRndTripMsgTime = 0.7*self.avgRndTripMsgTime + 0.3*updatedRndTripTime
+    #print('=============== Avg round trip: ',numCount,round(self.avgRndTripMsgTime*1000)/1000)
 
   def sendStatusCsv(self):
     # Heartbeat message
-    qos = 1
+    qos = 0
     topic = "dt/agents/heartbeat"
     csvStr = self.heartbeat.toMsg(self.nextMsgCount())
-    #data = ''
-    #data +='a,'+self.name + ','+ str(self.x_position) + ',' + str(self.y_position) + ',' + str(self.th_heading)
     self.cloud.publishCsv(topic,csvStr,qos)
     
     # Telemetry message
@@ -219,6 +233,7 @@ class AvAgent:
     self.cloud.publishCsv(topic,csvStr,qos)
     
     # Subsystem status
+    qos = 0
     topic = "dt/"+self.name+"/status"
     data = ''
     data = 'a,'+self.name+'\n'
@@ -234,25 +249,26 @@ class AvAgent:
   
   def sendWmStatus(self):
     if self.passThroughWm and time.time() > self.timeNextWmSend:
-        # Copy ego pose
-        dgpData = [self.heartbeat.pos_x.value,
-                self.heartbeat.pos_y.value,
-                self.heartbeat.pos_th.value,
-                self.heartbeat.spd.value,
-                self.heartbeat.yawRate.value]
-        self.wmStatus.setDgp(dgpData)
-        
-        # Send world model status (ego + other positions)
-        qos=0
-        topic = 'dt/'+self.name+'/wmState'
-        payload = ''
-        payload += self.wmStatus.getWmStr2()+'\n'
-        if len(self.compressed_wm_string) > 0:
-          payload += self.compressed_wm_string[0].data
-          self.compressed_wm_string = []
-        self.cloud.publishCsv(topic,payload,qos)
-        
-        self.timeNextWmSend = time.time() + self.wmImgMinWaitTime
+      # Copy ego pose
+      dgpData = [self.heartbeat.pos_x.value,
+              self.heartbeat.pos_y.value,
+              self.heartbeat.pos_th.value,
+              self.heartbeat.spd.value,
+              self.heartbeat.yawRate.value]
+      self.wmStatus.setDgp(dgpData)
+      
+      # Send world model status (ego + other positions)
+      qos=0
+      topic = 'dt/'+self.name+'/wmState'
+      payload = ''
+      payload += self.wmStatus.getWmStr2()+'\n'
+      if len(self.compressed_wm_string) > 0:
+        payload += self.compressed_wm_string[0].data
+        self.compressed_wm_string = []
+      self.cloud.publishCsv(topic,payload,qos)
+      
+      self.timeNextWmSend = time.time() + self.wmImgMinWaitTime
+
   
   def sendImgStreamPkt(self,msg):
     if self.passThroughImg and time.time() > self.timeNextImgSend:
@@ -288,11 +304,11 @@ class AvAgent:
         image.save(buffered, format='jpeg')
         msg.data = buffered.getvalue()
         
-      a = 1
       qos = 0
       topic = "dt/"+self.name+"/imgStream"
       mqttData = self.imgStreamData.toMsg(msg,width,height)
       self.cloud.publishCsv(topic,mqttData,qos)
+      #print('Send jpeg:',time.time()-self.tZero)
 
       self.timeNextImgSend = time.time() + self.wmImgMinWaitTime
     
@@ -379,11 +395,11 @@ class AvAgent:
           if len(lineData) >= 3 and lineData[0] == 's':
             for s in self.subsystems:
               cmd = lineData[2]
-              #if s.name == lineData[1]:
-                #if cmd == '0' or cmd == '1':
-                  #if s.shouldBeStarted != int(cmd):
+              if s.name == lineData[1]:
+                if cmd == '0' or cmd == '1':
+                  if s.shouldBeStarted != int(cmd):
                     #print("Remote cmd:",s.name, int(cmd))
-                    #s.shouldBeStarted = int(cmd)
+                    s.shouldBeStarted = int(cmd)
           elif len(lineData) >= 2 and lineData[0] == 'w':
             if int(lineData[1]) == 1:
               self.remoteWmDisplayLastReq = time.time()
@@ -425,21 +441,24 @@ class AvAgent:
         wp = WaypointData()
         wp.fromMsg(m)
         
+      elif 'way' in m['topic']:
+        print(m['data'])
+        
       if receivedAgentMsgCount > -1:
         dt = self.getTxTime(receivedAgentMsgCount)
-        self.updateAvgRndTripMsgTime()
+        #self.updateAvgRndTripMsgTime()
         
     # Update wait time between sending wm stuff
     fullRateWm = self.remoteMonTeleoping or self.sendWm == 2
     lowRateWm  = self.remoteWmDisplayOn
-    self.wmImgMinWaitTime = max(0.1, min(2.0,round(self.avgRndTripMsgTime*100)/100))
+    self.wmImgMinWaitTime = max(0.09, min(2.0,self.avgRndTripMsgTime*0.5-0.1))
     if fullRateWm:
       if self.wmImgMinWaitTime > 0.2 and time.time() > self.nextMinWaitPrint:
         print('Delay sending wm due to network',self.wmImgMinWaitTime)
         self.nextMinWaitPrint = time.time() + 2.0
-      self.wmImgMinWaitTime = max(0.1, self.wmImgMinWaitTime)
+      self.wmImgMinWaitTime = max(0.09, self.wmImgMinWaitTime)
     else:
-      self.wmImgMinWaitTime = max(0.5, self.wmImgMinWaitTime)
+      self.wmImgMinWaitTime = max(0.49, self.wmImgMinWaitTime)
         
   def setLaunchAll(self):
     for s in self.subsystems:

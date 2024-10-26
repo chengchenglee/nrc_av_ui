@@ -45,7 +45,7 @@ if __name__ == '__main__':
       if args.mode == 'Trigger':
         sleepTime = 0.1
         if currentMaxFileSize > prevMaxFilesize:
-          print(currentMaxFileSize)
+          #print(currentMaxFileSize)
           diagMsg.status[0].level = 5
           sleepTime = 0.1
         else:
@@ -53,7 +53,7 @@ if __name__ == '__main__':
       else:
         sleepTime = 0.5
         if currentMaxFileSize > prevMaxFilesize:
-          print(currentMaxFileSize)
+          #print(currentMaxFileSize)
           diagMsg.status[0].level = 3
           sleepTime = 0.1
         elif currentMaxFileSize > 0:

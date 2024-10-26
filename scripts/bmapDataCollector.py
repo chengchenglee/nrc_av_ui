@@ -8,7 +8,7 @@ import numpy as np
 from nrc_msgs.msg import CtrlStateFLG
 from nrc_msgs.msg import CANVReader
 from nrc_msgs.msg import DriverInput
-from nrc_msgs.msg import DynamicPoseWithCovar, TrackedObject, TrackedObjectSet
+from nrc_msgs.msg import DynamicPoseWithCovar, GpsState, TrackedObject, TrackedObjectSet
 import tf.transformations
 
 import time
@@ -46,11 +46,28 @@ class BmapHistRecorder:
     self.egoX  = 0
     self.egoY  = 0
     self.egoTh = 0
+    self.posFixInd = 5 # default RTK float
+    self.HDOP = 2      # default 2m
+    self.msgVersion = 1.1
+    
+    # Version 1.1: Add gps fix, gps HDOP
     
     # Places where we don't want to record
     self.exclPoses = []
     self.exclPoses.append([4870.25,-2212.87,0.0194033,75.0,17.0])  #SVPG
     self.inExclusionZone = True
+    
+    self.exclPoseInvs = []
+    for point in self.exclPoses:
+      exclPose = np.zeros((3,3))
+      exclPose[0,0] =  np.cos(point[2])
+      exclPose[0,1] =  np.sin(point[2])
+      exclPose[1,0] = -exclPose[0,1]
+      exclPose[1,1] =  exclPose[0,0]
+      exclPose[2,2] =  1
+      exclPose[0,2] = point[0]
+      exclPose[1,2] = point[1]
+      self.exclPoseInvs.append([np.linalg.inv(exclPose),point[3],point[4]])
     
     self.diagMsg = DiagnosticArray()
     diagStatus = DiagnosticStatus()
@@ -60,7 +77,8 @@ class BmapHistRecorder:
     self.healthPub = rospy.Publisher('/bmap_recorder/health', DiagnosticArray, queue_size=10)
     self.dataPub   = rospy.Publisher('/bmap_recorder/data', String, queue_size=10)
     
-    rospy.Subscriber('/dynamic_global_pose', DynamicPoseWithCovar, self.dgpCallback)
+    rospy.Subscriber('/gps_state/dynamic_global_pose_oxts_10hz', DynamicPoseWithCovar, self.dgpCallback)
+    rospy.Subscriber('/gps_state/gps_state_oxts_2hz', GpsState, self.gpsStateCallback)
     rospy.Subscriber('/pc_processor/multi_object_tracker/tracked_object_set', TrackedObjectSet, self.tosCallback)
     rospy.Subscriber('/CAN_V_reader', CANVReader, self.CanVCallback)
     rospy.Subscriber('/CtrlStateFLG', CtrlStateFLG, self.ctrlStateCallback)
@@ -124,6 +142,7 @@ class BmapHistRecorder:
     
     for msgObj in msg.objects:
       if msgObj.object_id >=10000: continue
+      if msgObj.classification < 3: continue
       foundObj = False
       for trkObj in self.objHist:
         if msgObj.object_id == trkObj[0].objId:
@@ -146,7 +165,8 @@ class BmapHistRecorder:
     # Check if delete or publish object track
     oldTracks = self.objHist
     self.objHist = []
-    objStr = ''
+    objStr = 'v,'+str(self.msgVersion)+'\n'
+    publishString = False
     for trkObj in oldTracks:
       dt = tNow - trkObj[-1].t
       if dt > 2.0:
@@ -155,11 +175,12 @@ class BmapHistRecorder:
         dist = np.sqrt(dx*dx + dy*dy)
         if dist > 20.:
           objStr += self.toString(trkObj)
+          publishString = True
       else:
         self.objHist.append(trkObj)
     
     # Publish data
-    if len(objStr) > 0:
+    if publishString:
       #print('Publish objects',objStr)
       dataMsg = String()
       dataMsg.data = objStr
@@ -168,26 +189,28 @@ class BmapHistRecorder:
   def updateExclZone(self,msg):
     # Check if we're in an exclusion zone
     self.inExclusionZone = False
-    for point in self.exclPoses:
-      exclPose = np.zeros((3,3))
-      exclPose[0,0] =  np.cos(point[2])
-      exclPose[0,1] =  np.sin(point[2])
-      exclPose[1,0] = -np.sin(point[2])
-      exclPose[1,1] =  np.cos(point[2])
-      exclPose[2,2] =  1
-      exclPose[0,2] = point[0]
-      exclPose[1,2] = point[1]
-      exclPoseInv = np.linalg.inv(exclPose)
+    #for point in self.exclPoses:
+      #exclPose = np.zeros((3,3))
+      #exclPose[0,0] =  np.cos(point[2])
+      #exclPose[0,1] =  np.sin(point[2])
+      #exclPose[1,0] = -exclPose[0,1]
+      #exclPose[1,1] =  exclPose[0,0]
+      #exclPose[2,2] =  1
+      #exclPose[0,2] = point[0]
+      #exclPose[1,2] = point[1]
+      #exclPoseInv = np.linalg.inv(exclPose)
+      
+    for invPose in self.exclPoseInvs:
       
       egoPoint = np.zeros((3,1))
       egoPoint[0,0] = msg.pose.position.x
       egoPoint[1,0] = msg.pose.position.y
       egoPoint[2,0] = 1
       
-      relPoint = np.dot(exclPoseInv,egoPoint)
-      if abs(relPoint[0,0]) < point[3] and abs(relPoint[1,0]) < point[4]:
+      relPoint = np.dot(invPose[0],egoPoint)
+      if abs(relPoint[0,0]) < invPose[1] and abs(relPoint[1,0]) < invPose[2]:
         self.inExclusionZone = True
-        #print('In exclusion zone',round(relPoint[0,0]*10)/10,round(relPoint[1,0]*10)/10)
+        print('In exclusion zone',round(relPoint[0,0]*10)/10,round(relPoint[1,0]*10)/10)
   
   def dgpCallback(self,msg):
     # Places we don't want to record
@@ -209,13 +232,19 @@ class BmapHistRecorder:
       dataMsg = String()
       
       if self.inExclusionZone == False:
-        dataMsg.data = 'ego,t,avOn,turnSig,x,y,th,'
+        dataMsg.data = 'v,'+str(self.msgVersion)+'\n'
+        dataMsg.data += 'ego,t,avOn,turnSig,x,y,th,v,w,fix,hdop,'
         dataMsg.data += str(msg.header.stamp.to_sec())+','
         dataMsg.data += str(self.avEngaged)+','+str(self.turnSigState)+','
         dataMsg.data += str(round(xyth[0]*100)/100)+','+str(round(xyth[1]*100)/100)+','+str(round(xyth[2]*10000)/10000)+','
-        dataMsg.data += str(spd)+','+str(yawRate)
+        dataMsg.data += str(spd)+','+str(yawRate)+','
+        dataMsg.data += str(self.posFixInd)+','+str(self.HDOP)+','
         self.dataPub.publish(dataMsg)
       self.prevDgpPose = xyth
+      
+  def gpsStateCallback(self,msg):
+    self.posFixInd = msg.Pos_Fix_ind
+    self.HDOP = msg.HDOP
       
   def CanVCallback(self,msg):
     tNow = time.time()

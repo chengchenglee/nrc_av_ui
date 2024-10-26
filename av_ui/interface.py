@@ -3,7 +3,7 @@
 import sys
 import os
 from nrc_msgs.msg import FailureModeRequest
-from subsystem import Subsystem
+from include.subsystem import Subsystem
 import rospy
 import subprocess
 #from MultiSetDest import MultiSetDest

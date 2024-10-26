@@ -19,6 +19,10 @@ Subsystem:
         HealthName: CAR
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /ard_state
+        HealthName: ARD
+        HealthTopicType: Int16MultiArray
+        NomWarnErrRate: 10, 8, 1
       - HealthTopic: /pmu_state
         HealthName: PMU
         HealthTopicType: Int16MultiArray
@@ -28,6 +32,14 @@ Subsystem:
         Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=5 CanAriyaSvITS3Consumer:=true CanAriyaSvITS3ConsumerCh:=0 CanAriyaSvITS4Consumer:=true CanAriyaSvITS4ConsumerCh:=1 CanAriyaSvITS5Consumer:=true CanAriyaSvITS5ConsumerCh:=3  CanAriyaSvWriter:=true CanAriyaSvWriterCh:=2 Eyeq5DevCh0:=true Eyeq5DevCh0Ch:=4 Eyeq5DevWrite:=true Eyeq5DevWriteCh:=4
         Type: Software
         LaunchTime: 5.0
+      - Name: ARD
+        Command: roslaunch nrc_hw_svcs leaf_interface_arduino.launch arduino_machine:=node02 vehicleType:=Ariya
+        Type: Software
+        LaunchTime: 1.0
+      - Name: Me2Yolo
+        Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch
+        Type: Software
+        LaunchTime: 3.0
     Diagnostic:
       LED: 0
       Retry: 3
@@ -82,14 +94,18 @@ Subsystem:
     Trigger:
       - Source: StartRequest
     HealthTopics:
-      - HealthTopic: /Cubtek/health
-        HealthName: NOD
+      - HealthTopic: /Cubtek/health_L
+        HealthName: NOD_L
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /cubtek_raw_points
-        HealthName: CAN
-        HealthTopicType: CubtekRadarArray
-        NomWarnErrRate: 15, 9, 3
+      - HealthTopic: /Cubtek/health_R
+        HealthName: NOD_R
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /cubtek_fuse_health
+        HealthName: TOS
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: Cubtek_eth_raw_left
         Command: sudo $HOME/projects/nrc_ws/devel/lib/nrc_hw_svcs/pcap eno4 45161 #Left cubtek radar
@@ -134,20 +150,21 @@ Subsystem:
         HealthTopicType: PointCloud2
         NomWarnErrRate: 10, 7, 3
     Commands:
+      #- Name: InnovusionDriver
+        #Command: rosrun nrc_svcs  runInnovusion.sh > /dev/null
+        #Type: Software
+        #LaunchTime: 1.0
       - Name: InnovusionDriver
-        Command: rosrun nrc_svcs  runInnovusion.sh > /dev/null
+        Command: bash $HOME/projects/fvla-infrapod/nrc_ws/src/nrc_svcs/scripts/runInnovusionInfraPod.sh > /dev/null
+        NodeName: innovusion_nodelet_manager
         Type: Software
-        LaunchTime: 1.0
+        LaunchTime: 1
       - Name: PCP
         Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Foxtrot:=true do_curb_detection:=false do_curb_points_accumulation:=false include_curb_points_for_drivable_area:=false include_lateral_curb_points_for_drivable_area:=false include_accumulated_curb_points_for_drivable_area:=false srcgs/cluster_height_threshold:=0.3 dynamic_global_pose_topic_name:=/dynamic_global_pose
         Type: Software
         LaunchTime: 3.0
-      - Name: Me2Yolo
-        Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch
-        Type: Software
-        LaunchTime: 3.0
     Diagnostic:
-      LED: 4
+      LED: 3
       Retry: 3
       Timeout: 5
     Depends:
@@ -182,20 +199,20 @@ Subsystem:
         Type: Software
         LaunchTime: 1.0
     Diagnostic:
-      LED: 5
+      LED: 4
       Retry: 3
       Timeout: 5
     Depends:
-      - Launch: InnovusionPCP
+      - Launch:
         Run:
 
-  PLAN:
+  GOAL:
     Type: Algorithm
     Description: AutoGoals
     Trigger:
       - Source: StartRequest
     HealthTopics:
-     - HealthTopic: /modia/route_plan/health
+      - HealthTopic: /modia/route_plan/health
         HealthName: ROUTE
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 1, 0.5, 0.2
@@ -203,6 +220,30 @@ Subsystem:
         HealthName: GOALS
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: RouteWaypoints
+        Command: rosrun nrc_wm2_svcs multi_set_dest_repeater.py
+        NodeName: RouteWaypoints
+        Type: Software
+        LaunchTime: 3.0
+      - Name: AutoGoals
+        Command: roslaunch nrc_wm2_svcs leaf_route.launch inclRoutePlanner:=true
+        NodeName: AutoGoals_node
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 5
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:
+  PLAN:
+    Type: Algorithm
+    Description: Planner
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
       - HealthTopic: /trajectory_planner/health
         HealthName: TRP
         HealthTopicType: DiagnosticArray
@@ -212,17 +253,8 @@ Subsystem:
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 100, 60, 10
     Commands:
-      - Name: RouteWaypoints
-        Command: rosrun nrc_wm2_svcs multi_set_dest_repeater.py
-        Type: Software
-        LaunchTime: 3.0
-      - Name: AutoGoals
-        Command: roslaunch nrc_wm2_svcs leaf_route.launch
-        NodeName: AutoGoals_node
-        Type: Software
-        LaunchTime: 3.0
       - Name: Trajectory Planning
-        Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=AriyaFS
+        Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=AriyaFS vehicle_type_react:=AriyaFS_React
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -230,14 +262,15 @@ Subsystem:
       Retry: 3
       Timeout: 5
     Depends:
-      - Launch: WM
+      - Launch:
         Run:
+
 
   BAG:
     Type: Algorithm
     Description: Record bagfiles
     Trigger:
-      - Source: ARD2
+      - Source: StartRequest
     HealthTopics:
       - HealthTopic: /BagfileHealth
         HealthName: BAG
