@@ -117,6 +117,7 @@ class AvAgent:
     Loader.subscribe_health_msgs(self.subsystems)
     self.avLedStatusPub = rospy.Publisher("ailsv_av_led",Int16MultiArray,queue_size=1)
     self.teleopPub      = rospy.Publisher("ailsv_teleop",MarkerArray, queue_size=1)
+    self.wypPub         = rospy.Publisher("/mspf_waypoints", String, queue_size=1)
     self.poseSub     = rospy.Subscriber("/dynamic_global_pose",     DynamicPoseWithCovar,self.pose_callback,queue_size=1)
     self.pose10hzSub = rospy.Subscriber("/dynamic_global_pose_10Hz",DynamicPoseWithCovar,self.pose10hz_callback,queue_size=1)
     self.gps2hzSub   = rospy.Subscriber("/gps_state/gps_state_oxts_2hz",GpsState,self.gps2hz_callback,queue_size=1)
@@ -141,7 +142,7 @@ class AvAgent:
     self.cloud.subscribe(['cmd/'+self.name+'/teleop'],qos)
     self.cloud.subscribe(['snp/remote_server/heartbeat'],qos)
     self.cloud.subscribe(['snp/'+self.name+'/resPartList'],qos)
-    self.cloud.subscribe(['wyp/'+self.name+'/remote'],qos)
+    self.cloud.subscribe(['cmd/'+self.name+'/mspfWaypoints'],qos)
     self.cloud.subscribe(['dt/multi_dest_way_points/'+self.name],qos)
 
   def parseDgp(self,msg):
@@ -437,9 +438,12 @@ class AvAgent:
             else:
               self.fileInTransit.state.append([str(lineData[1]),int(lineData[2])+1])
               
-      elif 'wyp' in m['topic']:
+      elif 'mspfWaypoints' in m['topic']:
         wp = WaypointData()
-        wp.fromMsg(m)
+        wp.fromMsg(m['data'])
+        #publish waypoint message
+        wp_string = wp.toMsg()
+        self.wypPub.publish(wp_string)
         
       elif 'way' in m['topic']:
         print(m['data'])

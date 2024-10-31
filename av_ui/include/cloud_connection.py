@@ -167,7 +167,23 @@ class CloudConnection:
           msg['data'] = message.payload
         elif 'imgStream' in message.topic:
           msg['data'] = message.payload
-        
+        elif 'mspfWaypoints' in message.topic:
+          try:
+            data = json.loads(message.payload.decode("utf-8"))
+          except json.JSONDecodeError:
+            
+            # Parse csv data
+            payloadCsv = message.payload
+            #if type(payloadCsv) == 'bytes':
+            payloadCsv = message.payload.decode('utf-8')
+            
+            data = []
+            lines = payloadCsv.split('\n')
+            for line in lines:
+              lineData = line.split(',')
+              data.append(list(lineData))
+          
+          msg['data'] = data
         else:
           # Parse csv data
           payloadCsv = message.payload
@@ -179,7 +195,7 @@ class CloudConnection:
           for line in lines:
             lineData = line.split(',')
             data.append(list(lineData))
-        
+          
           msg['data'] = data
         
         with mutex:
