@@ -439,6 +439,7 @@ class AvAgent:
               self.fileInTransit.state.append([str(lineData[1]),int(lineData[2])+1])
               
       elif 'mspfWaypoints' in m['topic']:
+        print('Rx mspf waypoints 1.')
         wp = WaypointData()
         wp.fromMsg(m['data'])
         #publish waypoint message
@@ -446,6 +447,7 @@ class AvAgent:
         self.wypPub.publish(wp_string)
         
       elif 'way' in m['topic']:
+        print('Rx mspf waypoints 2.')
         print(m['data'])
         
       if receivedAgentMsgCount > -1:

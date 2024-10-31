@@ -24,7 +24,7 @@ class WaypointEntry:
     self.th = dataIn[2]
     
   def toStr(self):
-    csvStr = ','+str(self.x)+','+str(self.y)+','+str(self.th)
+    csvStr = 'w,'+str(self.x)+','+str(self.y)+','+str(self.th)+'\n'
     return csvStr
 
 class WaypointData:
@@ -35,7 +35,6 @@ class WaypointData:
     
   def toMsg(self):
     csvStr = ''
-    csvStr = 'w'
     for i in range(len(self.waypoints)):
       csvStr += self.waypoints[i].toStr()
     #print('mqtt_defs, toMsg:\n'+str(csvStr))
@@ -124,7 +123,7 @@ class WaypointData:
     
     """
     try:
-      wps = json_payload["wps"]
+      wps = json_payload["dests"]
 
       if "lat" in wps[0].keys():
         #convert lat,lon,heading to x,y,theta
