@@ -11,7 +11,7 @@
   <arg name="system_main_topics" 
   default="/dynamic_global_pose
   |/ccm_speed_plan
-  |/gps_state
+  |/gps_state(.*)
   |/ME3_ObjData
   |/ME3_LKA_left
   |/ME3_LKA_right
@@ -28,6 +28,7 @@
   |/ME4_(.*)
   |/CAN_V_reader
   |/ProPILOT_ACC_status
+  |/ProPILOT_inputs
   |/rl_ccm_control_inputs
   |/acc_cmd
   |/ME5_(.*)
