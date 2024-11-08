@@ -24,9 +24,11 @@
   <arg name="record_innovusion" default="false"/>
   <arg name="record_ariya_messages" default="false"/>
   <arg name="record_cubtek_messages" default="true"/>
+  <arg name="record_labeled_pc" default="false"/>
   
   <arg name="prefix" default="autonomy_log" />
   <arg name="compression" default="false" /> <!--bz2 compression -->
+  <arg name="labeledPcCompression" default="lz4" /> <!--bz2 compression -->
 
   <arg name="system_front_tower_cameras_topics"
   default="/monitor_cam_front/image_stamped/compressed
@@ -112,6 +114,9 @@
   |/radar
   |/radar_bf"/>
   
+  <arg name="labeled_pc_topics"
+  default="/pc_processor/labeled_pc"/>
+  
   <arg name="pc_processor_all_topics" 
   default="/drivable_area_boundary_points
   |/drivable_area_boundary_points_with_edge_points
@@ -130,7 +135,8 @@
   |/dds_object_databse_fused_data
   |/ailsv_tracked_objects
   |/ailsv_predicted_trajectories
-  |/prediction_error"/>
+  |/prediction_error
+  |/cubtek_trackedobjects_filter_out"/>
   
   <arg name="dm_lite_topics" 
   default="/drive_plan
@@ -180,7 +186,10 @@
   |/speed_profile_perfect_decel
   |/stop_line_dist_info
   |/whisper_out_perfect_decel
-  |/perfect_decel_lookup"/>
+  |/perfect_decel_lookup
+  |/prm/reference_path_data
+  |/prm/osp_constraints_lv_ids
+  |/prm/risk_classifier_output"/>
   
   <arg name="validation_topics"
   default="/controller_state
@@ -211,7 +220,6 @@
   <arg name="cubtek_topics"
   default="/cubtek_PC_rviz_R
   |/cubtek_PC_rviz_L
-  |/cubtek_trackedobjects_filter_out
   |/cubtek_raw_points
   |/cubtek_raw_PC
   |/cubtek_dbscan_PC
@@ -286,6 +294,9 @@
 
   <node if="$(arg record_innovusion)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_innovusion" output="screen"
   args="$(arg compression) -o $(arg prefix)_innovusion -e $(arg innovusion_topics)" machine="$(arg record_machine)"/>
+
+  <node if="$(arg record_labeled_pc)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_innovusion_labeled_pc" output="screen"
+  args="$(arg labeledPcCompression) -o $(arg prefix)_innovusion_labeled_pc -e $(arg labeled_pc_topics)" machine="$(arg record_machine)"/>
 
   <node if="$(arg record_cubtek_messages)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_cubtek" output="screen"
   args="$(arg compression) -o $(arg prefix)_cubtek -e $(arg cubtek_topics)" machine="$(arg record_machine)"/>

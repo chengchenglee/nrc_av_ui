@@ -84,6 +84,7 @@
   |/lead_vehicle
   |/prm/reference_path_data
   |/prm/osp_constraints_lv_ids
+  |/prm/risk_classifier_output
   |/move_base_simple/goal
   |/driver_route_state"/>
 
