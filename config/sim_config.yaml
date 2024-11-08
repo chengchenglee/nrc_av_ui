@@ -52,7 +52,7 @@ Subsystem:
         LaunchTime: 1
     Diagnostic:
       Retry: 3
-      Timeout: 3
+      Timeout: 15
     Depends:
       - Launch:
         Run:

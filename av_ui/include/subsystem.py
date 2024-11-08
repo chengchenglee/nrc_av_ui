@@ -162,7 +162,7 @@ class Subsystem:
             self.restartRequest = False
           else:
             if self.timeFailing < self.timeout:
-              print("Subsystem failing:",self.name,self.timeFailing,self.timeout)
+              print("Subsystem failing (t/thresh):",self.name,round(self.timeFailing*10)/10,self.timeout)
               self.timeFailing = self.timeFailing + 0.1
             else:
               if self.startsRemaining > 0:
