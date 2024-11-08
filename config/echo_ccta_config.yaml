@@ -61,7 +61,7 @@ Subsystem:
         NomWarnErrRate: 100, 80, 60
     Commands:
       - Name: NTRIP
-        Command: rosrun nrc_hw_svcs ntripCommand-leaf2.sh
+        Command: rosrun nrc_hw_svcs ntrip_swiftNav.sh
         Type: Software
         LaunchTime: 1.0
       - Name: GPS_Raw
