@@ -24,7 +24,7 @@ Subsystem:
         NomWarnErrRate: 10, 6, 3 
     Commands:
       - Name: CanReader
-        Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=4 CanAriyaSvITS4Consumer:=true CanAriyaSvITS4ConsumerCh:=1
+        Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=4 CanAriyaSvITS3Consumer:=true CanAriyaSvITS3ConsumerCh:=0 CanAriyaSvITS4Consumer:=true CanAriyaSvITS4ConsumerCh:=1 CanAriyaSvITS5Consumer:=true CanAriyaSvITS5ConsumerCh:=2 CanAriyaSvITS1Consumer:=true CanAriyaSvITS1ConsumerCh:=3
         Type: Software
         LaunchTime: 5.0
       - Name: EthRawReader
