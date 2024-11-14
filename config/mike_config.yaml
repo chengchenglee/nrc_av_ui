@@ -7,6 +7,7 @@ Configuration:
   sendWm: 1
   sendSnapshots: 1
   broker: emqx
+  gpsTopic: /gps_state/gps_state_f9r_2hz
 
 Subsystem:
   CAR:
@@ -40,6 +41,14 @@ Subsystem:
         Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch
         Type: Software
         LaunchTime: 3.0
+      - Name: ariya_raw
+        Command: sudo python /home/leaf/projects/nrc_ws/src/nrc_leaf/scripts/eth_raw.py
+        Type: Software
+        LaunchTime: 1.0
+      - Name: ariya_gps_consume
+        Command: python /home/leaf/projects/nrc_ws/src/nrc_leaf/scripts/eth_consume.py
+        Type: Software
+        LaunchTime: 1.0
     Diagnostic:
       LED: 0
       Retry: 3
@@ -67,18 +76,6 @@ Subsystem:
         Command: roslaunch nrc_hw_svcs ublox_parser_ariya.launch
         Type: Software
         LaunchTime: 1.0
-      - Name: ariya_raw
-        Command: sudo python /home/leaf/projects/nrc_ws/src/nrc_leaf/scripts/eth_raw.py
-        Type: Software
-        LaunchTime: 1.0
-      - Name: ariya_gps_consume
-        Command: python /home/leaf/projects/nrc_ws/src/nrc_leaf/scripts/eth_consume.py
-        Type: Software
-        LaunchTime: 1.0
-      - Name: TF_Sys
-        Command: roslaunch nrc_svcs leaf_tf_subsystem.launch sanborn:=true
-        Type: Software
-        LaunchTime: 1.0
       - Name: f9r_conv
         Command: rosrun nrc_hw_svcs ublox_f9r_conv --name ublox_conv
         Type: Software
@@ -88,11 +85,15 @@ Subsystem:
         NodeName: MapMatch_node
         Type: Software
         LaunchTime: 3.0
-      - Name: GPS_Throttle
-        Command: rosrun topic_tools throttle messages /gps_state/gps_state_f9r 2.0 /gps_state/gps_state_oxts_2hz
-        NodeName: GPS_Throttle
+      - Name: DGP_Throttle
+        Command: rosrun topic_tools throttle messages /dynamic_global_pose 10.0 /dynamic_global_pose_10Hz
+        NodeName: DGP_Throttle
         Type: Software
         LaunchTime: 1
+      - Name: TF_Sys
+        Command: roslaunch nrc_svcs leaf_tf_subsystem.launch sanborn:=true
+        Type: Software
+        LaunchTime: 1.0
     Diagnostic:
       LED: 1
       Retry: 3
