@@ -1,7 +1,7 @@
 Configuration:
   Name: Echo
   agentType: AV4
-  mapName: Franklin.set
+  mapName: SanbornBishopRanch
   printTimeDebug: 0
   useGui: 1
   sendWm: 1
@@ -65,7 +65,7 @@ Subsystem:
         Type: Software
         LaunchTime: 1.0
       - Name: GPS_Raw
-        Command: roslaunch nrc_hw_svcs gps_leaf.launch sanborn:=true
+        Command: roslaunch nrc_hw_svcs gps_leaf_BR.launch sanborn:=true
         Type: Software
         LaunchTime: 1.0
       - Name: TF_Sys
