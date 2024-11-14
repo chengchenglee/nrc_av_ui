@@ -54,9 +54,9 @@ Subsystem:
     Trigger:
       - Source: StartRequest
     HealthTopics:
-      - HealthTopic: /gps_state/dynamic_global_pose_f9r_20hz
+      - HealthTopic: /gps_state/gps_state_f9r
         HealthName: RAW
-        HealthTopicType: DynamicPoseWithCovar
+        HealthTopicType: GpsState
         NomWarnErrRate: 20, 10, 5
       - HealthTopic: /dynamic_global_pose
         HealthName: DGP
@@ -64,7 +64,15 @@ Subsystem:
         NomWarnErrRate: 100, 80, 60
     Commands:
       - Name: f9r_raw
-        Command: roslaunch nrc_hw_svcs f9r_udev_rule.launch
+        Command: roslaunch nrc_hw_svcs ublox_parser_ariya.launch
+        Type: Software
+        LaunchTime: 1.0
+      - Name: ariya_raw
+        Command: sudo python /home/leaf/projects/nrc_ws/src/nrc_leaf/scripts/eth_raw.py
+        Type: Software
+        LaunchTime: 1.0
+      - Name: ariya_gps_consume
+        Command: python /home/leaf/projects/nrc_ws/src/nrc_leaf/scripts/eth_consume.py
         Type: Software
         LaunchTime: 1.0
       - Name: TF_Sys
@@ -80,6 +88,11 @@ Subsystem:
         NodeName: MapMatch_node
         Type: Software
         LaunchTime: 3.0
+      - Name: GPS_Throttle
+        Command: rosrun topic_tools throttle messages /gps_state/gps_state_f9r 2.0 /gps_state/gps_state_oxts_2hz
+        NodeName: GPS_Throttle
+        Type: Software
+        LaunchTime: 1
     Diagnostic:
       LED: 1
       Retry: 3
