@@ -88,7 +88,7 @@ class AvAgent:
     self.broker = Loader.getField(text, 'broker', 'ncal')
     self.agentType = Loader.getField(text, 'agentType', 'AV4')
     self.agentUrdf = Loader.getField(text, 'agentUrdf', 'leaf')
-    self.imgTopic  = Loader.getField(text, 'gpsTopic', '/gps_state/gps_state_oxts_2hz')
+    self.gpsTopic  = Loader.getField(text, 'gpsTopic', '/gps_state/gps_state_oxts_2hz')
     self.imgTopic  = Loader.getField(text, 'imgTopic', '/tower_cam_front/image_cropped2/compressed')
     self.wmTopic   = Loader.getField(text, 'wmTopic', '/pc_processor/multi_object_tracker/tracked_object_set')
     self.rosparams = Loader.getSubConfigs(text, 'ROSParams')
