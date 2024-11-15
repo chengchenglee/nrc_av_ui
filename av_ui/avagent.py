@@ -88,6 +88,7 @@ class AvAgent:
     self.broker = Loader.getField(text, 'broker', 'ncal')
     self.agentType = Loader.getField(text, 'agentType', 'AV4')
     self.agentUrdf = Loader.getField(text, 'agentUrdf', 'leaf')
+    self.gpsTopic  = Loader.getField(text, 'gpsTopic', '/gps_state/gps_state_oxts_2hz')
     self.imgTopic  = Loader.getField(text, 'imgTopic', '/tower_cam_front/image_cropped2/compressed')
     self.wmTopic   = Loader.getField(text, 'wmTopic', '/pc_processor/multi_object_tracker/tracked_object_set')
     self.rosparams = Loader.getSubConfigs(text, 'ROSParams')
@@ -120,7 +121,7 @@ class AvAgent:
     self.wypPub         = rospy.Publisher("/mspf_waypoints", String, queue_size=1)
     self.poseSub     = rospy.Subscriber("/dynamic_global_pose",     DynamicPoseWithCovar,self.pose_callback,queue_size=1)
     self.pose10hzSub = rospy.Subscriber("/dynamic_global_pose_10Hz",DynamicPoseWithCovar,self.pose10hz_callback,queue_size=1)
-    self.gps2hzSub   = rospy.Subscriber("/gps_state/gps_state_oxts_2hz",GpsState,self.gps2hz_callback,queue_size=1)
+    self.gps2hzSub   = rospy.Subscriber(self.gpsTopic,GpsState,self.gps2hz_callback,queue_size=1)
     self.wmStringSub = rospy.Subscriber("/WmCompressor/wm_string",String,self.compressed_wm_callback,queue_size=1)
 
     if self.sendWm == 1: 
