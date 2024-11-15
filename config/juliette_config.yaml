@@ -1,5 +1,5 @@
 Configuration:
-  Name: Lima
+  Name: Juliette
   mapName: Franklin.set
   printTimeDebug: 0
   useGui: 1
@@ -12,7 +12,7 @@ Subsystem:
     Type: Sensor
     Description: Vehicle Network
     Trigger: Startup, StartRequest, ARDX, or PMUX
-      - Source: StartRequest
+      - Source: Startup
     HealthTopics:
       - HealthTopic: /CAN_V_reader
         HealthName: CAN
@@ -94,29 +94,50 @@ Subsystem:
       - Launch: 
         Run:
 
-  # LTSWM:
-  #   Type: Algorithm
-  #   Description: LTSWM
-  #   Trigger:
-  #     - Source: StartRequest
-  #   HealthTopics: 
-  #     - HealthTopic: /probe_vehicle_publisher_h
-  #       HealthName: PVP
-  #       HealthTopicType: String
-  #       NomWarnErrRate: 10, 6, 3
-  #   Commands:
-  #     - Name: LTSWM pub
-  #       Command: roslaunch ltswm_cv ltswm_cv.launch veh_id:=cav-juliette
-  #       NodeName: ltswm_cv_mqtt_pub:juliette
-  #       Type: Software
-  #       LaunchTime: 3.0
-  #   Diagnostic:
-  #     LED: 6
-  #     Retry: 3
-  #     Timeout: 5
-  #   Depends:
-  #     - Launch: 
-  #       Run:
+  LTSWM:
+    Type: Algorithm
+    Description: LTSWM
+    Trigger:
+      - Source: StartRequest
+    HealthTopics: 
+      - HealthTopic: /probe_vehicle_publisher_h
+        HealthName: PVP
+        HealthTopicType: String
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: LTSWM pub
+        Command: roslaunch ltswm_cv ltswm_cv.launch veh_id:=cav-juliette
+        NodeName: ltswm_cv_mqtt_pub:juliette
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 6
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch: 
+        Run:
 
-
+  BAG:
+    Type: Algorithm
+    Description: Record bagfiles
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /BagfileHealth
+        HealthName: BAG
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: BAG
+        Command: roslaunch nrc_av_ui record_ccm_car.launch
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 7
+      Retry: 0
+      Timeout: 5
+    Depends:
+      - Launch:
+          Run:
 
