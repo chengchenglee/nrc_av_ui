@@ -41,14 +41,6 @@ Subsystem:
         Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch
         Type: Software
         LaunchTime: 3.0
-      - Name: ariya_raw
-        Command: sudo python /home/leaf/projects/nrc_ws/src/nrc_leaf/scripts/eth_raw.py
-        Type: Software
-        LaunchTime: 1.0
-      - Name: ariya_gps_consume
-        Command: python /home/leaf/projects/nrc_ws/src/nrc_leaf/scripts/eth_consume.py
-        Type: Software
-        LaunchTime: 1.0
     Diagnostic:
       LED: 0
       Retry: 3
@@ -66,11 +58,11 @@ Subsystem:
       - HealthTopic: /gps_state/gps_state_f9r
         HealthName: RAW
         HealthTopicType: GpsState
-        NomWarnErrRate: 20, 10, 5
-      - HealthTopic: /dynamic_global_pose
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /dynamic_global_pose_10Hz
         HealthName: DGP
         HealthTopicType: DynamicPoseWithCovar
-        NomWarnErrRate: 100, 80, 60
+        NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: f9r_raw
         Command: roslaunch nrc_hw_svcs ublox_parser_ariya.launch
@@ -119,7 +111,7 @@ Subsystem:
       - HealthTopic: /cubtek_fuse_health
         HealthName: TOS
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
+        NomWarnErrRate: 60, 28, 18
     Commands:
       - Name: Cubtek_eth_raw_left
         Command: sudo $HOME/projects/nrc_ws/devel/lib/nrc_hw_svcs/pcap eno4 45161 #Left cubtek radar
