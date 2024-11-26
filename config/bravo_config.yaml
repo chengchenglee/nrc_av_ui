@@ -20,14 +20,14 @@ Subsystem:
         HealthName: CAR
         HealthTopicType: CtrlStateFLG
         NomWarnErrRate: 10, 6, 3
-#      - HealthTopic: /ard_state
-#        HealthName: ARD
-#        HealthTopicType: Int16MultiArray
-#        NomWarnErrRate: 10, 8, 1
-      - HealthTopic: /pmu_state
-        HealthName: PMU
-        HealthTopicType: Int16MultiArray
-        NomWarnErrRate: 10, 8, 1
+ #     - HealthTopic: /ard_state
+ #       HealthName: ARD
+ #       HealthTopicType: Int16MultiArray
+ #       NomWarnErrRate: 10, 8, 1
+ #     - HealthTopic: /pmu_state
+ #       HealthName: PMU
+ #       HealthTopicType: Int16MultiArray
+ #       NomWarnErrRate: 10, 8, 1
     Commands:
       - Name: Can1Consumer
         Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=5 Can1Consumer:=true Can1ConsumerCh:=0 Can2Consumer:=true Can2ConsumerCh:=1  Can1WriterHD_CTRL:=true Can1WriterHD_CTRLCh:=1 Eyeq4Dev:=true Eyeq4DevCh:=2 Eyeq4DevWrite:=true Eyeq4DevWriteCh:=2 ARS300Consumer:=true ARS300ConsumerCh:=0
@@ -37,11 +37,11 @@ Subsystem:
 #        Command: roslaunch nrc_hw_svcs leaf_interface_arduino.launch arduino_machine:=node02
 #        Type: Software
 #        LaunchTime: 1.0
-      - Name: CSF_Throttle
-        Command: rosrun topic_tools throttle messages /CtrlStateFLG 10.0 /CtrlStateFLG_10hz
-        NodeName: CSF_Throttle
-        Type: Software
-        LaunchTime: 1
+#      - Name: CSF_Throttle
+#        Command: rosrun topic_tools throttle messages /CtrlStateFLG 10.0 /CtrlStateFLG_10hz
+#        NodeName: CSF_Throttle
+#        Type: Software
+#        LaunchTime: 1
     Diagnostic:
       LED: 0
       Retry: 3
@@ -95,7 +95,7 @@ Subsystem:
       - Launch:
         Run:
         
-  EYEQ5:
+  EYEQ4:
     Type: Sensor
     Description: Mobileye Camera
     Trigger:
