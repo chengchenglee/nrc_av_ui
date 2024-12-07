@@ -124,7 +124,7 @@ class AvAgent:
     self.gps2hzSub   = rospy.Subscriber(self.gpsTopic,GpsState,self.gps2hz_callback,queue_size=1)
     self.wmStringSub = rospy.Subscriber("/WmCompressor/wm_string",String,self.compressed_wm_callback,queue_size=1)
 
-    if self.sendWm == 1: 
+    if self.sendWm == 1 or self.sendWm == 2: 
       self.wmStatusSub = rospy.Subscriber(self.wmTopic, TrackedObjectSet, self.parseWmMsg, queue_size = 1)
     
     self.imgStreamData  = ImgStreamData()
