@@ -300,7 +300,7 @@ Subsystem:
         Type: Software
         LaunchTime: 3.0
       - Name: MQTT_telemetry
-        Command: roslaunch mqtt_telemetry mqtt_telemetry.launch agent_name:=NRC_Leaf_Bravo lwt_telemetry:=true lwt_to:=true lwt_path:=true lwt_wmstring:=true
+        Command: roslaunch mqtt_telemetry mqtt_telemetry.launch agent_name:=NRC_Leaf_Bravo lwt_telemetry:=true lwt_path:=true lwt_to:=true lwt_wmstring:=false
         Type: Software
         LaunchTime: 3.0
       - Name: Teleop_VirtCar
