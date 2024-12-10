@@ -13,6 +13,7 @@ from nrc_msgs.msg import CANVReader
 from nrc_msgs.msg import DriverInput
 from nrc_msgs.msg import DynamicPoseWithCovar
 from nrc_msgs.msg import TrackedObjectSet
+from nrc_msgs.msg import TrackedObject
 
 import argparse
 import time
@@ -26,8 +27,8 @@ from collections import deque
 from brk_acc_class import BRK_ACC_CLASS
 from soft_evnt_class import SOFT_EVNT_CLASS
 from left_right_class import LEFT_RIGHT_CLASS
+from left_right_class import OBJ_OBS
 import write_json
-
 
 
 class CsvWriterAVinterface:
@@ -77,7 +78,8 @@ class CsvWriterAVinterface:
         self.yaw = 0
         self.currentPose = None
         self.trackedObjList = []
-
+        self.objHist = []
+        
         #Vehicle health publisher
         self.healthPub = rospy.Publisher('/snapshotTrigger/health_status', DiagnosticArray, queue_size=10)
         rospy.init_node('Snapshot_Trigger')
@@ -112,7 +114,7 @@ class CsvWriterAVinterface:
             egoPoint[1,0] = msg.pose.position.y
             egoPoint[2,0] = 1
         
-            relPoint = np.dot(exclPoseInv,egoPoint)
+            relPoint = np.dot(exclPoseInv, egoPoint)
             if abs(relPoint[0,0]) < point[3] and abs(relPoint[1,0]) < point[4]:
                 self.inExclusionZone = True
                 #print('In exclusion zone',round(relPoint[0,0]*10)/10,round(relPoint[1,0]*10)/10)
@@ -163,10 +165,10 @@ class CsvWriterAVinterface:
         
         self.writeSnapshot, self.detailsDict = self.soft_evnt.process_softwareEventTrig(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose)
         
-        ## Turns and lane changes are included in the snapshots only if there are some desired tracked objects 
-        ## present near the AV during the beginning of the turn or lane change.
-        #self.writeSnapshot, self.detailsDict = self.left_right.Right.processSignal(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose, self.trackedObjList, self.timerInterval, self.yaw)
-        #self.writeSnapshot, self.detailsDict = self.left_right.Left.processSignal(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose, self.trackedObjList, self.timerInterval, self.yaw)
+        # Turns and lane changes are included in the snapshots only if there are some desired tracked objects 
+        # present near the AV during the beginning of the turn or lane change.
+        self.writeSnapshot, self.detailsDict = self.left_right.Right.processSignal(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose, self.objHist, self.timerInterval, self.yaw)
+        self.writeSnapshot, self.detailsDict = self.left_right.Left.processSignal(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose, self.objHist, self.timerInterval, self.yaw)
 
 
 
@@ -313,7 +315,7 @@ class CsvWriterAVinterface:
         self.updateExclZone(msg)
         
         self.currentPose = msg          # Used to calculate the distance of AV from nearby objects.
-        
+
         if self.lastPose is not None:
             # Check the time difference
             if (msg.header.stamp - self.lastPose.header.stamp).to_sec() < 0.1:
@@ -342,7 +344,10 @@ class CsvWriterAVinterface:
             quaternion = (msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w)
             euler = tf.transformations.euler_from_quaternion(quaternion)
             self.yaw = euler[2]
-
+            
+            self.egoX = msg.pose.position.x
+            self.egoY = msg.pose.position.y
+            
         self.lastPose = msg
 
                     
@@ -426,13 +431,58 @@ class CsvWriterAVinterface:
             self.avEngaged = bool(data.Switch_MAIN)
 
 
+
     def trackedObjCallback(self, msg):
         '''
         This callback gives a list of tracked objects around the AV.
+        It also updates the objHist list which has the history of the 
+        position of the objects being tracked.
+        
+        CLASSIFICATION_Unclassified=0
+        CLASSIFICATION_UnknownSmall=1
+        CLASSIFICATION_UnknowBig=2
+        CLASSIFICATION_Pedestrian=3
+        CLASSIFICATION_Bike=4
+        CLASSIFICATION_Car=5
+        CLASSIFICATION_Truck=6
         '''
         self.trackedObjList = msg.objects
+
+        tNow = msg.header.stamp.to_sec()
         
-        
+        for msgObj in msg.objects:
+            if msgObj.object_id >= 10000: 
+                continue
+            if msgObj.classification < 3: 
+                continue
+            
+            foundObj = False
+            for trkObj in self.objHist:
+                if msgObj.object_id == trkObj[0].objId:
+                    foundObj = True
+                    objObs = OBJ_OBS(tNow, msgObj, self.egoX, self.egoY, self.yaw)
+
+                    dx = trkObj[0].x - objObs.x
+                    dy = trkObj[0].y - objObs.y
+                    dist = np.sqrt(dx*dx + dy*dy)
+
+                    if dist > 1.0:
+                        trkObj.append(objObs)
+                    break
+
+            if not foundObj:
+                objObs = OBJ_OBS(tNow, msgObj, self.egoX, self.egoY, self.yaw)
+                self.objHist.append([objObs])
+
+        # Check if delete object track.
+        oldTracks = self.objHist
+        self.objHist = []
+        for trkObj in oldTracks:
+            dt = tNow - trkObj[-1].t
+            if dt < 2.0:
+                self.objHist.append(trkObj)
+
+    
 
     def SoftwareEventTriggerCallback(self, data):
         '''
@@ -451,6 +501,8 @@ class CsvWriterAVinterface:
             self.soft_evnt.softwareEventTrig_waitForTimerCallback = True
             self.soft_evnt.lastMsgReceived = time.time()
 
+
+
     def listener(self):
         rospy.Subscriber('/software_event_trigger', String, self.SoftwareEventTriggerCallback)
         rospy.Subscriber('/dynamic_global_pose', DynamicPoseWithCovar, self.poseCallback)
@@ -464,6 +516,8 @@ class CsvWriterAVinterface:
 
         while not rospy.is_shutdown():
             rospy.sleep(1)  # sleep for one second.
+        
+        
         
 if __name__ == '__main__':
     print ('Starting Snapshot Trigger node.')

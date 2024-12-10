@@ -1,0 +1,316 @@
+Configuration:
+  Name: bravo
+  agentType: AV4
+  mapName: Franklin.set
+  printTimeDebug: 0
+  useGui: 1
+  sendWm: 2
+  sendSnapshots: 0
+  Map: Franklin.set
+  broker: emqx
+
+Subsystem:
+  CAR:
+    Type: Sensor
+    Description: Vehicle CAN
+    Trigger: Startup, StartRequest, ARDX, or PMUX
+      - Source: Startup
+    HealthTopics:
+      - HealthTopic: /CtrlStateFLG_10hz
+        HealthName: CAR
+        HealthTopicType: CtrlStateFLG
+        NomWarnErrRate: 10, 6, 3
+ #     - HealthTopic: /ard_state
+ #       HealthName: ARD
+ #       HealthTopicType: Int16MultiArray
+ #       NomWarnErrRate: 10, 8, 1
+ #     - HealthTopic: /pmu_state
+ #       HealthName: PMU
+ #       HealthTopicType: Int16MultiArray
+ #       NomWarnErrRate: 10, 8, 1
+    Commands:
+      - Name: Can1Consumer
+        Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=5 Can1Consumer:=true Can1ConsumerCh:=0 Can2Consumer:=true Can2ConsumerCh:=1  Can1WriterHD_CTRL:=true Can1WriterHD_CTRLCh:=1 Eyeq4Dev:=true Eyeq4DevCh:=2 Eyeq4DevWrite:=true Eyeq4DevWriteCh:=2 ARS300Consumer:=true ARS300ConsumerCh:=0
+        Type: Software
+        LaunchTime: 5.0
+#      - Name: ARD
+#        Command: roslaunch nrc_hw_svcs leaf_interface_arduino.launch arduino_machine:=node02
+#        Type: Software
+#        LaunchTime: 1.0
+#      - Name: CSF_Throttle
+#        Command: rosrun topic_tools throttle messages /CtrlStateFLG 10.0 /CtrlStateFLG_10hz
+#        NodeName: CSF_Throttle
+#        Type: Software
+#        LaunchTime: 1
+    Diagnostic:
+      LED: 0
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:
+
+  Pose:
+    Type: Sensor
+    Description: Raw GPS
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /gps_state/dynamic_global_pose_oxts_10hz
+        HealthName: RAW
+        HealthTopicType: DynamicPoseWithCovar
+        NomWarnErrRate: 10, 8, 6
+      - HealthTopic: /dynamic_global_pose_10Hz
+        HealthName: DGP
+        HealthTopicType: DynamicPoseWithCovar
+        NomWarnErrRate: 10, 8, 6
+    Commands:
+      - Name: NTRIP
+        Command: rosrun nrc_hw_svcs ntripCommand-leaf2.sh
+        Type: Software
+        LaunchTime: 1.0
+      - Name: GPS_Raw
+        Command: roslaunch nrc_hw_svcs gps_leaf.launch sanborn:=true
+        Type: Software
+        LaunchTime: 1.0
+      - Name: TF_Sys
+        Command: roslaunch nrc_svcs leaf_tf_subsystem.launch sanborn:=true
+        Type: Software
+        LaunchTime: 1.0
+      - Name: MapMatch
+        Command: rosrun nrc_wm2_svcs map_match name:=MapMatch_node _useOxts:=true _useLaneMap:=true
+        NodeName: MapMatch_node
+        Type: Software
+        LaunchTime: 3.0
+      - Name: GPS_Throttle
+        Command: rosrun topic_tools throttle messages /gps_state/gps_state_oxts 2.0 /gps_state/gps_state_oxts_2hz
+        NodeName: GPS_Throttle
+        Type: Software
+        LaunchTime: 1
+    Diagnostic:
+      LED: 1
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:
+        
+  EYEQ4:
+    Type: Sensor
+    Description: Mobileye Camera
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
+#      - HealthTopic: /ME5/health
+#        HealthName: NOD
+#        HealthTopicType: DiagnosticArray
+#        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /ME4_ObjData
+        HealthName: CAN
+        HealthTopicType: Mobileye4ObjectArray
+        NomWarnErrRate: 30, 20, 10
+    Commands:
+#      - Name: Can_Com_Eyeq5
+#        Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=2 Eyeq5DevCh0:=true Eyeq5DevCh0Ch:=0 Eyeq5DevWrite:=true Eyeq5DevWriteCh:=0 Eyeq5DevCh1:=true Eyeq5DevCh1Ch:=1 nodeName:=eyeq5CanCom machine:=node03
+#        Type: Software
+#        LaunchTime: 2.0
+      - Name: Me2Yolo
+        Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch mobileye_version:=4
+        Type: Software
+        LaunchTime: 1.0
+    Diagnostic:
+      LED: 2
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:
+        
+  VELPCP:
+    Type: Sensor
+    Description: Lidar/PCP
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /velodyne_health
+        HealthName: VLDY
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /pc_processor/timing/overall_processing_time
+        HealthName: PCP
+        HealthTopicType: Float64
+        NomWarnErrRate: 10, 7, 3
+      - HealthTopic: /drivable_area_boundary_points
+        HealthName: DA
+        HealthTopicType: PointCloud2
+        NomWarnErrRate: 10, 7, 3
+    Commands:
+      - Name: VelodyneDriver
+        Command: roslaunch velodyne_pointcloud VLS128_points.launch velodyne_machine:=local
+        Type: Software
+        LaunchTime: 1.0
+      - Name: PCP
+        Command: roslaunch nrc_pcp_svcs pc_processor.launch dynamic_global_pose_topic_name:=/dynamic_global_pose do_road_surf_change_detection:=true include_road_surf_change_boundary_pts_for_drivable_area:=true Leaf_Foxtrot:=true publish_labeled_points:=true
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 4
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:
+        
+  WM:
+    Type: Algorithm
+    Description: World Model
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /object_tracker/health
+        HealthName: FUS
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /traffic_light/detection/health
+        HealthName: TLR
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 1, 0.5, 0.2
+      - HealthTopic: /VirtualVehs/health
+        HealthName: VRT
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /master_filter/health
+        HealthName: WOS
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: WM
+        Command: roslaunch nrc_wm2_svcs leaf_pred.launch
+        Type: Software
+        LaunchTime: 1.0
+      - Name: WM_Compressor
+        Command: rosrun nrc_wm2_svcs wm_compressor
+        Type: Software
+        LaunchTime: 1.0
+    Diagnostic:
+      LED: 5
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch: VELPCP
+        Run:
+        
+  PLAN:
+    Type: Algorithm
+    Description: AutoGoals
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /modia/route_plan/health
+        HealthName: ROUTE
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 1, 0.5, 0.2
+      - HealthTopic: /autoGoals/health
+        HealthName: GOALS
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /trajectory_planner/health
+        HealthName: TRP
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /trajectory_follower/health
+        HealthName: TRC
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 50, 3, 10
+    Commands:
+      - Name: RouteWaypoints
+        Command: rosrun nrc_wm2_svcs multi_set_dest_repeater.py
+        NodeName: RouteWaypoints
+        Type: Software
+        LaunchTime: 3.0
+      - Name: AutoGoals
+        Command: roslaunch nrc_wm2_svcs leaf_route.launch inclRoutePlanner:=true
+        NodeName: AutoGoals_node
+        Type: Software
+        LaunchTime: 3.0
+      - Name: Trajectory Planner
+        Command: roslaunch nrc_ralp_svcs leaf_planner.launch
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 6
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch: WM
+        Run:
+
+  BAG:
+    Type: Algorithm
+    Description: Record bagfiles
+    Trigger:
+      - Source: ARD2
+    HealthTopics:
+      - HealthTopic: /BagfileHealth
+        HealthName: BAG
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /snapshotTrigger/health_status
+        HealthName: TRIG
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /SnapshotHealth
+        HealthName: SBAG
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /bmap_recorder/health
+        HealthName: BMAP
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: BAG
+        Command: roslaunch nrc_av_ui record_separately.launch record_machine:=node02
+        Type: Software
+        LaunchTime: 3.0
+      - Name: SNAP
+        Command: roslaunch nrc_av_ui snapshotPipeline.launch recordBmapData:=true
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 7
+      Retry: 0
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:
+
+  TELEOP:
+    Type: Algorithm
+    Description: SAM Teleop
+    Trigger:
+      - Source: StartRequest
+#    HealthTopics:
+#      - HealthTopic: /tower_cam_front/camera_info
+#        HealthName: TCF
+#        HealthTopicType: CameraInfo
+#        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: Red5_USB
+        Command: roslaunch video_streamer video_encoders_usb.launch OS_version:=focal show_time:=true videostreamer_machine_fc:=node01 videostreamer_machine_fr:=node02 videostreamer_machine_fl:=node03 video_port_fl:=/dev/video0 video_port_fc:=/dev/video0 video_port_fr:=/dev/video0 video_port_rc:=/dev/video2
+        Type: Software
+        LaunchTime: 3.0
+      - Name: MQTT_telemetry
+        Command: roslaunch mqtt_telemetry mqtt_telemetry.launch agent_name:=NRC_Leaf_Bravo lwt_telemetry:=true lwt_path:=true lwt_to:=true lwt_wmstring:=false
+        Type: Software
+        LaunchTime: 3.0
+      - Name: Teleop_VirtCar
+        Command: roslaunch nrc_ralp_svcs remote_driver.launch agent_name:=NRC_Leaf_Bravo
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 8
+      Retry: 0
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:

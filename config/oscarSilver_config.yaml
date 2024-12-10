@@ -96,7 +96,7 @@ Subsystem:
         Type: Software
         LaunchTime: 3.0
       - Name: CCM ACC CAR
-        Command: roslaunch ccm_cav_car ccm_cav_rl_acc_silverOscar.launch veh_id:=ccm_cav-silverOscar
+        Command: roslaunch ccm_cav_car ccm_cav_rl_acc_silverOscar.launch veh_id:=ccm_cav-silverOscar controller_type:=flowMo_traffic_response_control
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
