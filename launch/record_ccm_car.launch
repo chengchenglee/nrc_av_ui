@@ -11,6 +11,7 @@
   <arg name="system_main_topics" 
   default="/dynamic_global_pose
   |/ccm_speed_plan
+  |/current_speed_plan_pub
   |/gps_state(.*)
   |/ME3_ObjData
   |/ME3_LKA_left

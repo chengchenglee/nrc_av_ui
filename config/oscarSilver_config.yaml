@@ -116,7 +116,7 @@ Subsystem:
       - HealthTopic: /probe_vehicle_publisher_h
         HealthName: PVP
         HealthTopicType: String
-        NomWarnErrRate: 10, 6, 3
+        NomWarnErrRate: 0.1, 0.01, 0.01
     Commands:
       - Name: LTSWM pub
         Command: roslaunch ltswm_cv ltswm_cv.launch veh_id:=cav-silverOscar
