@@ -22,6 +22,7 @@ dataRounder.append(100)   # width
 dataRounder.append(100)   # length
 dataRounder.append(100)   # speed
 dataRounder.append(10000)  # yawRate
+dataRounder.append(1)     # classification
 
 xIdx  = 0
 yIdx  = 1
@@ -57,7 +58,7 @@ class WmObject:
   def from_trackedObject(cls, trObj):
     global xIdx,yIdx,thIdx,wIdx,lIdx,vIdx,clIdx
     
-    data = np.zeros(6)
+    data = np.zeros(objDataLen)
     data[xIdx] = trObj.pose.pose.position.x
     data[yIdx] = trObj.pose.pose.position.y
     
@@ -155,7 +156,7 @@ class WmStatus:
     self.cloud = []
   
   def setDgp(self,dataIn):
-    global xIdx,yIdx,thIdx,wIdx,lIdx,vIdx,yrIdx
+    global xIdx,yIdx,thIdx,wIdx,lIdx,vIdx,yrIdx,clIdx
     data = np.zeros(objDataLen)
     data[xIdx]  = dataIn[0]
     data[yIdx]  = dataIn[1]
