@@ -30,7 +30,8 @@ wIdx  = 3
 lIdx  = 4
 vIdx  = 5
 yrIdx = 6
-objDataLen = 7
+clIdx = 7
+objDataLen = 8
 
 cornerOrder = [[-1,-1],[-1,1],[1,1],[1,-1]]
 
@@ -45,7 +46,7 @@ def dataToStr(object_id,data):
 
 class WmObject:
   def __init__(self,objId,data):
-    global xIdx,yIdx,thIdx,wIdx,lIdx,vIdx,yrIdx
+    global xIdx,yIdx,thIdx,wIdx,lIdx,vIdx,yrIdx,clIdx
     self.object_id = objId
     self.data = data[:]
     self.update(self.data)
@@ -54,7 +55,7 @@ class WmObject:
     
   @classmethod
   def from_trackedObject(cls, trObj):
-    global xIdx,yIdx,thIdx,wIdx,lIdx,vIdx
+    global xIdx,yIdx,thIdx,wIdx,lIdx,vIdx,clIdx
     
     data = np.zeros(6)
     data[xIdx] = trObj.pose.pose.position.x
@@ -65,6 +66,7 @@ class WmObject:
     data[lIdx] = trObj.shape_parameters.x
     data[wIdx] = trObj.shape_parameters.y
     data[vIdx] = 0 # Speed
+    data[clIdx] = trObj.classification
     
     return cls(trObj.object_id,data)
   
@@ -72,7 +74,7 @@ class WmObject:
     return self.data[vIdx]
   
   def update(self,data):
-    global xIdx,yIdx,thIdx,wIdx,lIdx,vIdx
+    global xIdx,yIdx,thIdx,wIdx,lIdx,vIdx,clIdx
     c,s = np.cos(data[thIdx]), np.sin(data[thIdx])
     
     self.data = data
@@ -162,6 +164,7 @@ class WmStatus:
     data[lIdx]  = 1.5
     data[vIdx]  = dataIn[3]
     data[yrIdx] = dataIn[4]
+    data[clIdx] = 5 # Car
     self.dgp.update(data)
 
   def getWmStr2(self):
@@ -189,8 +192,9 @@ class WmStatus:
         for i in range(len(objDataCsv)):
           dgpData[i] = float(objDataCsv[i])/dataRounder[i]
         
-        dgpData[wIdx] = 1.5
-        dgpData[lIdx] = 3.7
+        dgpData[wIdx]  = 1.5
+        dgpData[lIdx]  = 3.7
+        dgpData[clIdx] = 5 # Car
         self.dgp = WmObject(-1,dgpData)
         
       # Line relates to observed road users
