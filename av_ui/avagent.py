@@ -250,26 +250,29 @@ class AvAgent:
     self.sendWmStatus()
   
   def sendWmStatus(self):
-    if self.passThroughWm and time.time() > self.timeNextWmSend:
-      # Copy ego pose
-      dgpData = [self.heartbeat.pos_x.value,
-              self.heartbeat.pos_y.value,
-              self.heartbeat.pos_th.value,
-              self.heartbeat.spd.value,
-              self.heartbeat.yawRate.value]
-      self.wmStatus.setDgp(dgpData)
-      
-      # Send world model status (ego + other positions)
-      qos=0
-      topic = 'dt/'+self.name+'/wmState'
-      payload = ''
-      payload += self.wmStatus.getWmStr2()+'\n'
+    # Copy ego pose
+    dgpData = [self.heartbeat.pos_x.value,
+            self.heartbeat.pos_y.value,
+            self.heartbeat.pos_th.value,
+            self.heartbeat.spd.value,
+            self.heartbeat.yawRate.value]
+    self.wmStatus.setDgp(dgpData)
+    
+    # Send world model status (ego + other positions)
+    qos=0
+    topic = 'dt/'+self.name+'/wmState'
+    payload = ''
+    payload += self.wmStatus.getWmStr2()+'\n'
+
+    if self.passThroughWm and time.time() > self.timeNextWmSend:      
       if len(self.compressed_wm_string) > 0:
         payload += self.compressed_wm_string[0].data
         self.compressed_wm_string = []
-      self.cloud.publishCsv(topic,payload,qos)
-      
       self.timeNextWmSend = time.time() + self.wmImgMinWaitTime
+      
+    self.cloud.publishCsv(topic,payload,qos)
+      
+
 
   
   def sendImgStreamPkt(self,msg):
