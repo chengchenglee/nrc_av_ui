@@ -22,8 +22,9 @@
   <arg name="record_aeva_ultrares_pc" default="false"/>
   <arg name="record_aeva_other_outputs" default="false"/>
   <arg name="record_innovusion" default="false"/>
-  <arg name="record_ariya_messages" default="false"/>
-  <arg name="record_cubtek_messages" default="true"/>
+  <arg name="record_ariya_messages" default="true"/>
+  <arg name="record_cubtek_proc_messages" default="true"/>
+  <arg name="record_cubtek_raw_messages" default="false"/>
   <arg name="record_labeled_pc" default="false"/>
   
   <arg name="prefix" default="autonomy_log" />
@@ -114,7 +115,10 @@
   |/ladyBugs
   |/ibeo_object_set
   |/radar
-  |/radar_bf"/>
+  |/radar_bf
+  |/bci_request
+  |/driver_request
+  |/driver_request_debug"/>
   
   <arg name="labeled_pc_topics"
   default="/pc_processor/labeled_pc"/>
@@ -137,8 +141,7 @@
   |/dds_object_databse_fused_data
   |/ailsv_tracked_objects
   |/ailsv_predicted_trajectories
-  |/prediction_error
-  |/cubtek_trackedobjects_filter_out"/>
+  |/prediction_error"/>
   
   <arg name="dm_lite_topics" 
   default="/drive_plan
@@ -219,14 +222,19 @@
   <arg name="innovusion_topics"
   default="/iv_points"/>
 
-  <arg name="cubtek_topics"
+  <arg name="cubtek_proc_topics"
+  default="/ariya_back_radar_tracked_objects
+  |/ariya_front_radar_tracked_objects
+  |/ariya_bs_radar_tracked_objects
+  |/cubtek_trackedobjects_filter_out"/>
+  
+  <arg name="cubtek_raw_topics"
   default="/cubtek_PC_rviz_R
   |/cubtek_PC_rviz_L
   |/cubtek_raw_points
   |/cubtek_raw_PC
   |/cubtek_dbscan_PC
-  |/dbscan_out
-  |/ariya_back_radar_tracked_objects"/>
+  |/dbscan_out"/>  
 
   <arg name="ariya_messages"
   default="/AriyaBlindSpotRadar_L
@@ -300,8 +308,11 @@
   <node if="$(arg record_labeled_pc)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_innovusion_labeled_pc" output="screen"
   args="$(arg labeledPcCompression) -o $(arg prefix)_innovusion_labeled_pc -e $(arg labeled_pc_topics)" machine="$(arg record_machine)"/>
 
-  <node if="$(arg record_cubtek_messages)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_cubtek" output="screen"
-  args="$(arg compression) -o $(arg prefix)_cubtek -e $(arg cubtek_topics)" machine="$(arg record_machine)"/>
+  <node if="$(arg record_cubtek_proc_messages)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_cubtek_proc" output="screen"
+  args="$(arg compression) -o $(arg prefix)_cubtek_proc -e $(arg cubtek_proc_topics)" machine="$(arg record_machine)"/>
+  
+  <node if="$(arg record_cubtek_raw_messages)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_cubtek_raw" output="screen"
+  args="$(arg compression) -o $(arg prefix)_cubtek_raw -e $(arg cubtek_raw_topics)" machine="$(arg record_machine)"/>
 
   <node if="$(arg record_ariya_messages)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_ariya" output="screen"
   args="$(arg compression) -o $(arg prefix)_ariya -e $(arg ariya_messages)" machine="$(arg record_machine)"/>

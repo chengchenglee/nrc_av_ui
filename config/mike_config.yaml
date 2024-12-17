@@ -65,7 +65,7 @@ Subsystem:
         NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: f9r_raw
-        Command: roslaunch nrc_hw_svcs ublox_parser_ariya.launch
+        Command: roslaunch nrc_hw_svcs f9r_udev_rule.launch
         Type: Software
         LaunchTime: 1.0
       - Name: f9r_conv
@@ -260,7 +260,7 @@ Subsystem:
         NomWarnErrRate: 100, 60, 10
     Commands:
       - Name: Trajectory Planning
-        Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=AriyaFS vehicle_type_react:=AriyaFS_React
+        Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=AriyaFS vehicle_type_react:=AriyaFS_React include_riskClassifier:=true
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
