@@ -84,6 +84,7 @@ class AvAgent:
     #self.mqttConfig = Loader.getField(text,'mqttConfig','local')
     self.useGui  = int(Loader.getField(text,'useGui',1))
     self.sendWm  = int(Loader.getField(text,'sendWm',0))
+    self.sendWmObjectsWithEveryFrame = int(Loader.getField(text,'sendWmObjectsWithEveryFrame',0))
     self.sendSnapshots  = int(Loader.getField(text,'sendSnapshots',0))
     self.broker = Loader.getField(text, 'broker', 'ncal')
     self.agentType = Loader.getField(text, 'agentType', 'AV4')
@@ -250,30 +251,31 @@ class AvAgent:
     self.sendWmStatus()
   
   def sendWmStatus(self):
-    # Copy ego pose
-    dgpData = [self.heartbeat.pos_x.value,
-            self.heartbeat.pos_y.value,
-            self.heartbeat.pos_th.value,
-            self.heartbeat.spd.value,
-            self.heartbeat.yawRate.value]
-    self.wmStatus.setDgp(dgpData)
-    
-    # Send world model status (ego + other positions)
-    qos=0
-    topic = 'dt/'+self.name+'/wmState'
-    payload = ''
-    payload += self.wmStatus.getWmStr2()+'\n'
 
-    if self.passThroughWm and time.time() > self.timeNextWmSend:      
-      if len(self.compressed_wm_string) > 0:
-        payload += self.compressed_wm_string[0].data
-        self.compressed_wm_string = []
-      self.timeNextWmSend = time.time() + self.wmImgMinWaitTime
+    # if sendWmObjectsWithEveryFrame flag is 1, then publish messages containing only objects at higher rate.
+    # Pointcloud is included only in the messages sent at timeNextWmSend 
+    if (self.passThroughWm and time.time() > self.timeNextWmSend) or self.sendWmObjectsWithEveryFrame == 1:
+      # Copy ego pose
+      dgpData = [self.heartbeat.pos_x.value,
+              self.heartbeat.pos_y.value,
+              self.heartbeat.pos_th.value,
+              self.heartbeat.spd.value,
+              self.heartbeat.yawRate.value]
+      self.wmStatus.setDgp(dgpData)
       
-    self.cloud.publishCsv(topic,payload,qos)
-      
+      # Send world model status (ego + other positions)
+      qos=0
+      topic = 'dt/'+self.name+'/wmState'
+      payload = ''
+      payload += self.wmStatus.getWmStr2()+'\n'
 
+      if time.time() > self.timeNextWmSend: 
+        if len(self.compressed_wm_string) > 0:
+          payload += self.compressed_wm_string[0].data
+          self.compressed_wm_string = []
+        self.timeNextWmSend = time.time() + self.wmImgMinWaitTime
 
+      self.cloud.publishCsv(topic,payload,qos)
   
   def sendImgStreamPkt(self,msg):
     if self.passThroughImg and time.time() > self.timeNextImgSend:

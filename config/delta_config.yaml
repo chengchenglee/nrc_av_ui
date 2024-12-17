@@ -5,6 +5,7 @@ Configuration:
   printTimeDebug: 0
   useGui: 1
   sendWm: 2
+  sendWmObjectsWithEveryFrame: 1
   sendSnapshots: 0
   Map: Franklin.set
   broker: emqx
