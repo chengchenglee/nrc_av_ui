@@ -4,7 +4,7 @@ Configuration:
   mapName: Franklin.set
   printTimeDebug: 0
   useGui: 1
-  sendWm: 1
+  sendWm: 0
   sendSnapshots: 1
   broker: emqx
   gpsTopic: /gps_state/gps_state_f9r_2hz
@@ -28,6 +28,10 @@ Subsystem:
         HealthName: PMU
         HealthTopicType: Int16MultiArray
         NomWarnErrRate: 10, 8, 1
+      - HealthTopic: /gps_state/gps_state_ariya
+        HealthName: ETH
+        HealthTopicType: GpsState
+        NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: CanAriyaSvITSConsumer
         Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=5 CanAriyaSvITS3Consumer:=true CanAriyaSvITS3ConsumerCh:=0 CanAriyaSvITS4Consumer:=true CanAriyaSvITS4ConsumerCh:=1 CanAriyaSvITS5Consumer:=true CanAriyaSvITS5ConsumerCh:=3  CanAriyaSvWriter:=true CanAriyaSvWriterCh:=2 Eyeq5DevCh0:=true Eyeq5DevCh0Ch:=4 Eyeq5DevWrite:=true Eyeq5DevWriteCh:=4
@@ -39,6 +43,10 @@ Subsystem:
         LaunchTime: 1.0
       - Name: Me2Yolo
         Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch
+        Type: Software
+        LaunchTime: 3.0
+      - Name: Ethernet
+        Command: roslaunch nrc_leaf ethernet_can_ariya.launch
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -156,15 +164,10 @@ Subsystem:
         HealthTopicType: PointCloud2
         NomWarnErrRate: 10, 7, 3
     Commands:
-      #- Name: InnovusionDriver
-        #Command: rosrun nrc_svcs  runInnovusion.sh > /dev/null
-        #Type: Software
-        #LaunchTime: 1.0
       - Name: InnovusionDriver
-        Command: bash $HOME/projects/fvla-infrapod/nrc_ws/src/nrc_svcs/scripts/runInnovusionInfraPod.sh > /dev/null
-        NodeName: innovusion_nodelet_manager
+        Command: rosrun nrc_svcs  runInnovusion.sh > /dev/null
         Type: Software
-        LaunchTime: 1
+        LaunchTime: 1.0
       - Name: PCP
         Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Foxtrot:=true do_curb_detection:=false do_curb_points_accumulation:=false include_curb_points_for_drivable_area:=false include_lateral_curb_points_for_drivable_area:=false include_accumulated_curb_points_for_drivable_area:=false srcgs/cluster_height_threshold:=0.3 dynamic_global_pose_topic_name:=/dynamic_global_pose
         Type: Software
