@@ -21,7 +21,7 @@
   <arg name="record_aeva_pc" default="false"/>
   <arg name="record_aeva_ultrares_pc" default="false"/>
   <arg name="record_aeva_other_outputs" default="false"/>
-  <arg name="record_innovusion" default="false"/>
+  <arg name="record_innovusion" default="true"/>
   <arg name="record_ariya_messages" default="true"/>
   <arg name="record_cubtek_proc_messages" default="true"/>
   <arg name="record_cubtek_raw_messages" default="false"/>
