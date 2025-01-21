@@ -32,6 +32,7 @@ Subsystem:
         HealthName: ETH
         HealthTopicType: GpsState
         NomWarnErrRate: 3, 2, 1
+
     Commands:
       - Name: CanAriyaSvITSConsumer
         Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=5 CanAriyaSvITS3Consumer:=true CanAriyaSvITS3ConsumerCh:=0 CanAriyaSvITS4Consumer:=true CanAriyaSvITS4ConsumerCh:=1 CanAriyaSvITS5Consumer:=true CanAriyaSvITS5ConsumerCh:=3  CanAriyaSvWriter:=true CanAriyaSvWriterCh:=2 Eyeq5DevCh0:=true Eyeq5DevCh0Ch:=4 Eyeq5DevWrite:=true Eyeq5DevWriteCh:=4
@@ -63,10 +64,10 @@ Subsystem:
     Trigger:
       - Source: StartRequest
     HealthTopics:
-      - HealthTopic: /gps_state/gps_state_f9r
+      - HealthTopic: /gps_state/health_f9r
         HealthName: RAW
-        HealthTopicType: GpsState
-        NomWarnErrRate: 10, 6, 3
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 20, 10, 5
       - HealthTopic: /dynamic_global_pose_10Hz
         HealthName: DGP
         HealthTopicType: DynamicPoseWithCovar
