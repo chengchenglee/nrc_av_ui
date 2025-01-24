@@ -296,12 +296,12 @@ Subsystem:
 #        HealthTopicType: CameraInfo
 #        NomWarnErrRate: 10, 6, 3
     Commands:
-      - Name: Red5_USB
-        Command: roslaunch video_streamer video_encoders_usb.launch OS_version:=focal show_time:=true videostreamer_machine_fc:=node01 videostreamer_machine_fr:=node02 videostreamer_machine_fl:=node03 video_port_fl:=/dev/video0 video_port_fc:=/dev/video0 video_port_fr:=/dev/video0 video_port_rc:=/dev/video2
-        Type: Software
-        LaunchTime: 3.0
+#      - Name: Red5_USB
+#        Command: roslaunch video_streamer video_encoders_usb.launch OS_version:=focal show_time:=true videostreamer_machine_fc:=node01 videostreamer_machine_fr:=node02 videostreamer_machine_fl:=node03 video_port_fl:=/dev/video0 video_port_fc:=/dev/video0 video_port_fr:=/dev/video0 video_port_rc:=/dev/video2
+#        Type: Software
+#        LaunchTime: 3.0
       - Name: MQTT_telemetry
-        Command: roslaunch mqtt_telemetry mqtt_telemetry.launch agent_name:=NRC_Leaf_Bravo lwt_telemetry:=true lwt_path:=true lwt_to:=true lwt_wmstring:=false
+        Command: roslaunch mqtt_telemetry mqtt_telemetry.launch agent_name:=NRC_Leaf_Bravo lwt_telemetry:=true lwt_path:=true
         Type: Software
         LaunchTime: 3.0
       - Name: Teleop_VirtCar
