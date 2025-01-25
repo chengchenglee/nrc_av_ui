@@ -315,3 +315,25 @@ Subsystem:
     Depends:
       - Launch:
         Run:
+
+  SAFETYSHIELD:
+    Type: Algorithm
+    Description: SAM Teleop Safety Shield
+    Trigger:
+      - Source: StartRequest
+    Commands:
+      - Name: Safety_Shield
+        Command: roslaunch ros_mqtt_parser sam_teleop.launch
+        Type: Software
+        LaunchTime: 3.0
+      - Name: Safety_Shield_Predicted_Path
+        Command: rosrun nrc_ralp_svcs SafetyControllerNode
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 9
+      Retry: 0
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:
