@@ -96,7 +96,7 @@ Subsystem:
         Type: Software
         LaunchTime: 3.0
       - Name: CCM ACC CAR
-        Command: roslaunch ccm_cav_car ccm_cav_rl_acc_silverOscar.launch veh_id:=ccm_cav-silverOscar
+        Command: roslaunch ccm_cav_car ccm_cav_rl_acc_silverOscar.launch veh_id:=ccm_cav-silverOscar controller_type:=flowMo_traffic_response_control
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -116,7 +116,7 @@ Subsystem:
       - HealthTopic: /probe_vehicle_publisher_h
         HealthName: PVP
         HealthTopicType: String
-        NomWarnErrRate: 10, 6, 3
+        NomWarnErrRate: 0.1, 0.01, 0.01
     Commands:
       - Name: LTSWM pub
         Command: roslaunch ltswm_cv ltswm_cv.launch veh_id:=cav-silverOscar

@@ -4,9 +4,10 @@ Configuration:
   mapName: Franklin.set
   printTimeDebug: 0
   useGui: 1
-  sendWm: 1
+  sendWm: 0
   sendSnapshots: 1
   broker: emqx
+  gpsTopic: /gps_state/gps_state_f9r_2hz
 
 Subsystem:
   CAR:
@@ -27,6 +28,11 @@ Subsystem:
         HealthName: PMU
         HealthTopicType: Int16MultiArray
         NomWarnErrRate: 10, 8, 1
+      - HealthTopic: /gps_state/gps_state_ariya
+        HealthName: ETH
+        HealthTopicType: GpsState
+        NomWarnErrRate: 3, 2, 1
+
     Commands:
       - Name: CanAriyaSvITSConsumer
         Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=5 CanAriyaSvITS3Consumer:=true CanAriyaSvITS3ConsumerCh:=0 CanAriyaSvITS4Consumer:=true CanAriyaSvITS4ConsumerCh:=1 CanAriyaSvITS5Consumer:=true CanAriyaSvITS5ConsumerCh:=3  CanAriyaSvWriter:=true CanAriyaSvWriterCh:=2 Eyeq5DevCh0:=true Eyeq5DevCh0Ch:=4 Eyeq5DevWrite:=true Eyeq5DevWriteCh:=4
@@ -38,6 +44,10 @@ Subsystem:
         LaunchTime: 1.0
       - Name: Me2Yolo
         Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch
+        Type: Software
+        LaunchTime: 3.0
+      - Name: Ethernet
+        Command: roslaunch nrc_leaf ethernet_can_ariya.launch
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -54,21 +64,17 @@ Subsystem:
     Trigger:
       - Source: StartRequest
     HealthTopics:
-      - HealthTopic: /gps_state/dynamic_global_pose_f9r_20hz
+      - HealthTopic: /gps_state/health_f9r
         HealthName: RAW
-        HealthTopicType: DynamicPoseWithCovar
+        HealthTopicType: DiagnosticArray
         NomWarnErrRate: 20, 10, 5
-      - HealthTopic: /dynamic_global_pose
+      - HealthTopic: /dynamic_global_pose_10Hz
         HealthName: DGP
         HealthTopicType: DynamicPoseWithCovar
-        NomWarnErrRate: 100, 80, 60
+        NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: f9r_raw
         Command: roslaunch nrc_hw_svcs f9r_udev_rule.launch
-        Type: Software
-        LaunchTime: 1.0
-      - Name: TF_Sys
-        Command: roslaunch nrc_svcs leaf_tf_subsystem.launch sanborn:=true
         Type: Software
         LaunchTime: 1.0
       - Name: f9r_conv
@@ -80,6 +86,15 @@ Subsystem:
         NodeName: MapMatch_node
         Type: Software
         LaunchTime: 3.0
+      - Name: DGP_Throttle
+        Command: rosrun topic_tools throttle messages /dynamic_global_pose 10.0 /dynamic_global_pose_10Hz
+        NodeName: DGP_Throttle
+        Type: Software
+        LaunchTime: 1
+      - Name: TF_Sys
+        Command: roslaunch nrc_svcs leaf_tf_subsystem.launch sanborn:=true
+        Type: Software
+        LaunchTime: 1.0
     Diagnostic:
       LED: 1
       Retry: 3
@@ -105,7 +120,7 @@ Subsystem:
       - HealthTopic: /cubtek_fuse_health
         HealthName: TOS
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
+        NomWarnErrRate: 60, 28, 18
     Commands:
       - Name: Cubtek_eth_raw_left
         Command: sudo $HOME/projects/nrc_ws/devel/lib/nrc_hw_svcs/pcap eno4 45161 #Left cubtek radar
@@ -150,17 +165,12 @@ Subsystem:
         HealthTopicType: PointCloud2
         NomWarnErrRate: 10, 7, 3
     Commands:
-      #- Name: InnovusionDriver
-        #Command: rosrun nrc_svcs  runInnovusion.sh > /dev/null
-        #Type: Software
-        #LaunchTime: 1.0
       - Name: InnovusionDriver
-        Command: bash $HOME/projects/fvla-infrapod/nrc_ws/src/nrc_svcs/scripts/runInnovusionInfraPod.sh > /dev/null
-        NodeName: innovusion_nodelet_manager
+        Command: rosrun nrc_svcs  runInnovusion.sh > /dev/null
         Type: Software
-        LaunchTime: 1
+        LaunchTime: 1.0
       - Name: PCP
-        Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Foxtrot:=true do_curb_detection:=false do_curb_points_accumulation:=false include_curb_points_for_drivable_area:=false include_lateral_curb_points_for_drivable_area:=false include_accumulated_curb_points_for_drivable_area:=false srcgs/cluster_height_threshold:=0.3 dynamic_global_pose_topic_name:=/dynamic_global_pose
+        Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Foxtrot:=true
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -254,7 +264,7 @@ Subsystem:
         NomWarnErrRate: 100, 60, 10
     Commands:
       - Name: Trajectory Planning
-        Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=AriyaFS vehicle_type_react:=AriyaFS_React
+        Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=AriyaFS vehicle_type_react:=AriyaFS_React include_riskClassifier:=true
         Type: Software
         LaunchTime: 3.0
     Diagnostic:

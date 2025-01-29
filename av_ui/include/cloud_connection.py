@@ -84,6 +84,7 @@ class CloudConnection:
     self.msgInStats = MsgStats('Rx')
     self.msgOutStats = MsgStats('Tx')
     self.quicTunnel = False
+    self.mqttConnected = False
 
   def loadBrokerConfigs(self):
     config_file = open(self.filename, 'r')
@@ -225,15 +226,19 @@ class CloudConnection:
       client.on_connect = on_connect
       client.on_disconnect = on_disconnect
       print(self.configInfo['MQTT_SERVER'], self.configInfo['MQTT_PORT'], self.configInfo['MQTT_USER'], self.configInfo['MQTT_PASSWORD'])
-      client.connect(self.configInfo['MQTT_SERVER'], self.configInfo['MQTT_PORT'])
-      client.on_subscribe = on_mqtt_subscribe
-      client.on_message = on_mqtt_message
-      client.on_publish = on_publish
+      try:
+        client.connect(self.configInfo['MQTT_SERVER'], self.configInfo['MQTT_PORT'])
+        client.on_subscribe = on_mqtt_subscribe
+        client.on_message = on_mqtt_message
+        client.on_publish = on_publish
+        self.mqttConnected = True
+      except:
+        self.mqttConnected = False
       return client
 
   def subscribe(self,topics,qos):
     for topic in topics:
-      if foundPaho:
+      if foundPaho and self.mqttConnected:
         print('Mqtt subscribe (topic/qos):',topic,qos)
         self.client.subscribe(topic,qos)
       
@@ -248,7 +253,7 @@ class CloudConnection:
       
   def unsubscribe(self,topics):
     for topic in topics:
-      if foundPaho:
+      if foundPaho and self.mqttConnected:
         print('Mqtt unsubscribe to topic:',topic)
         self.client.unsubscribe(topic)
       
@@ -261,7 +266,7 @@ class CloudConnection:
     if len(data) > 0:
       tStart = time.time()
       status = 0
-      if foundPaho:
+      if foundPaho and self.mqttConnected:
         result = self.client.publish(topic,data,qos)
         status = result[0]
         self.dataInQueue = True

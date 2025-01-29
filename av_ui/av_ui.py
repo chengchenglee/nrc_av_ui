@@ -54,6 +54,23 @@ if True:
   roscore = Roscore()
   roscore.run()
   
+  # this code hangs out until roscore is up and running...
+  gpTries=0;
+  ver=''
+  while len(ver)==0:
+    gpTries=gpTries+1
+    if (gpTries>100):
+      #print('gpTries=', gpTries)
+      print('Fatal: waited too long for ros parameter server...')
+      sys.exit(1)
+    try:
+      ver = rospy.get_param('/rosversion')
+    except:
+      print('waiting for roscore...')
+      time.sleep(0.5)
+    print('roscore now running: detected rosversion='+ver)
+    # ... if we got here, roscore is running
+  
   if (agent.useGui == 1): interface.setupWindow(agent)
 
   os.system("rosrun nrc_svcs paramsForDriving.sh")

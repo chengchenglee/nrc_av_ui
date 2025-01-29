@@ -1,11 +1,11 @@
 Configuration:
-  Name: foxtrot
+  Name: delta
   agentType: AV4
   mapName: Franklin.set
   printTimeDebug: 0
   useGui: 1
-  sendWm: 1
-  sendSnapshots: 1
+  sendWm: 2
+  sendSnapshots: 0
   Map: Franklin.set
   broker: emqx
 
@@ -20,28 +20,28 @@ Subsystem:
         HealthName: CAR
         HealthTopicType: CtrlStateFLG
         NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /ard_state
-        HealthName: ARD
-        HealthTopicType: Int16MultiArray
-        NomWarnErrRate: 10, 8, 1
-      - HealthTopic: /pmu_state
-        HealthName: PMU
-        HealthTopicType: Int16MultiArray
-        NomWarnErrRate: 10, 8, 1
+ #     - HealthTopic: /ard_state
+ #       HealthName: ARD
+ #       HealthTopicType: Int16MultiArray
+ #       NomWarnErrRate: 10, 8, 1
+ #     - HealthTopic: /pmu_state
+ #       HealthName: PMU
+ #       HealthTopicType: Int16MultiArray
+ #       NomWarnErrRate: 10, 8, 1
     Commands:
-      - Name: CanZe1SvConsumer
-        Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=4 CanZe1SvConsumer:=true CanZe1SvWriter:=true
+      - Name: Can1Consumer
+        Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=5 Can1Consumer:=true Can1ConsumerCh:=0 Can2Consumer:=true Can2ConsumerCh:=1  Can1WriterHD_CTRL:=true Can1WriterHD_CTRLCh:=1 Eyeq4Dev:=true Eyeq4DevCh:=2 Eyeq4DevWrite:=true Eyeq4DevWriteCh:=2 ARS300Consumer:=true ARS300ConsumerCh:=0
         Type: Software
         LaunchTime: 5.0
-      - Name: ARD
-        Command: roslaunch nrc_hw_svcs leaf_interface_arduino.launch arduino_machine:=node02
-        Type: Software
-        LaunchTime: 1.0
-      - Name: CSF_Throttle
-        Command: rosrun topic_tools throttle messages /CtrlStateFLG 10.0 /CtrlStateFLG_10hz
-        NodeName: CSF_Throttle
-        Type: Software
-        LaunchTime: 1
+#      - Name: ARD
+#        Command: roslaunch nrc_hw_svcs leaf_interface_arduino.launch arduino_machine:=node02
+#        Type: Software
+#        LaunchTime: 1.0
+#      - Name: CSF_Throttle
+#        Command: rosrun topic_tools throttle messages /CtrlStateFLG 10.0 /CtrlStateFLG_10hz
+#        NodeName: CSF_Throttle
+#        Type: Software
+#        LaunchTime: 1
     Diagnostic:
       LED: 0
       Retry: 3
@@ -95,27 +95,27 @@ Subsystem:
       - Launch:
         Run:
         
-  EYEQ5:
+  EYEQ4:
     Type: Sensor
     Description: Mobileye Camera
     Trigger:
       - Source: StartRequest
     HealthTopics:
-      - HealthTopic: /ME5/health
-        HealthName: NOD
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /ME5_ObjData
+#      - HealthTopic: /ME5/health
+#        HealthName: NOD
+#        HealthTopicType: DiagnosticArray
+#        NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /ME4_ObjData
         HealthName: CAN
-        HealthTopicType: Mobileye5ObjectArray
+        HealthTopicType: Mobileye4ObjectArray
         NomWarnErrRate: 30, 20, 10
     Commands:
-      - Name: Can_Com_Eyeq5
-        Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=2 Eyeq5DevCh0:=true Eyeq5DevCh0Ch:=0 Eyeq5DevWrite:=true Eyeq5DevWriteCh:=0 Eyeq5DevCh1:=true Eyeq5DevCh1Ch:=1 nodeName:=eyeq5CanCom machine:=node03
-        Type: Software
-        LaunchTime: 2.0
+#      - Name: Can_Com_Eyeq5
+#        Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=2 Eyeq5DevCh0:=true Eyeq5DevCh0Ch:=0 Eyeq5DevWrite:=true Eyeq5DevWriteCh:=0 Eyeq5DevCh1:=true Eyeq5DevCh1Ch:=1 nodeName:=eyeq5CanCom machine:=node03
+#        Type: Software
+#        LaunchTime: 2.0
       - Name: Me2Yolo
-        Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch
+        Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch mobileye_version:=4
         Type: Software
         LaunchTime: 1.0
     Diagnostic:
@@ -126,33 +126,6 @@ Subsystem:
       - Launch:
         Run:
         
-  TCAM:
-    Type: Sensor
-    Description: Tower Cams
-    Trigger:
-      - Source: StartRequest
-    HealthTopics:
-      - HealthTopic: /tower_cam_front/camera_info
-        HealthName: TCF
-        HealthTopicType: CameraInfo
-        NomWarnErrRate: 10, 6, 3
-    Commands:
-      - Name: TowerCam
-        Command: roslaunch nrc_hw_svcs lucid_gige_cameras.launch FrCam:=true
-        Type: Software
-        LaunchTime: 3.0
-      - Name: Helm
-        Command: roslaunch nrc_perc_svcs helm_perc.launch
-        Type: Software
-        LaunchTime: 3.0
-    Diagnostic:
-      LED: 3
-      Retry: 3
-      Timeout: 5
-    Depends:
-      - Launch:
-        Run:
-
   VELPCP:
     Type: Sensor
     Description: Lidar/PCP
@@ -261,7 +234,7 @@ Subsystem:
         Type: Software
         LaunchTime: 3.0
       - Name: Trajectory Planner
-        Command: roslaunch nrc_ralp_svcs leaf_planner.launch include_riskClassifier:=true
+        Command: roslaunch nrc_ralp_svcs leaf_planner.launch
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -305,6 +278,37 @@ Subsystem:
         LaunchTime: 3.0
     Diagnostic:
       LED: 7
+      Retry: 0
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:
+
+  TELEOP:
+    Type: Algorithm
+    Description: SAM Teleop
+    Trigger:
+      - Source: StartRequest
+#    HealthTopics:
+#      - HealthTopic: /tower_cam_front/camera_info
+#        HealthName: TCF
+#        HealthTopicType: CameraInfo
+#        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: Red5_USB
+        Command: roslaunch video_streamer video_encoders_usb.launch OS_version:=focal show_time:=true videostreamer_machine_fc:=node01 videostreamer_machine_fr:=node02 videostreamer_machine_fl:=node03 video_port_fl:=/dev/video0 video_port_fc:=/dev/video0 video_port_fr:=/dev/video0 video_port_rc:=/dev/video2
+        Type: Software
+        LaunchTime: 3.0
+      - Name: MQTT_telemetry
+        Command: roslaunch mqtt_telemetry mqtt_telemetry.launch agent_name:=NRC_Leaf_Delta lwt_telemetry:=true lwt_path:=true lwt_to:=true lwt_wmstring:=false
+        Type: Software
+        LaunchTime: 3.0
+      - Name: Teleop_VirtCar
+        Command: roslaunch nrc_ralp_svcs remote_driver.launch agent_name:=NRC_Leaf_Delta
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 8
       Retry: 0
       Timeout: 5
     Depends:
