@@ -323,7 +323,7 @@ Subsystem:
       - Source: StartRequest
     Commands:
       - Name: Safety_Shield
-        Command: roslaunch ros_mqtt_parser sam_teleop.launch
+        Command: roslaunch ros_mqtt_parser teleop.launch
         Type: Software
         LaunchTime: 3.0
       - Name: Safety_Shield_Predicted_Path
