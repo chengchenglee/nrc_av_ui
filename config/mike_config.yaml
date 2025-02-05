@@ -28,10 +28,10 @@ Subsystem:
         HealthName: PMU
         HealthTopicType: Int16MultiArray
         NomWarnErrRate: 10, 8, 1
-      - HealthTopic: /gps_state/gps_state_ariya
+      - HealthTopic: /ethernet_can/health
         HealthName: ETH
-        HealthTopicType: GpsState
-        NomWarnErrRate: 3, 2, 1
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
 
     Commands:
       - Name: CanAriyaSvITSConsumer
@@ -280,7 +280,7 @@ Subsystem:
     Type: Algorithm
     Description: Record bagfiles
     Trigger:
-      - Source: StartRequest
+      - Source: ARD2
     HealthTopics:
       - HealthTopic: /BagfileHealth
         HealthName: BAG
