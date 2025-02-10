@@ -120,7 +120,7 @@ Subsystem:
       - HealthTopic: /cubtek_fuse_health
         HealthName: TOS
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 60, 28, 18
+        NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: Cubtek_eth_raw_left
         Command: sudo $HOME/projects/nrc_ws/devel/lib/nrc_hw_svcs/pcap eno4 45161 #Left cubtek radar
