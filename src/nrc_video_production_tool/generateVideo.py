@@ -761,6 +761,113 @@ def draw_override_text(f, image, data, s_xy_int, color, lead_id=None, ids=None):
     # cv2.putText(frame, f"{(i + 1) * outer_rings_spacing}", (corner[0], xy[1]), cv2.FONT_HERSHEY_SIMPLEX, 1,
     #                     ring_label_color, 2)
 
+def draw_override_text_ariya(f, image, data, s_xy_int, color, lead_id=None, ids=None):
+    #print("Driver_input")
+    font = cv2.FONT_HERSHEY_SIMPLEX 
+
+    # org 
+    org = (int(frame_size[0]/2),offsetOfCameraFeed)
+    
+    # fontScale 
+    fontScale = 1
+    
+    # Blue color in BGR 
+    color = (255, 255, 255) 
+    
+    # Line thickness of 2 px 
+    thickness = 2
+    driver_input_msg = data[f]['driver_input']
+
+    cwd = os.getcwd()
+    image_np_propilot = cv2.imread(cwd+"/images/propilot.png", cv2.IMREAD_COLOR)
+    image_np_brake = cv2.imread(cwd+"/images/brake_off.png", cv2.IMREAD_COLOR)
+    image_np_accel = cv2.imread(cwd+"/images/accel_off.png", cv2.IMREAD_COLOR)
+
+    # Make images faded
+    channelDivider = 7.
+    a_channel_propilot = np.ones(image_np_propilot.shape, dtype=float)/channelDivider
+    a_channel_brake = np.ones(image_np_brake.shape, dtype=float)/channelDivider
+    a_channel_accel = np.ones(image_np_accel.shape, dtype=float)/channelDivider
+    image_np_accel = image_np_accel*a_channel_accel
+    image_np_brake = image_np_brake*a_channel_brake
+
+    useImageInsteadofText = True
+    # AV engaged
+    # if ctrl_state_flg_msg.Engaged:
+    #Accel override
+    if driver_input_msg.is_driver_accel:
+        if not useImageInsteadofText:
+            color = (0,255,255)
+            image = cv2.putText(image, 'AV engaged, accelerator override', org, font, fontScale, color, thickness, cv2.LINE_AA)
+        else:
+            image_np_accel = cv2.imread(cwd+"/images/accel_on.png", cv2.IMREAD_COLOR)
+
+    #Brake override
+    elif driver_input_msg.is_driver_brake:
+        if not useImageInsteadofText:
+            color = (0,255,255)
+            image = cv2.putText(image, 'AV engaged, brake override', org, font, fontScale, color, thickness, cv2.LINE_AA)
+        else:
+            image_np_brake = cv2.imread(cwd+"/images/brake_on.png", cv2.IMREAD_COLOR)
+    
+    else:
+        if not useImageInsteadofText:
+            color = (255,0,0)
+            image = cv2.putText(image, 'AV engaged', org, font, fontScale, color, thickness, cv2.LINE_AA)
+    
+    # #AV disengaged
+    # else:
+    #     if not useImageInsteadofText:
+    #         color = (0,0,255)
+    #         image = cv2.putText(image, 'AV disengaged', org, font, fontScale, color, thickness, cv2.LINE_AA)
+    #     else:
+    #         image_np_propilot = image_np_propilot*a_channel_propilot
+    
+
+    # calculate the ratio of the width and construct the dimensions
+    heightDivider = 20
+    x_offset = y_offset = offsetOfCameraFeed
+    x_offset = x_offset + widthOfCameraFeed + 2*tflImageWidth
+    (h, w) = image_np_propilot.shape[:2]
+    height = frame_size[0]/heightDivider
+    r = height / float(h)
+    dim = (int(w * r), int(height))
+
+    # resize the image
+    image_np_propilot = cv2.resize(image_np_propilot, dim, interpolation = cv2.INTER_AREA)
+    image[y_offset:y_offset+image_np_propilot.shape[0], x_offset:x_offset+image_np_propilot.shape[1]] = image_np_propilot
+    
+    # calculate the ratio of the width and construct the dimensions
+    #x_offset = x_offset + int(w * r)
+    y_offset = y_offset + int(height)
+    (h_brake, w_brake) = image_np_brake.shape[:2]
+    height_brake = frame_size[0]/heightDivider
+    r_brake = height_brake / float(h_brake)
+    dim_brake = (int(w_brake * r_brake), int(height_brake))
+
+    # resize the image
+    image_np_brake = cv2.resize(image_np_brake, dim_brake, interpolation = cv2.INTER_AREA)
+    image[y_offset:y_offset+image_np_brake.shape[0], x_offset:x_offset+image_np_brake.shape[1]] = image_np_brake
+
+    # calculate the ratio of the width and construct the dimensions
+    x_offset = x_offset + int(w_brake * r_brake)
+    (h_accel, w_accel) = image_np_accel.shape[:2]
+    height_accel = frame_size[0]/heightDivider
+    r_accel = height_accel / float(h_accel)
+    dim_accel = (int(w_accel * r_accel), int(height_accel))
+
+    # resize the image
+    image_np_accel = cv2.resize(image_np_accel, dim_accel, interpolation = cv2.INTER_AREA)
+    image[y_offset:y_offset+image_np_accel.shape[0], x_offset:x_offset+image_np_accel.shape[1]] = image_np_accel
+
+    # orgSpd = (int(frame_size[0]/2),int(frame_size[1] - offsetOfCameraFeed))
+    # vehSpd = "{:.2f}".format(ctrl_state_flg_msg.VehicleSpeed_kmh/3.6)
+    # color = (255,255,255)
+    # image = cv2.putText(image, "AV speed: "+ vehSpd +" m/s", orgSpd, font, fontScale, color, thickness, cv2.LINE_AA)
+    #driver_input_messages[f].data[0]
+    # cv2.putText(frame, f"{(i + 1) * outer_rings_spacing}", (corner[0], xy[1]), cv2.FONT_HERSHEY_SIMPLEX, 1,
+    #                     ring_label_color, 2)
+
             
 def create_video(input_json_tr, camera_messages,tfl_messages, output_fname, second_csv=None, second_json=None,
                  max_interval=-1, t2c_adjustment=1.2, frame_margin=10, default_dist=300):
@@ -861,6 +968,9 @@ def create_video(input_json_tr, camera_messages,tfl_messages, output_fname, seco
         
         if 'CtrlStateFLG' in tr_data[f]:
             draw_override_text(f,frame,tr_data,s_xy_int, (255, 255, 255))
+        
+        if 'driver_input' in tr_data[f] and 'AV_MIKE' in output_fname:
+            draw_override_text_ariya(f,frame,tr_data,s_xy_int, (255, 255, 255))
 
         out.write(frame)
         # cv2.imshow('s',frame)
@@ -1133,9 +1243,9 @@ def process_directory(bags_dir: Path, args):
             f["hazard_zone"] = s
         print("Done processing hazard_zone data with size: " + str(len(hazard_zone_msgs)))
 
-    # read driver input for override
+    # read CtrlStateFLG for leaf overrides
     with rosbag.Bag(str(raw_bag_fn)) as bag:
-        override_data = list(bag.read_messages(args.override_topic))
+        override_data = list(bag.read_messages(args.override_topic_leaf))
 
     if not override_data:
         print("No driver input messages, ... continuing")
@@ -1153,6 +1263,27 @@ def process_directory(bags_dir: Path, args):
         for f, s in zip(tr_json_content, override_data_msgs):
             f["CtrlStateFLG"] = s
         print("Done processing override_data data with size: " + str(len(override_data_msgs)))
+
+    # read driver_input for ariya overrides
+    with rosbag.Bag(str(raw_bag_fn)) as bag:
+        override_data_ariya = list(bag.read_messages(args.override_topic_ariya))
+
+    if not override_data_ariya:
+        print("No driver input messages, ... continuing")
+    else:
+        _, _, override_data_ariya_start_frame, _ = align_data(tr_data, override_data_ariya)
+        override_data_ariya = override_data_ariya[override_data_ariya_start_frame:]
+        override_data_ariya_interval = np.round((override_data_ariya[-1][2].to_sec() - override_data_ariya[0][2].to_sec()) /
+                                        (len(override_data_ariya) - 1), 5)
+        override_data_ariya_frames = [int(round((tr[2].to_sec() - tr_start_time) / override_data_ariya_interval, 0)) for tr in tr_data]
+
+        override_data_ariya_msgs = [msg for msg in 
+                            [override_data_ariya[f].message
+                            for f in override_data_ariya_frames 
+                            if f < len(override_data_ariya)]]
+        for f, s in zip(tr_json_content, override_data_ariya_msgs):
+            f["driver_input"] = s
+        print("Done processing override_data_ariya data with size: " + str(len(override_data_ariya_msgs)))
 
     # read risk field data
     # with rosbag.Bag(str(raw_bag_fn)) as bag:
@@ -1278,9 +1409,12 @@ if __name__ == '__main__':
     parser.add_argument('--predictions_topic', type=str, default='/ailsv_predicted_trajectories',
                         help='Plot predicted trajectories'
                              '(default: /ailsv_predicted_trajectories)')
-    parser.add_argument('--override_topic', type=str, default='/CtrlStateFLG',
+    parser.add_argument('--override_topic_leaf', type=str, default='/CtrlStateFLG',
                         help='Plot overrides'
                              '(default: /CtrlStateFLG)')
+    parser.add_argument('--override_topic_ariya', type=str, default='/driver_input',
+                        help='Plot overrides'
+                             '(default: /driver_input)')
     parser.add_argument("--extended_lead", action='store_true',
                         help="consider vehicles in next lanes left and right")
     parser.add_argument("--ignore_lead", action='store_true',
