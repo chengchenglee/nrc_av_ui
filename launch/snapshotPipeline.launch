@@ -33,6 +33,7 @@
   |/ard_state
   |/pmu_state
   |/controller_state
+  |/control_inputs
   |/driver_input
   |/dynamic_global_pose
   |/gps_state/dynamic_global_pose_f9r
