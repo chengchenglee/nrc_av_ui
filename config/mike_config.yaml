@@ -91,6 +91,11 @@ Subsystem:
         NodeName: DGP_Throttle
         Type: Software
         LaunchTime: 1
+      - Name: GPS_Throttle
+        Command: rosrun topic_tools throttle messages /gps_state/gps_state_f9r 2.0 /gps_state/gps_state_oxts_2hz
+        NodeName: GPS_Throttle
+        Type: Software
+        LaunchTime: 1
       - Name: TF_Sys
         Command: roslaunch nrc_svcs leaf_tf_subsystem.launch sanborn:=true
         Type: Software
