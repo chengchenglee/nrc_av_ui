@@ -2,8 +2,12 @@
 
   <machine name="local" address="localhost"/>
   <machine name="node02" address="node02" env-loader="$(find nrc_svcs)/launch/env.sh" />
+  <machine name="node04" address="node04" env-loader="$(find nrc_svcs)/launch/env.sh" />
   <arg name="record_machine" default="local" />
   <arg name="suffix" default="" />
+  <arg name="record_dir" default="/opt/data/rosbag/" />
+  <param name="NRCSV_ROSBAG_RECORD_DIR" type="string" value="$(arg record_dir)" />
+  
 
   <!-- Enable / Disable subsystem recording -->
   <arg name="record_system_front_tower_cameras" default="true"/>
@@ -329,7 +333,7 @@
   <node if="$(arg record_innovusion)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_innovusion" output="screen"
   args="$(arg compression) -o $(arg prefix)_innovusion -e $(arg innovusion_topics)" machine="$(arg record_machine)"/>
 
-  <node if="$(arg record_arbe)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_arbe" output="screen"
+  <node if="$(arg record_arbe)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_arbe" output="screen"
   args="$(arg compression) -o $(arg prefix)_arbe -e $(arg arbe_topics)" machine="$(arg record_machine)"/>
 
   
@@ -337,6 +341,6 @@
     <arg name="record_inputAndOutput" value="$(arg record_tlr_outputs)" machine="$(arg record_machine)"/>
   </include>
   
-  <node pkg="nrc_av_ui" type="rosbagRecordMonitor.py" name="RosbagMonitor" args="-d /opt/data/rosbag/ -t BagfileHealth" machine="$(arg record_machine)" output="screen"/>
+  <node pkg="nrc_av_ui" type="rosbagRecordMonitor.py" name="RosbagMonitor" args="-d $(arg record_dir) -t BagfileHealth" machine="$(arg record_machine)" output="screen"/>
 
 </launch>

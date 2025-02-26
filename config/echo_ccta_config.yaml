@@ -1,12 +1,12 @@
-Configuration:
+bConfiguration:
   Name: Echo
   agentType: AV4
-  mapName: SanbornBishopRanch
+  mapName: Sanborn2022BRv2
   printTimeDebug: 0
   useGui: 1
   sendWm: 1
   sendSnapshots: 1
-  Map: Franklin.set
+  Map: SanbornBishopRanch
   broker: emqx
 
 Subsystem:
@@ -61,7 +61,7 @@ Subsystem:
         NomWarnErrRate: 100, 80, 60
     Commands:
       - Name: NTRIP
-        Command: rosrun nrc_hw_svcs ntrip_swiftNav.sh
+        Command: rosrun nrc_hw_svcs ntripCommand-leaf2.sh
         Type: Software
         LaunchTime: 1.0
       - Name: GPS_Raw
@@ -292,7 +292,7 @@ Subsystem:
         NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: BAG
-        Command: roslaunch nrc_av_ui record_separately.launch record_machine:=node02
+        Command: roslaunch nrc_av_ui record_separately_ccta_echo.launch record_machine:=node02 record_dir:="/opt/data/rosbag/"
         Type: Software
         LaunchTime: 3.0
       - Name: SNAP
@@ -307,31 +307,7 @@ Subsystem:
       - Launch:
         Run:
 
-  LTSWM:
-    Type: Algorithm
-    Description: LTSWM
-    Trigger:
-      - Source: StartRequest
-    HealthTopics: 
-      - HealthTopic: /probe_vehicle_publisher_h
-        HealthName: PVP
-        HealthTopicType: String
-        NomWarnErrRate: 10, 6, 3
-    Commands:
-      - Name: LTSWM pub
-        Command: roslaunch ltswm_cv ltswm_cv.launch veh_id:=cav-echo
-        NodeName: ltswm_cv_mqtt_pub:Echo
-        Type: Software
-        LaunchTime: 3.0
-    Diagnostic:
-      LED: 6
-      Retry: 3
-      Timeout: 5
-    Depends:
-      - Launch: 
-        Run:
-
-  CctaCom:
+  CCTA-COM:
     Type: Algorithm
     Description: Telemetry for CCTA
     Trigger:
@@ -347,10 +323,7 @@ Subsystem:
         NodeName: ccta_telemetry
         Type: Software
         LaunchTime: 3.0
-    Diagnostic:
-      LED: 6
-      Retry: 3
-      Timeout: 5
     Depends:
-      - Launch: 
+      - Launch:
         Run:
+
