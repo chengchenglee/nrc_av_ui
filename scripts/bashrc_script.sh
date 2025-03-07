@@ -50,4 +50,4 @@ alias runBatchValidation="~/projects/nrc_ws/src/nrc_sim/simpleator/sim_base/scor
 # alias reactiveon="rostopic pub /useReactiveForModes std_msgs/Bool -- true"
 # alias reactiveoff="rostopic pub /useReactiveForModes std_msgs/Bool -- false"
 
-echo "Done running bashrc_script in nrc_svcs/scripts"
+echo "Done running bashrc_script in nrc_av_ui/scripts"
