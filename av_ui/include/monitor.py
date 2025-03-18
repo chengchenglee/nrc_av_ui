@@ -89,7 +89,7 @@ class Monitor:
     # Node is self reporting status
     if self.nodeRate > 0 and self.nodeStatus > 0:
       tDiffFailing = 1.1
-      tDiffFailed = 2.5
+      tDiffFailed = 5.0
       rate = min(200, max(0, 1/self.avgTimeDiff))
       self.msgText = "Msgs: " + str(self.msgCount) + ", H-Rate: "+str(round(rate,2))+", AlgRate: " + str(round(self.nodeRate,2))+" "+self.statusText
       

@@ -19,19 +19,19 @@ Subsystem:
       - HealthTopic: /CAN/health
         HealthName: CAR
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
+        NomWarnErrRate: 10, 6, 0.2
       - HealthTopic: /ard_state
         HealthName: ARD
         HealthTopicType: Int16MultiArray
-        NomWarnErrRate: 10, 8, 1
+        NomWarnErrRate: 10, 8, 0.2
       - HealthTopic: /pmu_state
         HealthName: PMU
         HealthTopicType: Int16MultiArray
-        NomWarnErrRate: 10, 8, 1
+        NomWarnErrRate: 10, 8, 0.2
       - HealthTopic: /ethernet_can/health
         HealthName: ETH
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
+        NomWarnErrRate: 10, 6, 0.2
 
     Commands:
       - Name: CanAriyaSvITSConsumer
@@ -67,11 +67,11 @@ Subsystem:
       - HealthTopic: /gps_state/health_f9r
         HealthName: RAW
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 20, 10, 5
+        NomWarnErrRate: 20, 10, 0.2
       - HealthTopic: /dynamic_global_pose_10Hz
         HealthName: DGP
         HealthTopicType: DynamicPoseWithCovar
-        NomWarnErrRate: 10, 6, 3
+        NomWarnErrRate: 10, 6, 0.2
     Commands:
       - Name: f9r_raw
         Command: roslaunch nrc_hw_svcs f9r_udev_rule.launch
@@ -195,7 +195,7 @@ Subsystem:
       - HealthTopic: /object_tracker/health
         HealthName: FUS
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
+        NomWarnErrRate: 10, 6, 0.2
       - HealthTopic: /traffic_light/detection/health
         HealthName: TLR
         HealthTopicType: DiagnosticArray
@@ -203,11 +203,11 @@ Subsystem:
       - HealthTopic: /ailsv_virtual_objects
         HealthName: VRT
         HealthTopicType: TrackedObjectSet
-        NomWarnErrRate: 10, 6, 3
+        NomWarnErrRate: 10, 6, 0.2
       - HealthTopic: /master_filter/health
         HealthName: WOS
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
+        NomWarnErrRate: 10, 6, 0.2
     Commands:
       - Name: WM
         Command: roslaunch nrc_wm2_svcs leaf_pred.launch vehicleType:=SV_AiCC frontLidarOnly:=true
@@ -234,7 +234,7 @@ Subsystem:
       - HealthTopic: /autoGoals/health
         HealthName: GOALS
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
+        NomWarnErrRate: 10, 6, 0.2
     Commands:
       - Name: RouteWaypoints
         Command: rosrun nrc_wm2_svcs multi_set_dest_repeater.py
@@ -262,11 +262,11 @@ Subsystem:
       - HealthTopic: /trajectory_planner/health
         HealthName: TRP
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
+        NomWarnErrRate: 10, 6, 0.2
       - HealthTopic: /trajectory_follower/health
         HealthName: TRC
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 100, 60, 10
+        NomWarnErrRate: 100, 60, 0.2
     Commands:
       - Name: Trajectory Planning
         Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=AriyaFS vehicle_type_react:=AriyaFS_React include_riskClassifier:=true
@@ -290,15 +290,15 @@ Subsystem:
       - HealthTopic: /BagfileHealth
         HealthName: BAG
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
+        NomWarnErrRate: 10, 6, 0.2
       - HealthTopic: /snapshotTrigger/health_status
         HealthName: TRIG
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
+        NomWarnErrRate: 10, 6, 0.2
       - HealthTopic: /SnapshotHealth
         HealthName: SBAG
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
+        NomWarnErrRate: 10, 6, 0.2
     Commands:
       - Name: BAG
         Command: roslaunch nrc_av_ui record_separately_mike.launch

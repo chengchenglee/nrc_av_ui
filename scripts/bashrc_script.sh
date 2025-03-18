@@ -1,9 +1,9 @@
 #!/bin/bash
 
 echo "Running bashrc_script in nrc_av_ui/scripts"
-echo "Common commands: rbuild, startAv, startRemote, resetPlanner, shutdownMrcy, frontDisplay"
+echo "Common commands: rbuild, startAv, startRemote, resetPlanner, shutdownMrcy, frontDisplay, mountNfs, runBatchValidation."
 
-alias rbuild="~/projects/nrc_ws/src/nrc_svcs/scripts/rbuild.sh"
+alias rbuild="~/projects/nrc_ws/src/nrc_av_ui/scripts/rbuild.sh"
 alias startAv="python3 ~/projects/nrc_ws/src/nrc_av_ui/av_ui/av_ui.py"
 alias startRemote="python3 ~/projects/nrc_ws/src/nrc_av_ui/av_ui/remoteMonitor.py"
 alias resetPlanner="rostopic pub /ResetRalp std_msgs/Bool true"

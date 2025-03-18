@@ -64,15 +64,18 @@ class Interface:
   def updateMapParams(self, newName):
     # use map name from menu to capture required parameters
     if os.path.isfile(mapMenuExePath) and os.access(mapMenuExePath, os.X_OK):
-      # 'MapManager -rmap_name' outputs rosparams for map 'map_name'
-      output = subprocess.check_output([mapMenuExePath,'-r'+newName])
-      params = output.decode().splitlines()
-      for p in params:
-        apair = p.split(':')
-        if (len(apair)==2):
-          rospy.set_param(apair[0],apair[1])
-        else:
-          print('WARN: problem in MapManger -r param output')
+      try:
+        # 'MapManager -rmap_name' outputs rosparams for map 'map_name'
+        output = subprocess.check_output([mapMenuExePath,'-r'+newName])
+        params = output.decode().splitlines()
+        for p in params:
+          apair = p.split(':')
+          if (len(apair)==2):
+            rospy.set_param(apair[0],apair[1])
+          else:
+            print('WARN: problem in MapManger -r param output')
+      except:
+        os.system("rosrun nrc_av_ui paramsForMap.sh "+newName)
     else:
       os.system("rosrun nrc_av_ui paramsForMap.sh "+newName)
 
