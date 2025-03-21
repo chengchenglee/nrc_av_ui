@@ -25,6 +25,7 @@
   <arg name="record_ariya_messages" default="true"/>
   <arg name="record_cubtek_proc_messages" default="true"/>
   <arg name="record_cubtek_raw_messages" default="false"/>
+  <arg name="record_arbe_processed_messages" default="true"/>
   <arg name="record_labeled_pc" default="false"/>
   
   <arg name="prefix" default="autonomy_log" />
@@ -234,7 +235,10 @@
   |/cubtek_raw_points
   |/cubtek_raw_PC
   |/cubtek_dbscan_PC
-  |/dbscan_out"/>  
+  |/dbscan_out"/> 
+  
+  <arg name="arbe_processed_topics"
+  default="/arbe/processed/(.*)"/>  
 
   <arg name="ariya_messages"
   default="/AriyaBlindSpotRadar_L
@@ -303,7 +307,7 @@
   args="$(arg compression) -o $(arg prefix)_aeva_other -e $(arg aeva_other_topics)" machine="$(arg record_machine)"/>
 
   <node if="$(arg record_innovusion)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_innovusion" output="screen"
-  args="$(arg compression) -o $(arg prefix)_innovusion -e $(arg innovusion_topics)" machine="$(arg record_machine)"/>
+  args="$(arg labeledPcCompression) -o $(arg prefix)_innovusion -e $(arg innovusion_topics)" machine="$(arg record_machine)"/>
 
   <node if="$(arg record_labeled_pc)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_innovusion_labeled_pc" output="screen"
   args="$(arg labeledPcCompression) -o $(arg prefix)_innovusion_labeled_pc -e $(arg labeled_pc_topics)" machine="$(arg record_machine)"/>
@@ -313,6 +317,9 @@
   
   <node if="$(arg record_cubtek_raw_messages)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_cubtek_raw" output="screen"
   args="$(arg compression) -o $(arg prefix)_cubtek_raw -e $(arg cubtek_raw_topics)" machine="$(arg record_machine)"/>
+  
+  <node if="$(arg record_arbe_processed_messages)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_arbe_processed" output="screen"
+  args="$(arg compression) -o $(arg prefix)_arbe_processed -e $(arg arbe_processed_topics)" machine="$(arg record_machine)"/>
 
   <node if="$(arg record_ariya_messages)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_ariya" output="screen"
   args="$(arg compression) -o $(arg prefix)_ariya -e $(arg ariya_messages)" machine="$(arg record_machine)"/>
