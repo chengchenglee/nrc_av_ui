@@ -33,8 +33,8 @@ global currentSpeed
 global currentAccel
 
 fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-snap_folder_name = "snapshot_videos"
-aws_bags_folder_name = "/home/users/sachin/projects/awsVideoProduction/awsBags/"
+snap_folder_name = "resim_videos"
+#aws_bags_folder_name = "/home/users/sachin/projects/awsVideoProduction/awsBags/"
 #frame_size = (3840, 2160)
 frame_size = (2160, 1080)
 #frame_size = (720, 480)
@@ -975,6 +975,9 @@ def create_video(input_json_tr, camera_messages,tfl_messages, output_fname, seco
     out.release()
 
 def process_directory(bags_dir: Path, args):
+####################################        
+#    print ("Just printing the bags_dir, ", bags_dir)
+####################################    
     if bags_dir.is_dir():
         bags_base_name = str(bags_dir.name)
         print(f"processing {bags_base_name}")
@@ -1008,8 +1011,8 @@ def process_directory(bags_dir: Path, args):
         bags_dir = bags_dir.parent
 
     # check if video file already exists
-    output_fname = str(bags_dir)+"/"+snap_folder_name+"/"+bags_base_name+".mp4"
-
+    #output_fname = str(bags_dir)+"/"+snap_folder_name+"/"+bags_base_name+".mp4"  ##############Original Code######################
+    output_fname = str(args.output_directory)+"/"+snap_folder_name+"/"+bags_base_name+".mp4"
     if os.path.exists(output_fname):
         return 2
     # read tracker data
@@ -1326,10 +1329,21 @@ def is_bag_dir(dir: Path, args) -> bool:
 
 def main(args):
     dir2process = Path(args.bags_dir)
-    if not os.path.isdir(dir2process/snap_folder_name) and dir2process.suffix != ".bag":
-        os.makedirs(dir2process/snap_folder_name, exist_ok=True)
-    elif not os.path.isdir(dir2process/snap_folder_name) and dir2process.suffix == ".bag":
-        os.makedirs(dir2process.parent/snap_folder_name, exist_ok=True)
+    dir4output = Path(args.output_directory)
+    #if not os.path.isdir(dir2process/snap_folder_name) and dir2process.suffix != ".bag":
+        #os.makedirs(dir2process/snap_folder_name, exist_ok=True)
+#################################### 
+    if not (os.path.isdir(dir2process/snap_folder_name) and dir2process.suffix != ".bag"):
+        os.makedirs(dir4output/snap_folder_name, exist_ok=True)
+#        print ("Just printing the path for if not, ", os.path.isdir(dir2process/snap_folder_name))
+####################################       
+    #elif not os.path.isdir(dir2process/snap_folder_name) and dir2process.suffix == ".bag":
+        #os.makedirs(dir2process.parent/snap_folder_name, exist_ok=True)
+#################################### 
+    elif not (os.path.isdir(dir2process/snap_folder_name) and dir2process.suffix == ".bag"):
+        os.makedirs(dir4output.parent/snap_folder_name, exist_ok=True)
+#        print ("Just printing the path for elif not, ", os.path.isdir(dir2process/snap_folder_name))
+####################################        
     if not dir2process.is_dir() and dir2process.suffix == ".bag":
         #ret = process_directory(dir2process, args)
         try:
@@ -1358,6 +1372,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Pre-Process bag files.')
     parser.add_argument('bags_dir', type=str, help='Path to the directory with bag files: GT, Tracking, Raw')
+    parser.add_argument('--output_directory', type=str, default='.', help='Path to the directory to save resim videos')
     #parser.add_argument('--gt_bag_prefix', type=str, default='labelled_bboxes_pntscnt_',
     #                    help='gt bag name: prefix + dir name + .bag')
     parser.add_argument('--track_bag_prefix', type=str, default='autonomy_log_pcp_mot_',
