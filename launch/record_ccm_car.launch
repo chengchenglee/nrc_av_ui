@@ -12,6 +12,7 @@
   default="/dynamic_global_pose
   |/ccm_speed_plan
   |/current_speed_plan_pub
+  |/current_speed_plan_debug
   |/gps_state(.*)
   |/ME3_ObjData
   |/ME3_LKA_left

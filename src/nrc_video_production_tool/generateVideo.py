@@ -33,8 +33,8 @@ global currentSpeed
 global currentAccel
 
 fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-snap_folder_name = "snapshot_videos"
-aws_bags_folder_name = "/home/users/sachin/projects/awsVideoProduction/awsBags/"
+snap_folder_name = "resim_videos"
+#aws_bags_folder_name = "/home/users/sachin/projects/awsVideoProduction/awsBags/"
 #frame_size = (3840, 2160)
 frame_size = (2160, 1080)
 #frame_size = (720, 480)
@@ -125,7 +125,6 @@ def convertPC2ToXyz(ros_point_cloud,sensor_msg):
 
 def create_image_zoomed(gt_data, index, dist_th=100):
     global currentSpeed
-    global currentAccel
     try:
         d = gt_data[index]
         s = d["sensor_pose"]
@@ -145,7 +144,7 @@ def create_image_zoomed(gt_data, index, dist_th=100):
         v = [s.twist.linear.x, s.twist.linear.y, s.twist.linear.z]
         speed = np.linalg.norm(np.array(v))
         currentSpeed = speed
-        currentAccel = s.accel.linear.y
+        #currentAccel = s.accel.linear.x
         
         dist_th = 50 + 50 * (speed/17.9733)
         x0 = xc - dist_th
@@ -552,23 +551,6 @@ def draw_hazard_zone(f, image, data, s_xy_int, color, lead_id=None, ids=None):
         counter = counter + 1
         #cv2.circle(overlay, xy, radius=1, color=pointColor, thickness=-1)
 
-def draw_risk_field(f, image, data, s_xy_int, color, lead_id=None, ids=None):
-    origin = np.array([0, 0, 0, 1])
-    objs = data[f]["risk_field"]
-    for marker in objs.markers:
-            for point,colorPoint in zip(list(marker.points),list(marker.colors)):
-                tr = get_tr_from_pose_drivable_area(point.x,point.y)
-                p = np.dot(tr, origin.T).T
-                xy = s_xy_int(p[0:2])
-                pointColor = (colorPoint.b*255,colorPoint.g*255,colorPoint.r*255)
-                alpha = colorPoint.a  # Transparency factor.
-
-                overlay = image.copy()
-                cv2.circle(overlay, xy, radius=1, color=pointColor, thickness=-1)
-
-                # Following line overlays transparent circle over the image
-                image = cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0)
-
 def draw_front_camera(f,frame,camera_messages):
     global currentSpeed
     global currentAccel
@@ -596,14 +578,29 @@ def draw_front_camera(f,frame,camera_messages):
 def draw_speed_on_front_camera_image(f,frame):
     #Add speed of the vehicle to image
     font = cv2.FONT_HERSHEY_SIMPLEX
-    org = ([offsetOfCameraFeed+widthOfCameraFeed-130,offsetOfCameraFeed+50])
+    org = ([offsetOfCameraFeed+widthOfCameraFeed-230,offsetOfCameraFeed+50])
     fontScale = 0.7
     thickness = 2
 
     color = (0,255,255)
-    cv2.putText(frame, str(round(currentSpeed,1)) + "m/s", org, font, fontScale, color, thickness, cv2.LINE_AA)
-    # org[1] = org[1]+30
-    # image = cv2.putText(frame, str(round(currentAccel,1)) + "m/s\u00b2", org, font, fontScale, color, thickness, cv2.LINE_AA)
+    cv2.putText(frame,"SpdAct:"+str(round(currentSpeed,1)) + " m/s", org, font, fontScale, color, thickness, cv2.LINE_AA)
+    #org[1] = org[1]+30
+    #cv2.putText(frame, str(round(currentAccel,1)) + "m/s\u00B2", org, font, fontScale, color, thickness, cv2.LINE_AA)
+
+def draw_accel_on_front_camera_image(f,frame, data):
+    global currentAccel
+    control_input_data = data[f]["control_inputs"]
+    currentAccel = round((control_input_data.accelerometer)/2000.,2)
+    #Add accel of the vehicle to image
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    org = ([offsetOfCameraFeed+widthOfCameraFeed-230,offsetOfCameraFeed+50])
+    fontScale = 0.7
+    thickness = 2
+
+    color = (0,255,255)
+    #cv2.putText(frame, str(round(currentSpeed,1)) + "m/s", org, font, fontScale, color, thickness, cv2.LINE_AA)
+    org[1] = org[1]+30
+    cv2.putText(frame,"AccReq:" + str(round(currentAccel,1)) + " m/s2", org, font, fontScale, color, thickness, cv2.LINE_AA)
 
 def draw_traffic_light(f,frame,tfl_messages):
     # Add tfl frame to current frame
@@ -761,6 +758,113 @@ def draw_override_text(f, image, data, s_xy_int, color, lead_id=None, ids=None):
     # cv2.putText(frame, f"{(i + 1) * outer_rings_spacing}", (corner[0], xy[1]), cv2.FONT_HERSHEY_SIMPLEX, 1,
     #                     ring_label_color, 2)
 
+def draw_override_text_ariya(f, image, data, s_xy_int, color, lead_id=None, ids=None):
+    #print("Driver_input")
+    font = cv2.FONT_HERSHEY_SIMPLEX 
+
+    # org 
+    org = (int(frame_size[0]/2),offsetOfCameraFeed)
+    
+    # fontScale 
+    fontScale = 1
+    
+    # Blue color in BGR 
+    color = (255, 255, 255) 
+    
+    # Line thickness of 2 px 
+    thickness = 2
+    driver_input_msg = data[f]['driver_input']
+
+    cwd = os.getcwd()
+    image_np_propilot = cv2.imread(cwd+"/images/propilot.png", cv2.IMREAD_COLOR)
+    image_np_brake = cv2.imread(cwd+"/images/brake_off.png", cv2.IMREAD_COLOR)
+    image_np_accel = cv2.imread(cwd+"/images/accel_off.png", cv2.IMREAD_COLOR)
+
+    # Make images faded
+    channelDivider = 7.
+    a_channel_propilot = np.ones(image_np_propilot.shape, dtype=float)/channelDivider
+    a_channel_brake = np.ones(image_np_brake.shape, dtype=float)/channelDivider
+    a_channel_accel = np.ones(image_np_accel.shape, dtype=float)/channelDivider
+    image_np_accel = image_np_accel*a_channel_accel
+    image_np_brake = image_np_brake*a_channel_brake
+
+    useImageInsteadofText = True
+    # AV engaged
+    # if ctrl_state_flg_msg.Engaged:
+    #Accel override
+    if driver_input_msg.is_driver_accel:
+        if not useImageInsteadofText:
+            color = (0,255,255)
+            image = cv2.putText(image, 'AV engaged, accelerator override', org, font, fontScale, color, thickness, cv2.LINE_AA)
+        else:
+            image_np_accel = cv2.imread(cwd+"/images/accel_on.png", cv2.IMREAD_COLOR)
+
+    #Brake override
+    elif driver_input_msg.is_driver_brake:
+        if not useImageInsteadofText:
+            color = (0,255,255)
+            image = cv2.putText(image, 'AV engaged, brake override', org, font, fontScale, color, thickness, cv2.LINE_AA)
+        else:
+            image_np_brake = cv2.imread(cwd+"/images/brake_on.png", cv2.IMREAD_COLOR)
+    
+    else:
+        if not useImageInsteadofText:
+            color = (255,0,0)
+            image = cv2.putText(image, 'AV engaged', org, font, fontScale, color, thickness, cv2.LINE_AA)
+    
+    # #AV disengaged
+    # else:
+    #     if not useImageInsteadofText:
+    #         color = (0,0,255)
+    #         image = cv2.putText(image, 'AV disengaged', org, font, fontScale, color, thickness, cv2.LINE_AA)
+    #     else:
+    #         image_np_propilot = image_np_propilot*a_channel_propilot
+    
+
+    # calculate the ratio of the width and construct the dimensions
+    heightDivider = 20
+    x_offset = y_offset = offsetOfCameraFeed
+    x_offset = x_offset + widthOfCameraFeed + 2*tflImageWidth
+    (h, w) = image_np_propilot.shape[:2]
+    height = frame_size[0]/heightDivider
+    r = height / float(h)
+    dim = (int(w * r), int(height))
+
+    # resize the image
+    image_np_propilot = cv2.resize(image_np_propilot, dim, interpolation = cv2.INTER_AREA)
+    image[y_offset:y_offset+image_np_propilot.shape[0], x_offset:x_offset+image_np_propilot.shape[1]] = image_np_propilot
+    
+    # calculate the ratio of the width and construct the dimensions
+    #x_offset = x_offset + int(w * r)
+    y_offset = y_offset + int(height)
+    (h_brake, w_brake) = image_np_brake.shape[:2]
+    height_brake = frame_size[0]/heightDivider
+    r_brake = height_brake / float(h_brake)
+    dim_brake = (int(w_brake * r_brake), int(height_brake))
+
+    # resize the image
+    image_np_brake = cv2.resize(image_np_brake, dim_brake, interpolation = cv2.INTER_AREA)
+    image[y_offset:y_offset+image_np_brake.shape[0], x_offset:x_offset+image_np_brake.shape[1]] = image_np_brake
+
+    # calculate the ratio of the width and construct the dimensions
+    x_offset = x_offset + int(w_brake * r_brake)
+    (h_accel, w_accel) = image_np_accel.shape[:2]
+    height_accel = frame_size[0]/heightDivider
+    r_accel = height_accel / float(h_accel)
+    dim_accel = (int(w_accel * r_accel), int(height_accel))
+
+    # resize the image
+    image_np_accel = cv2.resize(image_np_accel, dim_accel, interpolation = cv2.INTER_AREA)
+    image[y_offset:y_offset+image_np_accel.shape[0], x_offset:x_offset+image_np_accel.shape[1]] = image_np_accel
+
+    # orgSpd = (int(frame_size[0]/2),int(frame_size[1] - offsetOfCameraFeed))
+    # vehSpd = "{:.2f}".format(ctrl_state_flg_msg.VehicleSpeed_kmh/3.6)
+    # color = (255,255,255)
+    # image = cv2.putText(image, "AV speed: "+ vehSpd +" m/s", orgSpd, font, fontScale, color, thickness, cv2.LINE_AA)
+    #driver_input_messages[f].data[0]
+    # cv2.putText(frame, f"{(i + 1) * outer_rings_spacing}", (corner[0], xy[1]), cv2.FONT_HERSHEY_SIMPLEX, 1,
+    #                     ring_label_color, 2)
+
             
 def create_video(input_json_tr, camera_messages,tfl_messages, output_fname, second_csv=None, second_json=None,
                  max_interval=-1, t2c_adjustment=1.2, frame_margin=10, default_dist=300):
@@ -844,23 +948,26 @@ def create_video(input_json_tr, camera_messages,tfl_messages, output_fname, seco
         # Draw hazard zone
         if 'hazard_zone' in tr_data[f]:
             draw_hazard_zone(f, frame, tr_data, s_xy_int, (255, 255, 255))
-
-        # Draw risk field
-        if 'risk_field' in tr_data[f]:
-            draw_risk_field(f, frame, tr_data, s_xy_int, (255, 255, 255))
         
         # Add front camera frame
         if len(camera_messages):
             draw_front_camera(f,frame,camera_messages)
         
-        # Add front camera frame
+        # Add speed to front camera frame
         draw_speed_on_front_camera_image(f,frame)
+        
+        # Add accel to front camera frame
+        if 'control_inputs' in tr_data[f]:
+            draw_accel_on_front_camera_image(f,frame, tr_data)
         
         if 'tfl' in tr_data[f]:
             draw_traffic_light(f,frame,tfl_messages)
         
         if 'CtrlStateFLG' in tr_data[f]:
             draw_override_text(f,frame,tr_data,s_xy_int, (255, 255, 255))
+        
+        if 'driver_input' in tr_data[f] and 'AV_MIKE' in output_fname:
+            draw_override_text_ariya(f,frame,tr_data,s_xy_int, (255, 255, 255))
 
         out.write(frame)
         # cv2.imshow('s',frame)
@@ -868,6 +975,9 @@ def create_video(input_json_tr, camera_messages,tfl_messages, output_fname, seco
     out.release()
 
 def process_directory(bags_dir: Path, args):
+####################################        
+#    print ("Just printing the bags_dir, ", bags_dir)
+####################################    
     if bags_dir.is_dir():
         bags_base_name = str(bags_dir.name)
         print(f"processing {bags_base_name}")
@@ -901,8 +1011,8 @@ def process_directory(bags_dir: Path, args):
         bags_dir = bags_dir.parent
 
     # check if video file already exists
-    output_fname = str(bags_dir)+"/"+snap_folder_name+"/"+bags_base_name+".mp4"
-
+    #output_fname = str(bags_dir)+"/"+snap_folder_name+"/"+bags_base_name+".mp4"  ##############Original Code######################
+    output_fname = str(args.output_directory)+"/"+snap_folder_name+"/"+bags_base_name+".mp4"
     if os.path.exists(output_fname):
         return 2
     # read tracker data
@@ -1133,12 +1243,12 @@ def process_directory(bags_dir: Path, args):
             f["hazard_zone"] = s
         print("Done processing hazard_zone data with size: " + str(len(hazard_zone_msgs)))
 
-    # read driver input for override
+    # read CtrlStateFLG for leaf overrides
     with rosbag.Bag(str(raw_bag_fn)) as bag:
-        override_data = list(bag.read_messages(args.override_topic))
+        override_data = list(bag.read_messages(args.override_topic_leaf))
 
     if not override_data:
-        print("No driver input messages, ... continuing")
+        print("No CtrlStateFLG messages, ... continuing")
     else:
         _, _, override_data_start_frame, _ = align_data(tr_data, override_data)
         override_data = override_data[override_data_start_frame:]
@@ -1154,28 +1264,47 @@ def process_directory(bags_dir: Path, args):
             f["CtrlStateFLG"] = s
         print("Done processing override_data data with size: " + str(len(override_data_msgs)))
 
-    # read risk field data
-    # with rosbag.Bag(str(raw_bag_fn)) as bag:
-    #     riskField_data = list(bag.read_messages(args.risk_field_topic))
+    # read driver_input for ariya overrides
+    with rosbag.Bag(str(raw_bag_fn)) as bag:
+        override_data_ariya = list(bag.read_messages(args.override_topic_ariya))
 
-    # _, _, riskField_start_frame, _ = align_data(tr_data, riskField_data)
-    # riskField_data = riskField_data[riskField_start_frame:]
-    # riskField_interval = np.round((riskField_data[-1][2].to_sec() - riskField_data[0][2].to_sec()) /
-    #                                  (len(riskField_data) - 1), 5)
-    # riskField_frames = [int(round((tr[2].to_sec() - tr_start_time) / riskField_interval, 0)) for tr in tr_data]
+    if not override_data_ariya:
+        print("No driver input messages, ... continuing")
+    else:
+        _, _, override_data_ariya_start_frame, _ = align_data(tr_data, override_data_ariya)
+        override_data_ariya = override_data_ariya[override_data_ariya_start_frame:]
+        override_data_ariya_interval = np.round((override_data_ariya[-1][2].to_sec() - override_data_ariya[0][2].to_sec()) /
+                                        (len(override_data_ariya) - 1), 5)
+        override_data_ariya_frames = [int(round((tr[2].to_sec() - tr_start_time) / override_data_ariya_interval, 0)) for tr in tr_data]
 
-    # riskField_msgs = [msg for msg in 
-    #                       [riskField_data[f].message
-    #                        for f in riskField_frames 
-    #                        if f < min(len(riskField_data),len(sensor_msgs))]]
-    # print("Done processing risk field data")
-    
-    # make json format data
-    #tr_json_fn = bags_dir / Path(f'all/trackers/nrc/{bags_base_name}.all/data/{bags_base_name}.json')
-    #tr_json_fn.parent.mkdir(parents=True, exist_ok=True)
-        
-    # for f, s in zip(tr_json_content, riskField_msgs):
-    #     f["risk_field"] = s
+        override_data_ariya_msgs = [msg for msg in 
+                            [override_data_ariya[f].message
+                            for f in override_data_ariya_frames 
+                            if f < len(override_data_ariya)]]
+        for f, s in zip(tr_json_content, override_data_ariya_msgs):
+            f["driver_input"] = s
+        print("Done processing override_data_ariya data with size: " + str(len(override_data_ariya_msgs)))
+
+    # read control_inputs for acceleration input
+    with rosbag.Bag(str(raw_bag_fn)) as bag:
+        control_inputs_data = list(bag.read_messages(args.control_input_topic))
+
+    if not control_inputs_data:
+        print("No control_inputs messages, ... continuing")
+    else:
+        _, _, control_inputs_data_start_frame, _ = align_data(tr_data, control_inputs_data)
+        control_inputs_data = control_inputs_data[control_inputs_data_start_frame:]
+        control_inputs_data_interval = np.round((control_inputs_data[-1][2].to_sec() - control_inputs_data[0][2].to_sec()) /
+                                        (len(control_inputs_data) - 1), 5)
+        control_inputs_data_frames = [int(round((tr[2].to_sec() - tr_start_time) / control_inputs_data_interval, 0)) for tr in tr_data]
+
+        control_inputs_data_msgs = [msg for msg in 
+                            [control_inputs_data[f].message
+                            for f in control_inputs_data_frames 
+                            if f < len(control_inputs_data)]]
+        for f, s in zip(tr_json_content, control_inputs_data_msgs):
+            f["control_inputs"] = s
+        print("Done processing control_inputs_data data with size: " + str(len(control_inputs_data_msgs)))
 
 
     frameMargin = 20
@@ -1200,10 +1329,21 @@ def is_bag_dir(dir: Path, args) -> bool:
 
 def main(args):
     dir2process = Path(args.bags_dir)
-    if not os.path.isdir(dir2process/snap_folder_name) and dir2process.suffix != ".bag":
-        os.makedirs(dir2process/snap_folder_name, exist_ok=True)
-    elif not os.path.isdir(dir2process/snap_folder_name) and dir2process.suffix == ".bag":
-        os.makedirs(dir2process.parent/snap_folder_name, exist_ok=True)
+    dir4output = Path(args.output_directory)
+    #if not os.path.isdir(dir2process/snap_folder_name) and dir2process.suffix != ".bag":
+        #os.makedirs(dir2process/snap_folder_name, exist_ok=True)
+#################################### 
+    if not (os.path.isdir(dir2process/snap_folder_name) and dir2process.suffix != ".bag"):
+        os.makedirs(dir4output/snap_folder_name, exist_ok=True)
+#        print ("Just printing the path for if not, ", os.path.isdir(dir2process/snap_folder_name))
+####################################       
+    #elif not os.path.isdir(dir2process/snap_folder_name) and dir2process.suffix == ".bag":
+        #os.makedirs(dir2process.parent/snap_folder_name, exist_ok=True)
+#################################### 
+    elif not (os.path.isdir(dir2process/snap_folder_name) and dir2process.suffix == ".bag"):
+        os.makedirs(dir4output.parent/snap_folder_name, exist_ok=True)
+#        print ("Just printing the path for elif not, ", os.path.isdir(dir2process/snap_folder_name))
+####################################        
     if not dir2process.is_dir() and dir2process.suffix == ".bag":
         #ret = process_directory(dir2process, args)
         try:
@@ -1232,6 +1372,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Pre-Process bag files.')
     parser.add_argument('bags_dir', type=str, help='Path to the directory with bag files: GT, Tracking, Raw')
+    parser.add_argument('--output_directory', type=str, default='.', help='Path to the directory to save resim videos')
     #parser.add_argument('--gt_bag_prefix', type=str, default='labelled_bboxes_pntscnt_',
     #                    help='gt bag name: prefix + dir name + .bag')
     parser.add_argument('--track_bag_prefix', type=str, default='autonomy_log_pcp_mot_',
@@ -1266,9 +1407,6 @@ if __name__ == '__main__':
     parser.add_argument('--auto_goals_topic', type=str, default='/autoGoals_debug',
                         help='Plot auto goals debug'
                              '(default: /autoGoals_debug)')
-    parser.add_argument('--risk_field_topic', type=str, default='/prm/risk_field_display',
-                        help='Plot riskfield'
-                             '(default: /prm/risk_field_display)')
     parser.add_argument('--tfl_topic', type=str, default='/tlStatus',
                         help='Plot traffic lights'
                              '(default: /tlStatus)')
@@ -1278,9 +1416,15 @@ if __name__ == '__main__':
     parser.add_argument('--predictions_topic', type=str, default='/ailsv_predicted_trajectories',
                         help='Plot predicted trajectories'
                              '(default: /ailsv_predicted_trajectories)')
-    parser.add_argument('--override_topic', type=str, default='/CtrlStateFLG',
+    parser.add_argument('--override_topic_leaf', type=str, default='/CtrlStateFLG',
                         help='Plot overrides'
                              '(default: /CtrlStateFLG)')
+    parser.add_argument('--override_topic_ariya', type=str, default='/driver_input',
+                        help='Plot overrides'
+                             '(default: /driver_input)')
+    parser.add_argument('--control_input_topic', type=str, default='/control_inputs',
+                        help='Plot input acceleration'
+                             '(default: /control_inputs)')
     parser.add_argument("--extended_lead", action='store_true',
                         help="consider vehicles in next lanes left and right")
     parser.add_argument("--ignore_lead", action='store_true',

@@ -1,9 +1,9 @@
 #!/bin/bash
 
 echo "Running bashrc_script in nrc_av_ui/scripts"
-echo "Common commands: rbuild, startAv, startRemote, resetPlanner, shutdownMrcy, frontDisplay"
+echo "Common commands: rbuild, startAv, startRemote, resetPlanner, shutdownMrcy, frontDisplay, mountNfs, runBatchValidation."
 
-alias rbuild="~/projects/nrc_ws/src/nrc_svcs/scripts/rbuild.sh"
+alias rbuild="~/projects/nrc_ws/src/nrc_av_ui/scripts/rbuild.sh"
 alias startAv="python3 ~/projects/nrc_ws/src/nrc_av_ui/av_ui/av_ui.py"
 alias startRemote="python3 ~/projects/nrc_ws/src/nrc_av_ui/av_ui/remoteMonitor.py"
 alias resetPlanner="rostopic pub /ResetRalp std_msgs/Bool true"
@@ -14,6 +14,7 @@ alias frontDisplay="rviz -d $rvizPath/FrontDisplay.rviz"
 alias manualDisplay="rviz -d $rvizPath/FrontDisplayManual.rviz"
 
 alias mountNfs="sudo mkdir -p /srv/nfs/avdata; sudo mount -t nfs 192.168.29.10:/AV_DATA /srv/nfs/avdata; echo \"NFS Mounted /srv/nfs/avdata\""
+alias runBatchValidation="~/projects/nrc_ws/src/nrc_sim/src/simpleator/sim_base/score_bagfiles_parallel.sh /srv/nfs/avdata/snapshot_data_do_not_delete/curated_snapshots/Mike 4 0 resim 0 Mike"
 
 # # start up shortcuts
 # alias gpsCheck="rostopic echo /dynamic_global_pose_conv | grep status_"
@@ -49,4 +50,4 @@ alias mountNfs="sudo mkdir -p /srv/nfs/avdata; sudo mount -t nfs 192.168.29.10:/
 # alias reactiveon="rostopic pub /useReactiveForModes std_msgs/Bool -- true"
 # alias reactiveoff="rostopic pub /useReactiveForModes std_msgs/Bool -- false"
 
-echo "Done running bashrc_script in nrc_svcs/scripts"
+echo "Done running bashrc_script in nrc_av_ui/scripts"

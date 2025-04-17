@@ -1,10 +1,10 @@
 Configuration:
-  Name: Mike
+  Name: Oscar
   agentType: AV2
   mapName: Franklin.set
   printTimeDebug: 0
   useGui: 1
-  sendWm: 0
+  sendWm: 1
   sendSnapshots: 1
   broker: emqx
   gpsTopic: /gps_state/gps_state_f9r_2hz
@@ -19,35 +19,15 @@ Subsystem:
       - HealthTopic: /CAN/health
         HealthName: CAR
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 0.2
-      - HealthTopic: /ard_state
-        HealthName: ARD
-        HealthTopicType: Int16MultiArray
-        NomWarnErrRate: 10, 8, 0.2
-      - HealthTopic: /pmu_state
-        HealthName: PMU
-        HealthTopicType: Int16MultiArray
-        NomWarnErrRate: 10, 8, 0.2
-      - HealthTopic: /ethernet_can/health
-        HealthName: ETH
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 0.2
+        NomWarnErrRate: 10, 6, 3
 
     Commands:
       - Name: CanAriyaSvITSConsumer
-        Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=5 CanAriyaSvITS3Consumer:=true CanAriyaSvITS3ConsumerCh:=0 CanAriyaSvITS4Consumer:=true CanAriyaSvITS4ConsumerCh:=1 CanAriyaSvITS5Consumer:=true CanAriyaSvITS5ConsumerCh:=3  CanAriyaSvWriter:=true CanAriyaSvWriterCh:=2 Eyeq5DevCh0:=true Eyeq5DevCh0Ch:=4 Eyeq5DevWrite:=true Eyeq5DevWriteCh:=4
+        Command: roslaunch nrc_leaf can_communication_modular.launch numChannels:=4 CanAriyaSvITS3Consumer:=true CanAriyaSvITS3ConsumerCh:=0 CanAriyaSvITS4Consumer:=true CanAriyaSvITS4ConsumerCh:=1  CanAriyaSvWriter:=true CanAriyaSvWriterCh:=2 Eyeq5DevCh0:=true Eyeq5DevCh0Ch:=3 Eyeq5DevWrite:=true Eyeq5DevWriteCh:=3
         Type: Software
         LaunchTime: 5.0
-      - Name: ARD
-        Command: roslaunch nrc_hw_svcs leaf_interface_arduino.launch arduino_machine:=node02 vehicleType:=Ariya
-        Type: Software
-        LaunchTime: 1.0
       - Name: Me2Yolo
         Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch
-        Type: Software
-        LaunchTime: 3.0
-      - Name: Ethernet
-        Command: roslaunch nrc_leaf ethernet_can_ariya.launch
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -57,7 +37,7 @@ Subsystem:
     Depends:
       - Launch:
         Run:
-
+        
   Pose:
     Type: Sensor
     Description: Ublox F9R gps and ntrip
@@ -67,11 +47,11 @@ Subsystem:
       - HealthTopic: /gps_state/health_f9r
         HealthName: RAW
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 20, 10, 0.2
+        NomWarnErrRate: 20, 10, 5
       - HealthTopic: /dynamic_global_pose_10Hz
         HealthName: DGP
         HealthTopicType: DynamicPoseWithCovar
-        NomWarnErrRate: 10, 6, 0.2
+        NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: f9r_raw
         Command: roslaunch nrc_hw_svcs f9r_udev_rule.launch
@@ -108,41 +88,17 @@ Subsystem:
       - Launch:
         Run:
 
-  Cubtek:
+  Arbe TOS:
     Type: Sensor
-    Description: Cubtek 4D imaging radars, left and right
+    Description: Arbe 4D imaging radars, left , center and right
     Trigger:
       - Source: StartRequest
     HealthTopics:
-      - HealthTopic: /Cubtek/health_L
-        HealthName: NOD_L
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
-      - HealthTopic: /Cubtek/health_R
-        HealthName: NOD_R
-        HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 3
       - HealthTopic: /cubtek_fuse_health
         HealthName: TOS
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
     Commands:
-      - Name: Cubtek_eth_raw_left
-        Command: sudo $HOME/projects/nrc_ws/devel/lib/nrc_hw_svcs/pcap eno4 45161 #Left cubtek radar
-        Type: Software
-        LaunchTime: 2.0
-      - Name: Cubtek_eth_raw_right
-        Command: sudo $HOME/projects/nrc_ws/devel/lib/nrc_hw_svcs/pcap eno2 45162 #Right cubtek radar
-        Type: Software
-        LaunchTime: 2.0
-      - Name: Cubtek_eth_nodes_left
-        Command: rosrun nrc_hw_svcs consume_cubtek cubtek_L 45161
-        Type: Software
-        LaunchTime: 2.0
-      - Name: Cubtek_eth_nodes_right
-        Command: rosrun nrc_hw_svcs consume_cubtek cubtek_R 45162
-        Type: Software
-        LaunchTime: 2.0
       - Name: Cubtek_fuse
         Command: rosrun nrc_wm2_svcs cubtek_fuse
         Type: Software
@@ -171,13 +127,36 @@ Subsystem:
         NomWarnErrRate: 10, 7, 3
     Commands:
       - Name: InnovusionDriver
-        Command: rosrun nrc_svcs  runInnovusion.sh > /dev/null
+        Command: rosrun nrc_svcs runInnovusion.sh > /dev/null
         Type: Software
         LaunchTime: 1.0
       - Name: PCP
         Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Foxtrot:=true do_curb_detection:=false do_curb_points_accumulation:=false include_curb_points_for_drivable_area:=false include_lateral_curb_points_for_drivable_area:=false include_accumulated_curb_points_for_drivable_area:=false srcgs/cluster_height_threshold:=0.3 dynamic_global_pose_topic_name:=/dynamic_global_pose
         Type: Software
         LaunchTime: 3.0
+    Diagnostic:
+      LED: 3
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:
+
+  LucidCam:
+    Type: Algorithm
+    Description: Lucid_Front_Cam
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /frontCenterCam/image_raw/compressed
+        HealthName: LUC
+        HealthTopicType: CompressedImage
+        NomWarnErrRate: 15, 10, 6
+    Commands:
+      - Name: LucidDriver
+        Command: roslaunch nrc_hw_svcs lucid_gige_multi-cameras.launch
+        Type: Software
+        LaunchTime: 1.0
     Diagnostic:
       LED: 3
       Retry: 3
@@ -195,7 +174,7 @@ Subsystem:
       - HealthTopic: /object_tracker/health
         HealthName: FUS
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 0.2
+        NomWarnErrRate: 10, 6, 3
       - HealthTopic: /traffic_light/detection/health
         HealthName: TLR
         HealthTopicType: DiagnosticArray
@@ -203,11 +182,11 @@ Subsystem:
       - HealthTopic: /ailsv_virtual_objects
         HealthName: VRT
         HealthTopicType: TrackedObjectSet
-        NomWarnErrRate: 10, 6, 0.2
+        NomWarnErrRate: 10, 6, 3
       - HealthTopic: /master_filter/health
         HealthName: WOS
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 0.2
+        NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: WM
         Command: roslaunch nrc_wm2_svcs leaf_pred.launch vehicleType:=SV_AiCC frontLidarOnly:=true
@@ -234,7 +213,7 @@ Subsystem:
       - HealthTopic: /autoGoals/health
         HealthName: GOALS
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 0.2
+        NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: RouteWaypoints
         Command: rosrun nrc_wm2_svcs multi_set_dest_repeater.py
@@ -262,11 +241,11 @@ Subsystem:
       - HealthTopic: /trajectory_planner/health
         HealthName: TRP
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 0.2
+        NomWarnErrRate: 10, 6, 3
       - HealthTopic: /trajectory_follower/health
         HealthName: TRC
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 100, 60, 0.2
+        NomWarnErrRate: 100, 60, 10
     Commands:
       - Name: Trajectory Planning
         Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=AriyaFS vehicle_type_react:=AriyaFS_React include_riskClassifier:=true
@@ -285,20 +264,20 @@ Subsystem:
     Type: Algorithm
     Description: Record bagfiles
     Trigger:
-      - Source: ARD2
+      - Source: StartRequest
     HealthTopics:
       - HealthTopic: /BagfileHealth
         HealthName: BAG
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 0.2
+        NomWarnErrRate: 10, 6, 3
       - HealthTopic: /snapshotTrigger/health_status
         HealthName: TRIG
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 0.2
+        NomWarnErrRate: 10, 6, 3
       - HealthTopic: /SnapshotHealth
         HealthName: SBAG
         HealthTopicType: DiagnosticArray
-        NomWarnErrRate: 10, 6, 0.2
+        NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: BAG
         Command: roslaunch nrc_av_ui record_separately_mike.launch

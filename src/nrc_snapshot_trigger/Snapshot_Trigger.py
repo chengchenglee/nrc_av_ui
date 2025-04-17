@@ -88,6 +88,9 @@ class CsvWriterAVinterface:
         self.exclPoses = []
         self.exclPoses.append([4870.25,-2212.87,0.0194033,75.0,17.0])  #SVPG
         self.inExclusionZone = True
+        self.egoX = 0.
+        self.egoY = 0.
+        self.yaw = 0.
         
         # Create a ROS Timer for reading data
         rospy.Timer(rospy.Duration(self.timerInterval), self.timerCallback)
@@ -167,8 +170,9 @@ class CsvWriterAVinterface:
         
         # Turns and lane changes are included in the snapshots only if there are some desired tracked objects 
         # present near the AV during the beginning of the turn or lane change.
-        self.writeSnapshot, self.detailsDict = self.left_right.Right.processSignal(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose, self.objHist, self.timerInterval, self.yaw)
-        self.writeSnapshot, self.detailsDict = self.left_right.Left.processSignal(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose, self.objHist, self.timerInterval, self.yaw)
+        if False:
+            self.writeSnapshot, self.detailsDict = self.left_right.Right.processSignal(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose, self.objHist, self.timerInterval, self.yaw)
+            self.writeSnapshot, self.detailsDict = self.left_right.Left.processSignal(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose, self.objHist, self.timerInterval, self.yaw)
 
 
 

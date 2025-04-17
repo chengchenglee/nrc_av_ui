@@ -2,45 +2,59 @@
 
   <machine name="local" address="localhost"/>
   <machine name="node02" address="node02" env-loader="$(find nrc_svcs)/launch/env.sh" />
+  <machine name="node04" address="node04" env-loader="$(find nrc_svcs)/launch/env.sh" />
   <arg name="record_machine" default="local" />
   <arg name="suffix" default="" />
+  <arg name="record_dir" default="/opt/data/rosbag/" />
+  <param name="NRCSV_ROSBAG_RECORD_DIR" type="string" value="$(arg record_dir)" />
+  
 
   <!-- Enable / Disable subsystem recording -->
-  <arg name="record_system_front_tower_cameras" default="false"/>
+  <arg name="record_system_front_tower_cameras" default="true"/>
   <arg name="record_system_other_cameras" default="false"/>
-  <arg name="record_system_lidar" default="false"/>
+  <arg name="record_system_lidar" default="true"/>
   <arg name="record_system_main" default="true"/>
   <arg name="record_pc_processor_all" default="true"/>
   <arg name="record_wm_all" default="true"/>
   <arg name="record_dm_lite" default="false"/>
   <arg name="record_dm_all" default="true"/>
   <arg name="record_ralp_all" default="true"/>
+  <arg name="record_ralp_follower" default="true"/>
   <arg name="record_validation" default="false"/>
+  <arg name="record_ipt" default="false"/>
   <arg name="record_tlr" default="false"/>
   <arg name="record_tlr_outputs" default="false"/> <!-- note: in order to record tlr outputs, both record_tlr and record_tlr_outputs must be set to true -->
   <arg name="record_aeva_pc" default="false"/>
   <arg name="record_aeva_ultrares_pc" default="false"/>
   <arg name="record_aeva_other_outputs" default="false"/>
   <arg name="record_innovusion" default="false"/>
-  <arg name="record_ariya_messages" default="true"/>
-  <arg name="record_cubtek_proc_messages" default="true"/>
-  <arg name="record_cubtek_raw_messages" default="false"/>
-  <arg name="record_arbe_processed_messages" default="true"/>
-  <arg name="record_labeled_pc" default="false"/>
+  <arg name="record_disengagement_snapshots" default="false"/> <!-- turn this on for snapshot rosbags during disengagement/override-->
+  <arg name="record_arbe" default="true"/>
   
   <arg name="prefix" default="autonomy_log" />
   <arg name="compression" default="false" /> <!--bz2 compression -->
-  <arg name="labeledPcCompression" default="lz4" /> <!--bz2 compression -->
 
+    <!--front_camera topic belongs to George. It's need here -->
   <arg name="system_front_tower_cameras_topics"
   default="/monitor_cam_front/image_stamped/compressed
-  |/tower_cam_front/image_stamped/compressed
+  |/vehicle_state_ros
+  |/tower_cam_front/image_color/compressed
+  |/tower_cam_front/stream/ffmpeg
+  |/tower_cam_front/image_color
+  |/tower_cam_frontRight/image_color
+  |/tower_cam_frontLeft/image_color
+  |/front_camera/image_color/compressed
+  |/lucid_cam_front/image_rect_color/compressed
+  |/lucid_cam_front_left/image_rect_color/compressed
+  |/lucid_cam_front_right/image_rect_color/compressed
   |/humanising_autonomy_image/compressed
   |/humanising_autonomy_image_display_data_George/compressed
   |/humanising_autonomy_image_display_data_Foxtrot/compressed
   |/humanising_autonomy_image_display_data_Echo/compressed
   |/humanising_autonomy_image_display_data_Bravo/compressed
   |/traffic_light_state/traffic_light_recognition_image/compressed
+  |/LucidCamFr/image_rect_color/compressed
+  |/zed2/(.*)
   |/trigger_signal"/>
   
   <arg name="system_other_cameras_topics"
@@ -51,11 +65,10 @@
   
   <arg name="system_lidar_topics"
   default="/velodyne_packets
-  |/velodyne_points
+  |/pc_processor/labeled_pc
   |/luminar_front/pointCloud
   |/luminar_left/pointCloud
   |/luminar_right/pointCloud
-  |/luminar_back/pointCloud
   |/detection_recog_results/tower_cam_front
   |/detection_recog_results/tower_cam_frontLeft
   |/detection_recog_results/tower_cam_frontRight
@@ -63,23 +76,21 @@
   |/detection_recog_results/tower_cam_backLeft
   |/detection_recog_results/tower_cam_backRight
   |/radar
-  |/radar_bf"/>  
+  |/radar_bf
+  |/multi_object_tracker/timing/overall_processing_time
+  |/multi_object_tracker/timing/timing_diagnostics
+  |/pc_processor/timing/overall_processing_time
+  |/pc_processor/timing/timing_diagnostics"/>
 
   <arg name="system_main_topics" 
   default="/dynamic_global_pose
-  |/MapMatch/modelErr
   |/NavSatFix_f9r
   |/Imu_f9r
   |/Twist_f9r
   |/GpsDiag_f9r
+  |/f9p(.*)
   |/gps_state(.*)
   |/MapMatch_offset
-  |/dynamic_global_pose_conv
-  |/raw_nmea
-  |/dynamic_global_pose
-  |/dynamic_global_pose_odo
-  |/dynamic_global_pose_odoGps
-  |/Pose_gps
   |/ME3_ObjData
   |/ME3_LKA_left
   |/ME3_LKA_right
@@ -104,11 +115,13 @@
   |/controller_state
   |/CtrlStateFLG
   |/driver_input
-  |/accel_state
   |/Radar_ObjData
+  |/smartmicro_output
+  |/smartmicro_tracked_objects
   |/CAN/Odometry
   |/CAN/OdometryInput
   |/CAN_V_reader
+  |/accel_state
   |/bsm
   |/psm
   |/intent
@@ -117,12 +130,8 @@
   |/ibeo_object_set
   |/radar
   |/radar_bf
-  |/bci_request
-  |/driver_request
-  |/driver_request_debug"/>
-  
-  <arg name="labeled_pc_topics"
-  default="/pc_processor/labeled_pc"/>
+  |/ailsv_av_status
+  |/ailsv_teleop"/>
   
   <arg name="pc_processor_all_topics" 
   default="/drivable_area_boundary_points
@@ -132,7 +141,8 @@
   |/pc_processor/visible_space/visible_space_ray_points
   |/visible_space_data
   |/visible_space_fused_data
-  |/visible_space_peer_data"/>
+  |/visible_space_peer_data
+  |/bevfusion/tracked_object_set"/>
   
   <arg name="wm_all_topics" 
   default="/swm_node
@@ -164,38 +174,50 @@
   |/abstractors/information/center_line_points
   |/woz/keystroke"/>
 
+<arg name="ipt_topics"
+  default="/gps_state
+  |/raw_nmea
+  |/dynamic_global_pose
+  |/dynamic_global_pose_conv
+  |/evcan_data
+  |/vcan_data
+  |/serena/epower_status
+  |/serena/engine_request
+  "/>
+
 <arg name="ignore_dm_topics"
   default="/modia/information/blocking(.*)"/>
 
   <arg name="ralp_all_topics"
   default="/lane_planner_state
-  |/lane_follower_state
   |/lane_planner_desired_path
   |/lane_planner_planned_path
   |/longPath
   |/planned_path
   |/vehicle_trajectory_control
-  |/combined_control
-  |/control_inputs
   |/SpeedPlan
+  |/hazard_zone
   |/SpeedPlanOccGridPanel
   |/point_of_no_return
   |/ailsv_osp_merge
-  |/hazard_zone
+  |/prm/reference_path_data
+  |/prm/osp_constraints_lv_ids
+  |/prm/risk_classifier_output"/>
+
+  <arg name="ralp_follower_topics"
+  default="|/lane_follower_state
+  |/control_inputs
+  |/combined_control
+  |/cbf_override
+  |/cbf_boundaries_publisher
+  |/force_steering_components
+  |/stanley_control
+  |/lane_planner_combined_control_debug
   |/hyperdrive_display_publisher
   |/hyperdrive_debug_publisher
   |/hyperdrive_outputs
   |/hyperdrive_tube_output
-  |/SpeedPlanOccGridPanel
-  |/perfect_decel
-  |/arduino_perfect_decel
-  |/speed_profile_perfect_decel
-  |/stop_line_dist_info
-  |/whisper_out_perfect_decel
-  |/perfect_decel_lookup
-  |/prm/reference_path_data
-  |/prm/osp_constraints_lv_ids
-  |/prm/risk_classifier_output"/>
+  |/hyperdrive_blockage"/>
   
   <arg name="validation_topics"
   default="/controller_state
@@ -223,111 +245,102 @@
   <arg name="innovusion_topics"
   default="/iv_points"/>
 
-  <arg name="cubtek_proc_topics"
-  default="/ariya_back_radar_tracked_objects
-  |/ariya_front_radar_tracked_objects
-  |/ariya_bs_radar_tracked_objects
-  |/cubtek_trackedobjects_filter_out"/>
-  
-  <arg name="cubtek_raw_topics"
-  default="/cubtek_PC_rviz_R
-  |/cubtek_PC_rviz_L
-  |/cubtek_raw_points
-  |/cubtek_raw_PC
-  |/cubtek_dbscan_PC
-  |/dbscan_out"/> 
-  
-  <arg name="arbe_processed_topics"
-  default="/arbe/processed/(.*)"/>  
+  <arg name="arbe_topics"
+  default="|/arbe/(.*)"/>
 
-  <arg name="ariya_messages"
-  default="/AriyaBlindSpotRadar_L
-    |/AriyaBlindSpotRadar_R
-    |/AriyaBlindSpotRadar_rviz
-    |/AriyaCanMsgRaw
-    |/AriyaSurroundRadar_2_FrL
-    |/AriyaSurroundRadar_2_FrR
-    |/AriyaSurroundRadar_FrL
-    |/AriyaSurroundRadar_FrR
-    |/AriyaSurroundRadar_Fr_rviz
-    |/AriyaSurroundRadar_L
-    |/AriyaSurroundRadar_R
-    |/AriyaSurroundRadar_S_rviz
-    |/Ariya_Camera_Infra_Lanes_rviz
-    |/Ariya_Camera_Infra_TFL_rviz
-    |/Ariya_Camera_Infra_TSR_rviz
-    |/Ariya_Camera_Infrastructure_Array
-    |/Ariya_Camera_Obj_Array
-    |/Ariya_Camera_Obj_rviz
-    |/Ariya_Radar_Obj_Array
-    |/Ariya_Radar_Obj_rviz
-    |/CanAriyaITS3
-    |/CanAriyaITS4
-    |/CanAriyaITS5
-    |/AriyaCanInput
-    |/AriyaTargetSpeed"/>
+  <!-- (.*) does not work with snapshot rosbag command. So added a seperate snapshot main topics-->
+  <arg name="snapshot_system_main_topics"
+  default="|/CAN_V_reader
+  |/CtrlStateFLG
+  |/ME3_LKA_left
+  |/ME3_LKA_right
+  |/ME3_ObjData
+  |/ME5_Construction_Objects
+  |/ME5_Lanes
+  |/ME5_Lanes_rviz
+  |/ME5_ObjData
+  |/ME5_Obj_rviz
+  |/ME5_Path_Prediction
+  |/ME5_Reflective_Signs
+  |/ME5_Reflective_Vehicles
+  |/ME5_Road_Edges
+  |/ME5_Semantic_Lanes
+  |/ME5_Semantic_Lines
+  |/ME5_Semantic_Marks
+  |/ME5_TFL_rviz
+  |/ME5_TrafficLight
+  |/Mobileye5_CANData
+  |/Pose_gps
+  |/ailsv_av_status
+  |/controller_state
+  |/driver_input
+  |/dynamic_global_pose
+  |/dynamic_global_pose_conv
+  |/dynamic_global_pose_odo
+  |/dynamic_global_pose_odoGps
+  |/gps_state/dynamic_global_pose_f9r
+  |/gps_state/gps_state_f9r
+  |/gps_state/dynamic_global_pose_oxts
+  |/gps_state/gps_state_oxts
+  |/gps_state/gps_state_ariya
+  |/ailsv_teleop"/>
   
-  <node if="$(arg record_system_front_tower_cameras)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_system_front_tower_cameras" output="screen"
+  <node if="$(arg record_ipt)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_ipt" output="screen"
+  args="-o $(arg prefix)_ipt -e $(arg ipt_topics)"/>  
+
+  <node if="$(arg record_system_front_tower_cameras)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_system_front_tower_cameras" output="screen"
   args="$(arg compression) -o $(arg prefix)_system_front_tower_cameras -e $(arg system_front_tower_cameras_topics)"  machine="$(arg record_machine)"/>
   
-  <node if="$(arg record_system_other_cameras)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_system_other_cameras" output="screen"
+  <node if="$(arg record_system_other_cameras)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_system_other_cameras" output="screen"
   args="$(arg compression) -o $(arg prefix)_system_other_cameras -e $(arg system_other_cameras_topics)" machine="$(arg record_machine)"/>
   
-  <node if="$(arg record_system_lidar)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_system_lidar" output="screen"
-  args="$(arg compression) -o $(arg prefix)_system_lidar -e $(arg system_lidar_topics)" machine="$(arg record_machine)"/>
+  <node if="$(arg record_system_lidar)" pkg="nrc_av_ui" type="rosbagrecordLz4.sh" name="rosbag_record_system_lidar" output="screen"
+  args="-o $(arg prefix)_system_lidar -e $(arg system_lidar_topics)" machine="$(arg record_machine)"/>
 
-  <node if="$(arg record_system_main)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_for_system_main" output="screen"
+  <node if="$(arg record_system_main)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_for_system_main" output="screen"
   args="$(arg compression) -o $(arg prefix)_system_main -e $(arg system_main_topics)" machine="$(arg record_machine)"/>  
     
-  <node if="$(arg record_pc_processor_all)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_pc_processor_all" output="screen"
+  <node if="$(arg record_pc_processor_all)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_pc_processor_all" output="screen"
   args="$(arg compression) -o $(arg prefix)_pc_processor_all -e $(arg pc_processor_all_topics)" machine="$(arg record_machine)"/>  
 
-  <node if="$(arg record_wm_all)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_wm_all" output="screen"
+  <node if="$(arg record_wm_all)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_wm_all" output="screen"
   args="$(arg compression) -o $(arg prefix)_wm_all -e $(arg wm_all_topics)" machine="$(arg record_machine)"/>  
   
-  <node if="$(arg record_dm_lite)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_dm_lite" output="screen"
+  <node if="$(arg record_dm_lite)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_dm_lite" output="screen"
   args="$(arg compression) -o $(arg prefix)_dm_lite -e $(arg dm_lite_topics)" machine="$(arg record_machine)"/>   
  
-  <node if="$(arg record_dm_all)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_dm_all" output="screen"
+  <node if="$(arg record_dm_all)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_dm_all" output="screen"
   args="$(arg compression) -o $(arg prefix)_dm_all -e $(arg dm_all_topics) -x $(arg ignore_dm_topics)" machine="$(arg record_machine)"/>   
  
-  <node if="$(arg record_ralp_all)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_ralp_all" output="screen"
+  <node if="$(arg record_ralp_all)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_ralp_all" output="screen"
   args="$(arg compression) -o $(arg prefix)_ralp_all -e $(arg ralp_all_topics)" machine="$(arg record_machine)"/>   
+
+  <node if="$(arg record_ralp_follower)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_ralp_follower" output="screen"
+  args="$(arg compression) -o $(arg prefix)_ralp_follower -e $(arg ralp_follower_topics)" machine="$(arg record_machine)"/>   
   
-  <node if="$(arg record_validation)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_validation" output="screen"
+  <node if="$(arg record_validation)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_validation" output="screen"
   args="$(arg compression) -o $(arg prefix)_validation_$(arg suffix) -e $(arg validation_topics)" machine="$(arg record_machine)"/>   
 
-  <node if="$(arg record_aeva_pc)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_aeva_pc" output="screen"
+  <node if="$(arg record_aeva_pc)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_aeva_pc" output="screen"
   args="$(arg compression) -o $(arg prefix)_aeva_pc -e $(arg aeva_pc_topics)" machine="$(arg record_machine)"/>
 
-  <node if="$(arg record_aeva_ultrares_pc)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_aeva_ultrares_pc" output="screen"
+  <node if="$(arg record_aeva_ultrares_pc)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_aeva_ultrares_pc" output="screen"
   args="$(arg compression) -o $(arg prefix)_aeva_ultrares_pc -e $(arg aeva_ultrares_pc_topics)" machine="$(arg record_machine)"/>
 
-  <node if="$(arg record_aeva_other_outputs)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_aeva_other" output="screen"
+  <node if="$(arg record_aeva_other_outputs)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_aeva_other" output="screen"
   args="$(arg compression) -o $(arg prefix)_aeva_other -e $(arg aeva_other_topics)" machine="$(arg record_machine)"/>
 
-  <node if="$(arg record_innovusion)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_innovusion" output="screen"
-  args="$(arg labeledPcCompression) -o $(arg prefix)_innovusion -e $(arg innovusion_topics)" machine="$(arg record_machine)"/>
+  <node if="$(arg record_innovusion)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_innovusion" output="screen"
+  args="$(arg compression) -o $(arg prefix)_innovusion -e $(arg innovusion_topics)" machine="$(arg record_machine)"/>
 
-  <node if="$(arg record_labeled_pc)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_innovusion_labeled_pc" output="screen"
-  args="$(arg labeledPcCompression) -o $(arg prefix)_innovusion_labeled_pc -e $(arg labeled_pc_topics)" machine="$(arg record_machine)"/>
+  <node if="$(arg record_arbe)" pkg="nrc_av_ui" type="rosbagrecord.sh" name="rosbag_record_arbe" output="screen"
+  args="$(arg compression) -o $(arg prefix)_arbe -e $(arg arbe_topics)" machine="$(arg record_machine)"/>
 
-  <node if="$(arg record_cubtek_proc_messages)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_cubtek_proc" output="screen"
-  args="$(arg compression) -o $(arg prefix)_cubtek_proc -e $(arg cubtek_proc_topics)" machine="$(arg record_machine)"/>
   
-  <node if="$(arg record_cubtek_raw_messages)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_cubtek_raw" output="screen"
-  args="$(arg compression) -o $(arg prefix)_cubtek_raw -e $(arg cubtek_raw_topics)" machine="$(arg record_machine)"/>
-  
-  <node if="$(arg record_arbe_processed_messages)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_arbe_processed" output="screen"
-  args="$(arg compression) -o $(arg prefix)_arbe_processed -e $(arg arbe_processed_topics)" machine="$(arg record_machine)"/>
-
-  <node if="$(arg record_ariya_messages)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_ariya" output="screen"
-  args="$(arg compression) -o $(arg prefix)_ariya -e $(arg ariya_messages)" machine="$(arg record_machine)"/>
-  
-  <include if="$(arg record_tlr)" file="$(find nrc_svcs)/launch/record_tlr.launch">
+  <include if="$(arg record_tlr)" file="$(find nrc_av_ui)/launch/record_tlr.launch">
     <arg name="record_inputAndOutput" value="$(arg record_tlr_outputs)" machine="$(arg record_machine)"/>
   </include>
   
-  <node pkg="nrc_av_ui" type="rosbagRecordMonitor.py" name="RosbagMonitor" args="-d /opt/data/rosbag/ -t BagfileHealth" machine="$(arg record_machine)" output="screen"/>
-  
+  <node pkg="nrc_av_ui" type="rosbagRecordMonitor.py" name="RosbagMonitor" args="-d $(arg record_dir) -t BagfileHealth" machine="$(arg record_machine)" output="screen"/>
+
 </launch>

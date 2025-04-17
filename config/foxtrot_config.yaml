@@ -135,10 +135,34 @@ Subsystem:
       - HealthTopic: /tower_cam_front/camera_info
         HealthName: TCF
         HealthTopicType: CameraInfo
-        NomWarnErrRate: 10, 6, 3
+        NomWarnErrRate: 10, 6, 0.1
+      - HealthTopic: /tower_cam_frontRight/camera_info
+        HealthName: TCFR
+        HealthTopicType: CameraInfo
+        NomWarnErrRate: 10, 6, 0.1
+      - HealthTopic: /tower_cam_frontLeft/camera_info
+        HealthName: TCFL
+        HealthTopicType: CameraInfo
+        NomWarnErrRate: 10, 6, 0.1
+      - HealthTopic: /tower_cam_back/camera_info
+        HealthName: TCB
+        HealthTopicType: CameraInfo
+        NomWarnErrRate: 10, 6, 0.1
+      - HealthTopic: /tower_cam_backRight/camera_info
+        HealthName: TCBR
+        HealthTopicType: CameraInfo
+        NomWarnErrRate: 10, 6, 0.1
+      - HealthTopic: /tower_cam_backLeft/camera_info
+        HealthName: TCBL
+        HealthTopicType: CameraInfo
+        NomWarnErrRate: 10, 6, 0.1
     Commands:
       - Name: TowerCam
         Command: roslaunch nrc_hw_svcs lucid_gige_cameras.launch FrCam:=true
+        Type: Software
+        LaunchTime: 3.0
+      - Name: TowerCamOthers
+        Command: roslaunch nrc_hw_svcs pgr_gige_cameras.launch leaf_foxtrot:=true allCams:=true FrCam:=false 
         Type: Software
         LaunchTime: 3.0
       - Name: Helm
