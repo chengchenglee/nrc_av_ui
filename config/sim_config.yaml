@@ -138,9 +138,17 @@ Subsystem:
         HealthName: TrajC
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 100, 60, 10
+      - HealthTopic: /metrics
+        HealthName: Metrics
+        HealthTopicType: Metric
+        NomWarnErrRate: 10, 8, 6
     Commands:
       - Name: Trajectory Planner
         Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=LeafFS
+        Type: Software
+        LaunchTime: 3.0
+      - Name: AV Metrics Analyzer
+        Command: rosrun nrc_wm2_svcs av_metrics_node
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
