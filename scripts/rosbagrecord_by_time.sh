@@ -12,4 +12,4 @@ mkdir -p ${d}
 cd ${d}
 echo "=================Recording to directory: " $PWD
 
-rosbag record "$@" --split --duration=5 --buffsize=0
+rosbag record "$@" --split --duration=5
