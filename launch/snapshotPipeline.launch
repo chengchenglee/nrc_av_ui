@@ -45,7 +45,8 @@
   
   <arg name="snapshot_system_front_tower_cameras_topics"
   default="/snapshot/image/compressed
-  |/tower_cam_front/image_cropped2/compressed"/>
+  |/tower_cam_front/image_cropped2/compressed
+  |/frontCenterCam/image_raw/compressed"/>
   
   <arg name="snapshot_system_lidar_topics"
   default="/velodyne_packets
