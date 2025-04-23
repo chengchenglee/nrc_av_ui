@@ -14,7 +14,7 @@
   <arg name="record_system_other_cameras" default="false"/>
   <arg name="record_system_front_back_tower_cameras" default="true"/>
   <arg name="record_system_front_left_back_left_tower_cameras" default="true"/>
-  <arg name="record_system_front_right_back_right_tower_cameras" default="true"/>
+  <arg name="record_system_front_right_back_right_tower_cameras" default="false"/>
   <arg name="record_system_lidar" default="true"/>
   <arg name="record_system_main" default="true"/>
   <arg name="record_pc_processor_all" default="true"/>
