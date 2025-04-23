@@ -60,23 +60,7 @@
   |/tower_cam_backLeft/image_raw/compressed"/>
   
   <arg name="system_lidar_topics"
-  default="/velodyne_packets
-  |/pc_processor/labeled_pc
-  |/luminar_front/pointCloud
-  |/luminar_left/pointCloud
-  |/luminar_right/pointCloud
-  |/detection_recog_results/tower_cam_front
-  |/detection_recog_results/tower_cam_frontLeft
-  |/detection_recog_results/tower_cam_frontRight
-  |/detection_recog_results/tower_cam_back
-  |/detection_recog_results/tower_cam_backLeft
-  |/detection_recog_results/tower_cam_backRight
-  |/radar
-  |/radar_bf
-  |/multi_object_tracker/timing/overall_processing_time
-  |/multi_object_tracker/timing/timing_diagnostics
-  |/pc_processor/timing/overall_processing_time
-  |/pc_processor/timing/timing_diagnostics"/>
+  default="/velodyne_packets"/>
 
   <arg name="system_main_topics" 
   default="/dynamic_global_pose
