@@ -68,7 +68,6 @@ MiniMap() {
     echo $(rosparam set ycoordOffset  0.35)
     echo $(rosparam set SANBORN_SLHACK_DX 0)
     echo $(rosparam set SANBORN_SLHACK_DY 0)
-    rosparam set USE_FASTER_FORMAT false
 }
 
 SanbornPNH() {
