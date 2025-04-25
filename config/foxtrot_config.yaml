@@ -136,23 +136,23 @@ Subsystem:
         HealthName: TCF
         HealthTopicType: CameraInfo
         NomWarnErrRate: 10, 6, 0.1
-      - HealthTopic: /tower_cam_frontRight/camera_info
+      - HealthTopic: /tower_cam_frontRight/camera_out/camera_info
         HealthName: TCFR
         HealthTopicType: CameraInfo
         NomWarnErrRate: 10, 6, 0.1
-      - HealthTopic: /tower_cam_frontLeft/camera_info
+      - HealthTopic: /tower_cam_frontLeft/camera_out/camera_info
         HealthName: TCFL
         HealthTopicType: CameraInfo
         NomWarnErrRate: 10, 6, 0.1
-      - HealthTopic: /tower_cam_back/camera_info
+      - HealthTopic: /tower_cam_back/camera_out/camera_info
         HealthName: TCB
         HealthTopicType: CameraInfo
         NomWarnErrRate: 10, 6, 0.1
-      - HealthTopic: /tower_cam_backRight/camera_info
+      - HealthTopic: /tower_cam_backRight/camera_out/camera_info
         HealthName: TCBR
         HealthTopicType: CameraInfo
         NomWarnErrRate: 10, 6, 0.1
-      - HealthTopic: /tower_cam_backLeft/camera_info
+      - HealthTopic: /tower_cam_backLeft/camera_out/camera_info
         HealthName: TCBL
         HealthTopicType: CameraInfo
         NomWarnErrRate: 10, 6, 0.1
@@ -320,7 +320,7 @@ Subsystem:
         NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: BAG
-        Command: roslaunch nrc_av_ui record_separately.launch record_machine:=node02
+        Command: roslaunch nrc_av_ui record_separately_foxtrot.launch record_machine:=node02 record_raw_machine:=node03
         Type: Software
         LaunchTime: 3.0
       - Name: SNAP
