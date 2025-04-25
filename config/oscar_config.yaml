@@ -131,7 +131,7 @@ Subsystem:
         Type: Software
         LaunchTime: 1.0
       - Name: PCP
-        Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Foxtrot:=true do_curb_detection:=false do_curb_points_accumulation:=false include_curb_points_for_drivable_area:=false include_lateral_curb_points_for_drivable_area:=false include_accumulated_curb_points_for_drivable_area:=false srcgs/cluster_height_threshold:=0.3 dynamic_global_pose_topic_name:=/dynamic_global_pose
+        Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Foxtrot:=false Ariya_Mike:=true do_curb_detection:=false do_curb_points_accumulation:=false include_curb_points_for_drivable_area:=false include_lateral_curb_points_for_drivable_area:=false include_accumulated_curb_points_for_drivable_area:=false srcgs/cluster_height_threshold:=0.3 dynamic_global_pose_topic_name:=/dynamic_global_pose
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
