@@ -1,9 +1,9 @@
 #!/bin/bash
 
-NRC_BAG_DIR=$(rosparam get NRCSV_ROSBAG_RECORD_DIR)
-if [ -z ${NRC_BAG_DIR+x} ]; then
-  NRC_BAG_DIR=/opt/data/rosbag/
-fi
+#NRC_BAG_DIR=$(rosparam get NRCSV_ROSBAG_RECORD_DIR)
+#if [ -z ${NRC_BAG_DIR+x} ]; then
+NRC_BAG_DIR=/opt/data/rosbag/
+#fi
 echo "NRC_BAG_DIR is ${NRC_BAG_DIR}"
 
 d=$(date +%F)
