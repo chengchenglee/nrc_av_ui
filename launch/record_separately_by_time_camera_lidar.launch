@@ -276,11 +276,11 @@
 
   
   <node if="$(arg record_system_front_left_back_left_tower_cameras)" pkg="nrc_av_ui" type="rosbagrecord_by_time.sh" name="rosbag_record_system_front_left_back_left_tower_cameras" output="screen"
-  args="$(arg compression) -o $(arg prefix)_system_front_left_back_left_tower_cameras -e $(arg system_front_left_back_left_tower_cameras_topics)"  machine="node02"/>
+  args="$(arg compression) -o $(arg prefix)_system_front_left_back_left_tower_cameras -e $(arg system_front_left_back_left_tower_cameras_topics)"  machine="node04"/>
 
 
   <node if="$(arg record_system_front_right_back_right_tower_cameras)" pkg="nrc_av_ui" type="rosbagrecord_by_time.sh" name="rosbag_record_system_front_right_back_right_tower_cameras" output="screen"
-  args="$(arg compression) -o $(arg prefix)_system_front_right_back_right_tower_cameras -e $(arg system_front_right_back_right_tower_cameras_topics)"  machine="node04"/>
+  args="$(arg compression) -o $(arg prefix)_system_front_right_back_right_tower_cameras -e $(arg system_front_right_back_right_tower_cameras_topics)"  machine="node02"/>
 
   <node if="$(arg record_system_lidar)" pkg="nrc_av_ui" type="rosbagrecord_by_time.sh" name="rosbag_record_system_lidar" output="screen"
   args="-o $(arg prefix)_system_lidar -e $(arg system_lidar_topics)" machine="$(arg record_machine)"/>
