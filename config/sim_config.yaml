@@ -138,10 +138,10 @@ Subsystem:
         HealthName: TrajC
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 100, 60, 10
-      - HealthTopic: /metrics
+      - HealthTopic: /metrics/health
         HealthName: Metrics
-        HealthTopicType: Metric
-        NomWarnErrRate: 10, 8, 6
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: Trajectory Planner
         Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=LeafFS
