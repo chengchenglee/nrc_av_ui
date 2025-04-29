@@ -27,7 +27,7 @@ Subsystem:
         Type: Software
         LaunchTime: 5.0
       - Name: Me2Yolo
-        Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch
+        Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch Leaf_Foxtrot:=false Ariya_Oscar:=true
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
