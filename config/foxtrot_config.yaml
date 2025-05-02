@@ -165,10 +165,6 @@ Subsystem:
         Command: roslaunch nrc_hw_svcs pgr_gige_cameras.launch leaf_foxtrot:=true allCams:=true FrCam:=false 
         Type: Software
         LaunchTime: 3.0
-      - Name: Helm
-        Command: roslaunch nrc_perc_svcs helm_perc.launch
-        Type: Software
-        LaunchTime: 3.0
     Diagnostic:
       LED: 3
       Retry: 3
@@ -320,7 +316,7 @@ Subsystem:
         NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: BAG
-        Command: roslaunch nrc_av_ui record_separately_foxtrot.launch record_machine:=node02 record_raw_machine:=node03
+        Command: roslaunch nrc_av_ui record_separately.launch record_machine:=node02 record_raw_machine:=node03
         Type: Software
         LaunchTime: 3.0
       - Name: SNAP

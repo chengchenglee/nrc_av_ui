@@ -24,15 +24,15 @@
   <arg name="compression" default="false" /> <!--bz2 compression -->
 
   <arg name="system_front_tower_cameras_topics"
-  default="/tower_cam_front/image_rect_color/compressed
-  |/tower_cam_frontRight/image_rect_color/compressed
-  |/tower_cam_frontLeft/image_rect_color/compressed
+  default="/tower_cam_front/image_raw/compressed
+  |/tower_cam_frontRight/camera_out/image_raw/compressed
+  |/tower_cam_frontLeft/camera_out/image_raw/compressed
   |/trigger_signal"/>
   
   <arg name="system_back_tower_cameras_topics"
-  default="/tower_cam_backRight/image_rect_color/compressed
-  |/tower_cam_backLeft/image_rect_color/compressed
-  |/tower_cam_back/image_stamped/compressed"/>
+  default="/tower_cam_backRight/camera_out/image_raw/compressed
+  |/tower_cam_backLeft/camera_out/image_raw/compressed
+  |/tower_cam_back/camera_out/image_raw/compressed"/>
   
   <arg name="system_lidar_raw_topics"
   default="/velodyne_packets"/>
