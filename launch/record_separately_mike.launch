@@ -23,7 +23,6 @@
   <arg name="record_aeva_other_outputs" default="false"/>
   <arg name="record_innovusion" default="false"/>
   <arg name="record_ariya_messages" default="true"/>
-  <arg name="record_cubtek_proc_messages" default="true"/>
   <arg name="record_cubtek_raw_messages" default="false"/>
   <arg name="record_arbe_processed_messages" default="true"/>
   <arg name="record_labeled_pc" default="false"/>
@@ -132,7 +131,11 @@
   |/pc_processor/visible_space/visible_space_ray_points
   |/visible_space_data
   |/visible_space_fused_data
-  |/visible_space_peer_data"/>
+  |/visible_space_peer_data
+  |/rd_processor/ariya_bs_radar_objects
+  |/rd_processor/ariya_back_radar_objects
+  |/rd_processor/ariya_front_radar_objects
+  |/rd_processor/tracked_object_set"/>
   
   <arg name="wm_all_topics" 
   default="/swm_node
@@ -222,12 +225,6 @@
 
   <arg name="innovusion_topics"
   default="/iv_points"/>
-
-  <arg name="cubtek_proc_topics"
-  default="/ariya_back_radar_tracked_objects
-  |/ariya_front_radar_tracked_objects
-  |/ariya_bs_radar_tracked_objects
-  |/cubtek_trackedobjects_filter_out"/>
   
   <arg name="cubtek_raw_topics"
   default="/cubtek_PC_rviz_R
@@ -311,9 +308,6 @@
 
   <node if="$(arg record_labeled_pc)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_innovusion_labeled_pc" output="screen"
   args="$(arg labeledPcCompression) -o $(arg prefix)_innovusion_labeled_pc -e $(arg labeled_pc_topics)" machine="$(arg record_machine)"/>
-
-  <node if="$(arg record_cubtek_proc_messages)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_cubtek_proc" output="screen"
-  args="$(arg compression) -o $(arg prefix)_cubtek_proc -e $(arg cubtek_proc_topics)" machine="$(arg record_machine)"/>
   
   <node if="$(arg record_cubtek_raw_messages)" pkg="nrc_svcs" type="rosbagrecord.sh" name="rosbag_record_cubtek_raw" output="screen"
   args="$(arg compression) -o $(arg prefix)_cubtek_raw -e $(arg cubtek_raw_topics)" machine="$(arg record_machine)"/>
