@@ -28,6 +28,7 @@ from brk_acc_class import BRK_ACC_CLASS
 from soft_evnt_class import SOFT_EVNT_CLASS
 from left_right_class import LEFT_RIGHT_CLASS
 from left_right_class import OBJ_OBS
+from av_metrics_class import AV_METRICS_CLASS
 import write_json
 
 
@@ -48,6 +49,7 @@ class CsvWriterAVinterface:
         self.brk_acc = BRK_ACC_CLASS()
         self.soft_evnt = SOFT_EVNT_CLASS()
         self.left_right = LEFT_RIGHT_CLASS()
+        self.av_metrics = AV_METRICS_CLASS()
 
         # Snapshot trigger.
         self.wasAutonomous = False
@@ -162,12 +164,17 @@ class CsvWriterAVinterface:
 
         self.soft_evnt.softwareEventTrig_waitForTimerCallback = False
         
-       
+        self.av_metrics.TTC.metricTrig_waitForTimerCallback = False
+        self.av_metrics.COL.metricTrig_waitForTimerCallback = False
+
         self.writeSnapshot, self.detailsDict = self.brk_acc.BRK.process_override(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose)
         self.writeSnapshot, self.detailsDict = self.brk_acc.ACC.process_override(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose)
         
         self.writeSnapshot, self.detailsDict = self.soft_evnt.process_softwareEventTrig(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose)
-        
+
+        self.writeSnapshot, self.detailsDict = self.av_metrics.TTC.process_metricTrig(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose)
+        self.writeSnapshot, self.detailsDict = self.av_metrics.COL.process_metricTrig(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose)
+
         # Turns and lane changes are included in the snapshots only if there are some desired tracked objects 
         # present near the AV during the beginning of the turn or lane change.
         if False:
@@ -218,7 +225,7 @@ class CsvWriterAVinterface:
             # no active trigger anymore.
             swTriggerActive = abs(time.time() - self.soft_evnt.lastMsgReceived) < 0.5
             anyTriggersStillActive = bool(self.brk_acc.BRK.override or self.brk_acc.ACC.override or swTriggerActive or self.left_right.Right.turnSignalActive or
-                                          self.left_right.Left.turnSignalActive)
+                                          self.left_right.Left.turnSignalActive or self.av_metrics.TTC.metricTrig or self.av_metrics.COL.metricTrig)
 
             if anyTriggersStillActive:
                 # Reset the writeTime and the snapshotFutureDistanceTraveled to the value of the first trigger, if there are more triggers active still.
@@ -514,7 +521,8 @@ class CsvWriterAVinterface:
         rospy.Subscriber('/CtrlStateFLG', CtrlStateFLG, self.CtrlStateFLGcallback)
 
         rospy.Subscriber('/CAN_V_reader', CANVReader, self.CAN_V_readerCallback)
-        
+        rospy.Subscriber('/metrics', String, self.av_metrics.metricsCallback)
+
         if self.car == "Mike":
             rospy.Subscriber('/driver_input', DriverInput, self.driverInputCallback)
 
