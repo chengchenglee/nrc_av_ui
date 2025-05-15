@@ -58,7 +58,7 @@ MiniMap() {
     echo "Setting up params for Mini Map."
     echo $(rosparam set SANBORN_CREATE_ANNOTATION_FILE 0)
     echo $(rosparam set SANBORN_VERBOSE_ERROR_CHECKING 0)
-    rosparam set USE_FASTER_FORMAT false
+    rosparam set USE_FASTER_FORMAT true
     rosparam set /siteFrame/originLat 37.397186956864289
     rosparam set /siteFrame/originLon -122.04398000000006
     echo $(rosparam set /siteFrame/originY 0.0)

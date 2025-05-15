@@ -59,6 +59,7 @@ class AvAgent:
     self.wmStatus = WmStatus()
     self.passThroughWm  = False
     self.passThroughImg = False
+    self.enableSendDebugImg = False
     self.remoteWmDisplayOn = 0
     self.remoteWmDisplayLastReq = 0
     self.remoteMonTeleoping = 0
@@ -269,6 +270,9 @@ class AvAgent:
         self.compressed_wm_string = []
       self.cloud.publishCsv(topic,payload,qos)
       
+      if self.enableSendDebugImg:
+        self.sendDebugImg()
+      
       self.timeNextWmSend = time.time() + self.wmImgMinWaitTime
 
   
@@ -313,6 +317,27 @@ class AvAgent:
       #print('Send jpeg:',time.time()-self.tZero)
 
       self.timeNextImgSend = time.time() + self.wmImgMinWaitTime
+      
+  def sendDebugImg(self):
+    # Create ros message to send
+    pathToDefaultImg = os.path.expanduser('~')+'/projects/nrc_ws/src/nrc_av_ui/av_ui/test1.png'
+    with Image.open(pathToDefaultImg) as img:
+        # Convert image to RGB (JPEG doesn't support transparency)
+        rgb_img = img.convert('RGB')
+        
+        # Create a BytesIO object to hold the JPEG data
+        jpeg_bytes = io.BytesIO()
+        
+        # Save the image as JPEG into the BytesIO object
+        rgb_img.save(jpeg_bytes, format='JPEG')
+        
+        msg = CompressedImage()
+        msg.data = jpeg_bytes.getvalue()
+    
+        qos = 0
+        topic = "dt/"+self.name+"/imgStream"
+        mqttData = self.imgStreamData.toMsg(msg,550,268)
+        self.cloud.publishCsv(topic,mqttData,qos)
     
   def getFilenameToSend(self,partList):
     # Get list of all files in directory
