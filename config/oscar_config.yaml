@@ -98,9 +98,17 @@ Subsystem:
         HealthName: TOS
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /arbe_visible_space_health
+        HealthName: VS
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: Cubtek_fuse
         Command: rosrun nrc_wm2_svcs cubtek_fuse
+        Type: Software
+        LaunchTime: 2.0
+      - Name: Arbe_visible_space
+        Command: rosrun nrc_wm2_svcs arbe_visible_space 
         Type: Software
         LaunchTime: 2.0
     Diagnostic:
@@ -239,7 +247,7 @@ Subsystem:
         NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: WM
-        Command: roslaunch nrc_wm2_svcs leaf_pred.launch vehicleType:=SV_AiCC frontLidarOnly:=true
+        Command: roslaunch nrc_wm2_svcs leaf_pred.launch vehicleType:=SV_AiCC frontLidarOnly:=true useArbeVisiblePoints:=true
         Type: Software
         LaunchTime: 1.0
     Diagnostic:
