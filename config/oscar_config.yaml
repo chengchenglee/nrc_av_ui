@@ -156,10 +156,10 @@ Subsystem:
     Trigger:
       - Source: StartRequest
     HealthTopics:
-      - HealthTopic: /frontCenterCam/image_raw/compressed
+      - HealthTopic: /roof_cam_front/camera_info
         HealthName: LUC
-        HealthTopicType: CompressedImage
-        NomWarnErrRate: 15, 10, 6
+        HealthTopicType: CameraInfo
+        NomWarnErrRate: 10, 6, 0.1
     Commands:
       - Name: LucidDriver
         Command: roslaunch nrc_hw_svcs lucid_gige_cameras.launch vehicle_model:=Ariya vehicle_name:=Oscar FrCam:=true FrRCam:=true FrLCam:=true frame_rate:=10 lucidCam_machine2:=node02
