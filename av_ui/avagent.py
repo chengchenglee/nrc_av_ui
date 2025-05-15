@@ -279,6 +279,8 @@ class AvAgent:
   
   def sendImgStreamPkt(self,msg):
     if self.passThroughImg and time.time() > self.timeNextImgSend:
+        self.enableSendDebugImg = False
+        
         # Send the msg
         a = 1
         qos = 0
@@ -291,6 +293,7 @@ class AvAgent:
     
   def sendImgFramePkt(self,msg):
     if self.passThroughImg and time.time() > self.timeNextImgSend:
+      self.enableSendDebugImg = False
     
       # resize
       image = Image.open(io.BytesIO(msg.data))
