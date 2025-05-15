@@ -149,7 +149,27 @@ Subsystem:
       - Source: StartRequest
     HealthTopics:
       - HealthTopic: /roof_cam_front/camera_info
-        HealthName: LUC
+        HealthName: RCF
+        HealthTopicType: CameraInfo
+        NomWarnErrRate: 10, 6, 0.1
+      - HealthTopic: /roof_cam_frontR/camera_info
+        HealthName: RCFR
+        HealthTopicType: CameraInfo
+        NomWarnErrRate: 10, 6, 0.1
+      - HealthTopic: /roof_cam_frontL/camera_info
+        HealthName: RCFL
+        HealthTopicType: CameraInfo
+        NomWarnErrRate: 10, 6, 0.1
+      - HealthTopic: /roof_cam_back/camera_info
+        HealthName: RCB
+        HealthTopicType: CameraInfo
+        NomWarnErrRate: 10, 6, 0.1
+      - HealthTopic: /roof_cam_backR/camera_info
+        HealthName: RCBR
+        HealthTopicType: CameraInfo
+        NomWarnErrRate: 10, 6, 0.1
+      - HealthTopic: /roof_cam_backL/camera_info
+        HealthName: RCBL
         HealthTopicType: CameraInfo
         NomWarnErrRate: 10, 6, 0.1
     Commands:
