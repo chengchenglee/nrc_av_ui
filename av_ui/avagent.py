@@ -59,6 +59,8 @@ class AvAgent:
     self.wmStatus = WmStatus()
     self.passThroughWm  = False
     self.passThroughImg = False
+    self.enableSendDebugImg = True
+    self.debugImgIdx = 1
     self.remoteWmDisplayOn = 0
     self.remoteWmDisplayLastReq = 0
     self.remoteMonTeleoping = 0
@@ -269,11 +271,16 @@ class AvAgent:
         self.compressed_wm_string = []
       self.cloud.publishCsv(topic,payload,qos)
       
+      if self.enableSendDebugImg:
+        self.sendDebugImg()
+      
       self.timeNextWmSend = time.time() + self.wmImgMinWaitTime
 
   
   def sendImgStreamPkt(self,msg):
     if self.passThroughImg and time.time() > self.timeNextImgSend:
+        self.enableSendDebugImg = False
+        
         # Send the msg
         a = 1
         qos = 0
@@ -286,6 +293,7 @@ class AvAgent:
     
   def sendImgFramePkt(self,msg):
     if self.passThroughImg and time.time() > self.timeNextImgSend:
+      self.enableSendDebugImg = False
     
       # resize
       image = Image.open(io.BytesIO(msg.data))
@@ -313,6 +321,29 @@ class AvAgent:
       #print('Send jpeg:',time.time()-self.tZero)
 
       self.timeNextImgSend = time.time() + self.wmImgMinWaitTime
+      
+  def sendDebugImg(self):
+    # Create ros message to send
+    pathToDefaultImg = os.path.expanduser('~')+'/projects/nrc_ws/src/nrc_av_ui/av_ui/eporo'+str(self.debugImgIdx)+'.jpg'
+    self.debugImgIdx = self.debugImgIdx + 1;
+    if self.debugImgIdx > 4: self.debugImgIdx = 1
+    with Image.open(pathToDefaultImg) as img:
+        # Convert image to RGB (JPEG doesn't support transparency)
+        rgb_img = img.convert('RGB')
+        
+        # Create a BytesIO object to hold the JPEG data
+        jpeg_bytes = io.BytesIO()
+        
+        # Save the image as JPEG into the BytesIO object
+        rgb_img.save(jpeg_bytes, format='JPEG')
+        
+        msg = CompressedImage()
+        msg.data = jpeg_bytes.getvalue()
+    
+        qos = 0
+        topic = "dt/"+self.name+"/imgStream"
+        mqttData = self.imgStreamData.toMsg(msg,550,268)
+        self.cloud.publishCsv(topic,mqttData,qos)
     
   def getFilenameToSend(self,partList):
     # Get list of all files in directory
