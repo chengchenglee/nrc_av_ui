@@ -132,7 +132,7 @@ Subsystem:
     Trigger:
       - Source: StartRequest
     HealthTopics:
-      - HealthTopic: /tower_cam_front/camera_info
+      - HealthTopic: /roof_cam_front/camera_info
         HealthName: TCF
         HealthTopicType: CameraInfo
         NomWarnErrRate: 10, 6, 0.1
@@ -158,7 +158,7 @@ Subsystem:
         NomWarnErrRate: 10, 6, 0.1
     Commands:
       - Name: TowerCam
-        Command: roslaunch nrc_hw_svcs lucid_gige_cameras.launch FrCam:=true
+        Command: roslaunch nrc_hw_svcs lucid_gige_cameras.launch FrCam:=true lucidCam_machine1:=node02
         Type: Software
         LaunchTime: 3.0
       - Name: TowerCamOthers
@@ -197,7 +197,7 @@ Subsystem:
         Type: Software
         LaunchTime: 1.0
       - Name: PCP
-        Command: roslaunch nrc_pcp_svcs pc_processor.launch dynamic_global_pose_topic_name:=/dynamic_global_pose do_road_surf_change_detection:=true include_road_surf_change_boundary_pts_for_drivable_area:=true Leaf_Foxtrot:=true publish_labeled_points:=true
+        Command: roslaunch nrc_pcp_svcs pc_processor.launch dynamic_global_pose_topic_name:=/dynamic_global_pose do_road_surf_change_detection:=true include_road_surf_change_boundary_pts_for_drivable_area:=true Leaf_Foxtrot:=true publish_labeled_points:=true mot_sub_pc_object_set_with_fusion_topic_name:="/bevfusion/pc_object_set_with_fusion"
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
