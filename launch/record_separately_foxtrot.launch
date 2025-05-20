@@ -116,6 +116,8 @@
   |/visible_space_data
   |/visible_space_fused_data
   |/visible_space_peer_data
+  |/bevfusion/pc_object_set_with_fusion
+  |/bevfusion_objects
   |/bevfusion/tracked_object_set"/>
   
   <arg name="wm_all_topics" 
