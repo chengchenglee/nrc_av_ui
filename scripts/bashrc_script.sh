@@ -14,7 +14,15 @@ alias frontDisplay="rviz -d $rvizPath/FrontDisplay.rviz"
 alias manualDisplay="rviz -d $rvizPath/FrontDisplayManual.rviz"
 
 alias mountNfs="sudo mkdir -p /srv/nfs/avdata; sudo mount -t nfs 192.168.29.10:/AV_DATA /srv/nfs/avdata; echo \"NFS Mounted /srv/nfs/avdata\""
-alias runBatchValidation="~/projects/nrc_ws/src/nrc_sim/src/simpleator/sim_base/score_bagfiles_parallel.sh /srv/nfs/avdata/snapshot_data_do_not_delete/curated_snapshots/Mike 4 0 resim 0 Mike"
+# alias runBatchValidation="~/projects/nrc_ws/src/nrc_sim/src/simpleator/sim_base/score_bagfiles_parallel.sh /srv/nfs/avdata/snapshot_data_do_not_delete/curated_snapshots/Mike 4 0 resim 0 Mike"
+
+# Usage: runBatchValidation Foxtrot  (Note: default platform name is Mike)
+runBatchValidation () {
+  roscd nrc_sim/src/simpleator/sim_base/ 
+  platform=${1:-"Mike"}
+  echo "review simulation results in ~/projects/nrc_ws/src/nrc_sim/simResults/$platform"
+  ~/projects/nrc_ws/src/nrc_sim/src/simpleator/sim_base/score_bagfiles_parallel.sh /srv/nfs/avdata/snapshot_data_do_not_delete/curated_snapshots/$platform 4 0 resim 0 $platform 
+}
 
 # # start up shortcuts
 # alias gpsCheck="rostopic echo /dynamic_global_pose_conv | grep status_"
