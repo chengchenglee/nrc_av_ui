@@ -199,7 +199,8 @@
   |/perfect_decel_lookup
   |/prm/reference_path_data
   |/prm/osp_constraints_lv_ids
-  |/prm/risk_classifier_output"/>
+  |/prm/risk_classifier_output
+  |/mprc_path"/>
   
   <arg name="validation_topics"
   default="/controller_state
