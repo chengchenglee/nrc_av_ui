@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "Running bashrc_script in nrc_av_ui/scripts"
-echo "Common commands: rbuild, startAv, startRemote, resetPlanner, shutdownMrcy, frontDisplay, mountNfs, runBatchValidation."
+echo "Common commands: rbuild, startAv, startRemote, resetPlanner, shutdownMrcy, frontDisplay, mountNfs, runBatchValidation, makeResimVideo."
 
 alias rbuild="~/projects/nrc_ws/src/nrc_av_ui/scripts/rbuild.sh"
 alias startAv="python3 ~/projects/nrc_ws/src/nrc_av_ui/av_ui/av_ui.py"
@@ -17,11 +17,20 @@ alias mountNfs="sudo mkdir -p /srv/nfs/avdata; sudo mount -t nfs 192.168.29.10:/
 # alias runBatchValidation="~/projects/nrc_ws/src/nrc_sim/src/simpleator/sim_base/score_bagfiles_parallel.sh /srv/nfs/avdata/snapshot_data_do_not_delete/curated_snapshots/Mike 4 0 resim 0 Mike"
 
 # Usage: runBatchValidation Foxtrot  (Note: default platform name is Mike)
-runBatchValidation () {
-  roscd nrc_sim/src/simpleator/sim_base/ 
-  platform=${1:-"Mike"}
+runBatchValidation () { 
+  roscd nrc_sim/src/simpleator/sim_base/
+  local platform=${1:-"Mike"}
   echo "review simulation results in ~/projects/nrc_ws/src/nrc_sim/simResults/$platform"
-  ~/projects/nrc_ws/src/nrc_sim/src/simpleator/sim_base/score_bagfiles_parallel.sh /srv/nfs/avdata/snapshot_data_do_not_delete/curated_snapshots/$platform 4 0 resim 0 $platform 
+  ./score_bagfiles_parallel.sh /srv/nfs/avdata/snapshot_data_do_not_delete/curated_snapshots/$platform 4 0 resim 1 $platform 
+}
+
+makeResimVideo () {
+# This command only works assuming all the *_resim.bag files are stored in "$HOME/projects/nrc_ws/src/nrc_sim/simResults" folder. 
+# Usage: MakeResimVideo ~/Desktop/20250523_122359 (Note: default values is '.')
+  roscd nrc_av_ui/src/nrc_video_production_tool
+  local resim_video_folder=${1:-"."}
+  echo "review re-simulation videos in $resim_video_folder/resim_videos"
+  ./video_gen_batch.sh $resim_video_folder
 }
 
 # # start up shortcuts
