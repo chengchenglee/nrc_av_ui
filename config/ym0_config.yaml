@@ -11,9 +11,10 @@ Configuration:
   broker: emqx
   
 Subsystem:
+
   Car:
-    Type: Sensor
-    Description: command to start simulator
+    Type: NUVO
+    Description: command to start NUVO PC
     Trigger: Startup, StartRequest, ARDX, or PMUX
       - Source: StartRequest
     HealthTopics:
@@ -22,8 +23,37 @@ Subsystem:
         HealthTopicType: CtrlStateFLG
         NomWarnErrRate: 10, 7, 5
     Commands:
+      - Name: NUVO_Startup
+        Command: roslaunch maas_pc remote_launch_FY23.launch vehicle:=ze1-01 machine:=nuvo 
+        NodeName: NUVOStartmNode
+        Type: Software
+        LaunchTime: 1
+    Diagnostic:
+      Retry: 3
+      Timeout: 220
+    Depends:
+      - Launch:
+        Run:
+
+
+  Car:
+    Type: Basic
+    Description: Vehicle basic function startup
+    Trigger: Startup, StartRequest, ARDX, or PMUX
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /CtrlStateFLG_10hz
+        HealthName: CAR
+        HealthTopicType: CtrlStateFLG
+        NomWarnErrRate: 10, 7, 5
+    Commands:
+      - Name: Leaf TF
+        Command: roslaunch nrc_svcs leaf_tf_subsystem.launch
+        NodeName: MabComNode
+        Type: Software
+        LaunchTime: 1
       - Name: CAN Communication
-        Command: roslaunch nrc_leaf can_communication_ym0.launch ctrl_machine:=master meye3_machine:=airtop01 use_meye3:=true
+        Command: roslaunch nrc_leaf can_communication_ym0.launch ctrl_machine:=master meye3_machine:=airtop01 use_meye3:=true use_meye3_trw:=false
         NodeName: CanComNode
         Type: Software
         LaunchTime: 1
@@ -36,12 +66,7 @@ Subsystem:
         Command: rosrun nrc_svcs nrc_mfield __name:=nrc_mfield __machine:=airtop01 __mfield_lpf_value:=0.5
         NodeName: MabComNode
         Type: Software
-        LaunchTime: 1
-      - Name: Leaf TF
-        Command: roslaunch nrc_svcs leaf_tf_subsystem.launch
-        NodeName: MabComNode
-        Type: Software
-        LaunchTime: 1
+        LaunchTime: 1      
     Diagnostic:
       Retry: 3
       Timeout: 220
@@ -60,24 +85,14 @@ Subsystem:
         HealthTopicType: CtrlStateFLG
         NomWarnErrRate: 10, 7, 5
     Commands:
-      - Name: CAN Communication
-        Command: roslaunch nrc_leaf can_communication_ym0.launch ctrl_machine:=master meye3_machine:=airtop01 use_meye3:=true
-        NodeName: CanComNode
+      - Name: TeleOp IF
+        Command: rosrun nrc_svcs nrc_teleop_interface __machine:=nuvo
+        NodeName: TeleOp
         Type: Software
         LaunchTime: 1
-      - Name: Mabx Communication
-        Command: rosrun nrc_svcs nrc_mab_com __name:=mab_com __ctrl_machine:=master
-        NodeName: MabComNode
-        Type: Software
-        LaunchTime: 1
-      - Name: M-Field Node
-        Command: rosrun nrc_svcs nrc_mfield __name:=nrc_mfield __machine:=airtop01 __mfield_lpf_value:=0.5
-        NodeName: MabComNode
-        Type: Software
-        LaunchTime: 1
-      - Name: Leaf TF
-        Command: roslaunch nrc_svcs leaf_tf_subsystem.launch
-        NodeName: MabComNode
+      - Name: pc_compress
+        Command: rosrun nrc_svcs nrc_pc_compress __machine:=airtop02
+        NodeName: TeleOp
         Type: Software
         LaunchTime: 1
     Diagnostic:
@@ -87,4 +102,181 @@ Subsystem:
       - Launch:
         Run:
     
-  
+  GPS:
+    Type: GPS
+    Description: GPS
+    Trigger: Startup, StartRequest, ARDX, or PMUX
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /CtrlStateFLG_10hz
+        HealthName: CAR
+        HealthTopicType: CtrlStateFLG
+        NomWarnErrRate: 10, 7, 5
+    Commands:
+      - Name: GPS_Startup
+        Command: roslaunch nrc_hw_svcs gps.launch gps_machine:=master ndt_machine:=airtop02 location:=mm use_trimble:=false use_garmin:=false use_oxts:=true
+        NodeName: GPS
+        Type: Software
+        LaunchTime: 1
+      - Name: ym0_perc_Startup
+        Command: roslaunch nrc_perc_svcs perception_ym0.launch vehicle:=ze1-01 location:=mm pointcloud_processing_machine:=airtop02 bevfusion_machine:=zbox01 image_processing_machine:=airtop01 vehicle_light_detection_machine:=airtop04 sensor_fusion_machine:=airtop02 traffic_light_machine:=airtop05 traffic_light_ped_machine:=airtop05
+        NodeName: GPS
+        Type: Software
+        LaunchTime: 1        
+    Diagnostic:
+      Retry: 3
+      Timeout: 220
+    Depends:
+      - Launch:
+        Run:
+
+
+  Perc:
+    Type: Sensors
+    Description: sensors
+    Trigger: Startup, StartRequest, ARDX, or PMUX
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /CtrlStateFLG_10hz
+        HealthName: CAR
+        HealthTopicType: CtrlStateFLG
+        NomWarnErrRate: 10, 7, 5
+    Commands:
+      - Name: sensors_Startup
+        Command: roslaunch nrc_hw_svcs sensors.launch vehicle:=ze1-01 use_ibeo:=true use_watec:=false use_tieriv:=true use_avm:=true use_luminar:=true use_velodyne:=false use_hesai:=true use_traffic_lights:=true ibeo_machine:=master ibeoIpAddress:=192.168.1.100 watec_front_machine:=airtop01 watec_side_machine:=airtop01 watec_rear_machine:=airtop01 tieriv_machine:=jetson02 avm_machine:=airtop03 luminar_machine:=airtop02 velodyne_machine:=airtop02 hesai_machine:=airtop02 traffic_light_machine:=airtop05
+        NodeName: GPS
+        Type: Software
+        LaunchTime: 1      
+    Diagnostic:
+      Retry: 3
+      Timeout: 220
+    Depends:
+      - Launch:
+        Run:
+
+  Bosch:
+    Type: bosch
+    Description: bosch
+    Trigger: Startup, StartRequest, ARDX, or PMUX
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /CtrlStateFLG_10hz
+        HealthName: CAR
+        HealthTopicType: CtrlStateFLG
+        NomWarnErrRate: 10, 7, 5
+    Commands:
+      - Name: bosch_Startup
+        Command: rosrun nrc_svcs nrc_bosch_com_v3 __nrc_bosch_com:=master
+        NodeName: bosch
+        Type: Software
+        LaunchTime: 1      
+    Diagnostic:
+      Retry: 3
+      Timeout: 220
+    Depends:
+      - Launch:
+        Run:
+
+  Localization:
+    Type: bosch
+    Description: bosch
+    Trigger: Startup, StartRequest, ARDX, or PMUX
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /CtrlStateFLG_10hz
+        HealthName: CAR
+        HealthTopicType: CtrlStateFLG
+        NomWarnErrRate: 10, 7, 5
+    Commands:
+      - Name: localization_Startup
+        Command: rosrun nrc_svcs localization_GPS __localization_GPS:=airtop02
+        NodeName: localization
+        Type: Software
+        LaunchTime: 1   
+      - Name: avm_base_lane_Startup
+        Command: roslaunch ym0_loc_svcs avm_lanemarking_detection.launch avm_machine:=airtop03 CAR_ID:=cam
+        NodeName: avm_base_lane
+        Type: Software
+        LaunchTime: 1
+      - Name: NDT_base_Startup
+        Command: roslaunch ym0_loc_svcs localization_online.launch avm_machine:=airtop03 ndt_machine:=airtop02 location:=mm 
+        NodeName: avm_base_lane
+        Type: Software
+        LaunchTime: 1  
+    Diagnostic:
+      Retry: 3
+      Timeout: 220
+    Depends:
+      - Launch:
+        Run:
+
+  Local_Model:
+    Type: Local_model
+    Description: local_model
+    Trigger: Startup, StartRequest, ARDX, or PMUX
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /CtrlStateFLG_10hz
+        HealthName: CAR
+        HealthTopicType: CtrlStateFLG
+        NomWarnErrRate: 10, 7, 5
+    Commands:
+      - Name: localization_Startup
+        Command: rosrun nrc_svcs local_model __machine:=master
+        NodeName: localization
+        Type: Software
+        LaunchTime: 1   
+      - Name: path_selector
+        Command: rosrun nrc_svcs path_selector __machine:=master
+        NodeName: path_selector
+        Type: Software
+        LaunchTime: 1
+      - Name: Data_conversion_Startup
+        Command: rosrun nrc_svcs hmi_data_conversion __machine:=master
+        NodeName: Data_conversion
+        Type: Software
+        LaunchTime: 1
+      - Name: Image_reduce_Startup
+        Command: rosrun nrc_svcs image_reduce __machine:=airtop01
+        NodeName: Image_reduce
+        Type: Software
+        LaunchTime: 1 
+    Diagnostic:
+      Retry: 3
+      Timeout: 220
+    Depends:
+      - Launch:
+        Run:
+
+  Route_planner:
+    Type: route_planner
+    Description: route_planner
+    Trigger: Startup, StartRequest, ARDX, or PMUX
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /CtrlStateFLG_10hz
+        HealthName: CAR
+        HealthTopicType: CtrlStateFLG
+        NomWarnErrRate: 10, 7, 5
+    Commands:
+      - Name: routeplanner_Startup
+        Command: roslaunch nrc_svcs FOT_route_planner.launch route_planner_machine:=master use_decision_for_private_area:=true use_ym0_crossing_vehicle_decision:=true use_decision_for_straight_crosswalk:=true use_traffic_light_decisions:=true
+        NodeName: routeplanner
+        Type: Software
+        LaunchTime: 1   
+      - Name: world_model
+        Command: roslaunch nrc_wm_svcs ym0_worldmodel.launch behavior_exec_machine:=master
+        NodeName: world_model
+        Type: Software
+        LaunchTime: 1
+      - Name: DecisionMaking_Startup
+        Command: roslaunch nrc_dm_svcs ym0_decision_making.launch behavior_exec_machine:=master path_planning_machine:=airtop03 use_decision_for_private_area:=true use_ym0_crossing_vehicle_decision:=true use_decision_for_straight_crosswalk:=true use_traffic_light_decisions:=true vehicle:=ze1-01
+        NodeName: Data_conversion
+        Type: Software
+        LaunchTime: 1
+    Diagnostic:
+      Retry: 3
+      Timeout: 220
+    Depends:
+      - Launch:
+        Run:
