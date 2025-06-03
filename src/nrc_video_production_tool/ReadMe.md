@@ -3,9 +3,9 @@
 This page explains how to set up a Python Virtual Environment to be able to install required package and libraries for a video generation tool that converts ROS bag files to videos using headless OpenCV. The Python Virtual Environment limits package installation to one folder and therefore, it prevents any undesired changes to the local host.
 
 ## Preparation
-1) Pull on nrc_av_ui repository (feature/FY24_SV_Dev)
+### 1) Pull on nrc_av_ui repository (feature/FY24_SV_Dev)
 
-2) Install Python Virtual Environment with required libraries
+### 2) Install Python Virtual Environment with required libraries
 
 ## Instructions to create a Python Virtual Environment
 - Create a folder for the virtual environment
@@ -37,8 +37,7 @@ Note: Make sure you see below (VirEnv) at the prompt of your terminal before you
 ```
 pip3 install -r $HOME/projects/nrc_ws/src/nrc_av_ui/src/nrc_video_production_tool/requirements.txt
 ```
-Note : If you encounter errors, re-run this latest command. There should be messages like "Requirement
-already satisfied" printed for all the packages listed in the "requirements.txt" file.
+Note: If you encounter errors, re-run this latest command. There should be messages like "Requirement already satisfied" printed for all the packages listed in the "requirements.txt" file.
 
 - Install required ROS package
 ```
@@ -49,14 +48,14 @@ sudo apt install ros-noetic-ros-numpy
 ```
 sudo nano /opt/ros/noetic/lib/python3/dist-packages/ros_numpy/point_cloud2.py
 ```
-Note: On line: 224, change from np.float -> np.float64
+Note: On line: 224, change from **np.float** -> **np.float64**
 
 - Deactivate Virtual Environment
 ```
 deactivate
 ```
 ## Run tool and create videos of re-sim bagfiles
-3) Run Video Generation Tool
+### 3) Run Video Generation Tool
 
 - Change directory to video generation tool folder
 ```
@@ -67,7 +66,7 @@ roscd nrc_av_ui/src/nrc_video_production_tool/
 ```
 ./video_gen_batch.sh <path/to/re_sim/video/storage_folder>
 ```
-Example:
+*Example:*
 ```
 ./video_gen_batch.sh $HOME/projects/nrc_ws/src/nrc_sim/simResults/Mike/resim_results/20250328_115415
 ```
@@ -79,7 +78,7 @@ Note:
 ```
 $HOME/projects/VirEnv/bin/python generateVideo.py <path/to/re-sim/bag> --output_directory <path/to/re-sim/video/storage>
 ```
-Example:
+*Example:*
 ```
 $HOME/projects/VirEnv/bin/python generateVideo.py $HOME/projects/nrc_ws/src/nrc_sim/simResults/Mike/resim_results/20250328_115415/2024-12-09-15-33-40_snapshot/2024-12-09-15-33-40_snapshot_resim.bag --output_directory $HOME/projects/nrc_ws/src/nrc_sim/simResults/Mike/resim_results/20250328_115415/2024-12-09-15-33-40_snapshot/
 ```
