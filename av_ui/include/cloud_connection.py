@@ -64,19 +64,16 @@ class CloudConnection:
     self.filename = rospkg.RosPack().get_path('nrc_av_ui')+'/config/'+mqtt_filename
     self.isConnected = False
     self.tLastConnectionAttempt = 0
+
     self.configInfo = self.loadBrokerConfigs()
-    mqtt_optional_env_params = ['MQTT_SERVER', 'MQTT_PORT','MQTT_USER','MQTT_PASSWORD','MQTT_TLS']
-    if any(param in os.environ for param in mqtt_optional_env_params):
-      if all(param in os.environ for param in mqtt_optional_env_params):
-        self.configInfo['MQTT_SERVER'] = os.environ['MQTT_SERVER']
-        self.configInfo['MQTT_PORT'] = int(os.environ['MQTT_PORT'])
-        self.configInfo['MQTT_USER'] = os.environ['MQTT_USER']
-        self.configInfo['MQTT_PASSWORD'] = os.environ['MQTT_PASSWORD']
-        self.configInfo['MQTT_TLS'] = os.environ['MQTT_TLS'].lower() == 'true'
-      else:
-          raise ValueError(', '.join(mqtt_optional_env_params) +  ' must ALL be set if using MQTT environment variables')
+    mqtt_optional_env_params = ['MQTT_SERVER', 'MQTT_PORT','MQTT_USER','MQTT_PASSWORD','MQTT_TLS','CA_PATH','CERT_PATH','KEY_PATH','IOT_CORE']
+    for param in mqtt_optional_env_params:
+      value = os.getenv(param)
+      if value is not None:
+        self.configInfo[param] = value
     self.configInfo['PROTOCOL'] = ssl.PROTOCOL_TLSv1_2
     print('MQTT config:',self.configInfo)
+
     self.client = []
     self.mailbox = []
     self.subscriptions = []
@@ -221,19 +218,24 @@ class CloudConnection:
       
       print ("Create mqtt connection:",self.clientId) 
       client_id = 'natcsv-mqtt-client.'+self.clientId
-      client = mqtt_client.Client(client_id, clean_session=True)
-      client.username_pw_set(self.configInfo['MQTT_USER'], self.configInfo['MQTT_PASSWORD'])
+      client = mqtt_client.Client(mqtt_client.CallbackAPIVersion.VERSION1, client_id, clean_session=True)
+      if 'MQTT_USER' in self.configInfo:
+        client.username_pw_set(self.configInfo['MQTT_USER'], self.configInfo['MQTT_PASSWORD'])
       
       if self.configInfo['MQTT_TLS']:
           # enable SSL
           context = ssl.SSLContext(self.configInfo['PROTOCOL'])
+          if 'CA_PATH' in self.configInfo:
+            context.load_verify_locations(cafile=self.configInfo['CA_PATH'])
+            context.load_cert_chain(certfile=self.configInfo['CERT_PATH'], keyfile=self.configInfo['KEY_PATH'])
           # do not check the cert hostname
           context.check_hostname = False
           client.tls_set_context(context)
 
+
       client.on_connect = on_connect
       client.on_disconnect = on_disconnect
-      print(self.configInfo['MQTT_SERVER'], self.configInfo['MQTT_PORT'], self.configInfo['MQTT_USER'], self.configInfo['MQTT_PASSWORD'])
+      print(self.configInfo['MQTT_SERVER'], self.configInfo['MQTT_PORT'])
       try:
         tNow = time.time()
         self.tLastConnectionAttempt = tNow
@@ -243,7 +245,7 @@ class CloudConnection:
         client.on_message = on_mqtt_message
         client.on_publish = on_publish
         self.mqttConnected = True
-        print('MQTT Connected!')
+        # print('MQTT Connected!')
       except:
         self.mqttConnected = False
         print('MQTT failed to connect on first try!')
@@ -251,6 +253,9 @@ class CloudConnection:
 
   def subscribe(self,topics,qos):
     for topic in topics:
+      if qos == 2 and self.configInfo.get('IOT_CORE') == True:
+        # AWS IOT_CORE doesn't support QoS 2
+        qos = 1
       if foundPaho and self.mqttConnected:
         print('Mqtt subscribe (topic/qos):',topic,qos)
         self.client.subscribe(topic,qos)
