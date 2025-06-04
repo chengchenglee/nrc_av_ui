@@ -32,7 +32,7 @@ makeResimVideo () {
   roscd nrc_av_ui/src/nrc_video_production_tool
   local resim_video_folder=${1:-"$HOME/projects/nrc_ws/src/nrc_sim/simResults"}
   echo "Note: This command only works assuming all the *_resim.bag files are stored in '~/projects/nrc_ws/src/nrc_sim/simResults' folder."
-#   ./video_gen_batch.sh $resim_video_folder
+  echo "Review re-simulation videos in '$resim_video_folder/resim_videos'."
   error_output=$(./video_gen_batch.sh $resim_video_folder 2> >(tee /dev/stderr) >/dev/null)
 #   Check for the specific error message
   if echo $error_output | grep -q "No such file or directory"; then
