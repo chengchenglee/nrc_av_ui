@@ -208,7 +208,7 @@ class Interface:
       output = subprocess.check_output([mapMenuExePath,'--menu'])
       map_options = output.decode().splitlines()
     else:
-      map_options = ['Sanborn2019MMv24','Sanborn2020PNHv2','MiniMap','SC_Cached','SanMiguel_Cached','Noe.set','Franklin.set','THill_Cached','SCTile']
+      map_options = ['Sanborn2019MMv24','Sanborn2020PNHv2','MiniMap','SC_Cached','SanMiguel_Cached','Noe.set','Franklin.set','THill_Cached','SCTile','new_MM_map']
 
     try:
       check_map_name = rospy.get_param('/map_name')
