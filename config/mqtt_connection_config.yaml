@@ -32,8 +32,8 @@ Brokers:
   local:
     MQTT_SERVER: 127.0.0.1
     MQTT_PORT: 1883
-    MQTT_USER: poza
-    MQTT_PASSWORD: fvla
+    MQTT_USER: 
+    MQTT_PASSWORD: 
     MQTT_TLS: false
   
   devel:
@@ -50,11 +50,11 @@ Brokers:
     MQTT_PASSWORD: wiA97kgB0TyvXYhb
     MQTT_TLS: true
 
-  # ym0_aws:
-  #   MQTT_SERVER: asq16ad9vujas-ats.iot.ap-northeast-1.amazonaws.com
-  #   MQTT_PORT: 8883
-  #   CA_PATH: /home/ubuntu/certs/ym0_aws/AmazonRootCA1.pem
-  #   CERT_PATH: /home/ubuntu/certs/ym0_aws/certificate.pem.crt
-  #   KEY_PATH: /home/ubuntu/certs/ym0_aws/private.pem.key
-  #   MQTT_TLS: true
-  #   IOT_CORE: true
+  ym0_aws:
+    MQTT_SERVER: asq16ad9vujas-ats.iot.ap-northeast-1.amazonaws.com
+    MQTT_PORT: 8883
+    CA_PATH: /home/nissan/Documents/viju/AmazonRootCA1.pem
+    CERT_PATH: /home/nissan/Documents/viju/certificate.pem.crt
+    KEY_PATH: /home/nissan/Documents/viju/private.pem.key
+    MQTT_TLS: true
+    IOT_CORE: true
