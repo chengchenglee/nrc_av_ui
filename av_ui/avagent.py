@@ -281,9 +281,6 @@ class AvAgent:
       if self.enableSendDebugImg:
         self.sendDebugImg()
 
-      self.timeNextWmSend = time.time() + self.wmImgMinWaitTime
-
-  
   def sendImgStreamPkt(self,msg):
     if self.passThroughImg and time.time() > self.timeNextImgSend:
         self.enableSendDebugImg = False
