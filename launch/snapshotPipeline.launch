@@ -45,7 +45,8 @@
   
   <arg name="snapshot_system_front_tower_cameras_topics"
   default="/snapshot/image/compressed
-  |/tower_cam_front/image_cropped2/compressed"/>
+  |/tower_cam_front/image_cropped2/compressed
+  |/frontCenterCam/image_raw/compressed"/>
   
   <arg name="snapshot_system_lidar_topics"
   default="/velodyne_packets
@@ -58,7 +59,11 @@
   default="/drivable_area_boundary_points
   |/pc_processor/multi_object_tracker/tracked_object_set
   |/pc_processor/visible_space/visible_space_ray_points
-  |/bevfusion/tracked_object_set"/>
+  |/bevfusion/tracked_object_set
+  |/rd_processor/ariya_bs_radar_objects
+  |/rd_processor/ariya_back_radar_objects
+  |/rd_processor/ariya_front_radar_objects
+  |/rd_processor/tracked_object_set"/>
   
   <arg name="snapshot_wm_all_topics" 
   default="/tlStatus
@@ -88,13 +93,6 @@
   |/prm/risk_classifier_output
   |/move_base_simple/goal
   |/driver_route_state"/>
-
-  <arg name="cubtek_topics"
-  default="/cubtek_PC_rviz_R
-  |/cubtek_PC_rviz_L
-  |/cubtek_trackedobjects_filter_out
-  |/cubtek_raw_points
-  |/ariya_back_radar_tracked_objects"/>
   
   <arg name="bmap_topics"
   default="/bmap_recorder/data"/>
@@ -105,10 +103,9 @@
     
     <!--Snapshot bagfile recorder-->
     <node pkg="nrc_av_ui" type="rosbagSnapshot.sh" name="rosbag_snapshot" output="screen"
-    args="$(arg snapshot_system_front_tower_cameras_topics) $(arg snapshot_system_main_topics) $(arg snapshot_pc_processor_all_topics) $(arg snapshot_wm_all_topics) $(arg snapshot_ralp_all_topics) $(arg cubtek_topics)"/>
+    args="$(arg snapshot_system_front_tower_cameras_topics) $(arg snapshot_system_main_topics) $(arg snapshot_pc_processor_all_topics) $(arg snapshot_wm_all_topics) $(arg snapshot_ralp_all_topics)"/>
     
     <node pkg="nrc_av_ui" type="rosbagRecordMonitor.py" name="snapshot_monitor" args="-d ~/projects/disengagementData/bags/ -t SnapshotHealth -n SnapshotMonitor -m Trigger" machine="$(arg snapshot_machine)" output="screen"/>
-
     
     <node if="False" name="snapshot" pkg="nodelet" type="nodelet"
         args="standalone image_proc/resize" output="screen">

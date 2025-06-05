@@ -27,7 +27,7 @@ Subsystem:
         Type: Software
         LaunchTime: 5.0
       - Name: Me2Yolo
-        Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch
+        Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch Leaf_Foxtrot:=false Ariya_Oscar:=true
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -98,9 +98,17 @@ Subsystem:
         HealthName: TOS
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
+      - HealthTopic: /arbe_visible_space_health
+        HealthName: VS
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: Cubtek_fuse
         Command: rosrun nrc_wm2_svcs cubtek_fuse
+        Type: Software
+        LaunchTime: 2.0
+      - Name: Arbe_visible_space
+        Command: rosrun nrc_wm2_svcs arbe_visible_space 
         Type: Software
         LaunchTime: 2.0
     Diagnostic:
@@ -131,7 +139,7 @@ Subsystem:
         Type: Software
         LaunchTime: 1.0
       - Name: PCP
-        Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Foxtrot:=true do_curb_detection:=false do_curb_points_accumulation:=false include_curb_points_for_drivable_area:=false include_lateral_curb_points_for_drivable_area:=false include_accumulated_curb_points_for_drivable_area:=false srcgs/cluster_height_threshold:=0.3 dynamic_global_pose_topic_name:=/dynamic_global_pose
+        Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Foxtrot:=false Ariya_Mike:=true do_curb_detection:=false do_curb_points_accumulation:=false include_curb_points_for_drivable_area:=false include_lateral_curb_points_for_drivable_area:=false include_accumulated_curb_points_for_drivable_area:=false srcgs/cluster_height_threshold:=0.3 dynamic_global_pose_topic_name:=/dynamic_global_pose
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -189,7 +197,7 @@ Subsystem:
         NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: WM
-        Command: roslaunch nrc_wm2_svcs leaf_pred.launch vehicleType:=SV_AiCC frontLidarOnly:=true
+        Command: roslaunch nrc_wm2_svcs leaf_pred.launch vehicleType:=SV_AiCC frontLidarOnly:=true useArbeVisiblePoints:=true
         Type: Software
         LaunchTime: 1.0
     Diagnostic:

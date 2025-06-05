@@ -63,6 +63,7 @@ class CloudConnection:
     self.clientId = self.name+'_'+time.strftime("%Y-%m-%d-%H-%M-%S")
     self.filename = rospkg.RosPack().get_path('nrc_av_ui')+'/config/'+mqtt_filename
     self.isConnected = False
+    self.tLastConnectionAttempt = 0
     self.configInfo = self.loadBrokerConfigs()
     mqtt_optional_env_params = ['MQTT_SERVER', 'MQTT_PORT','MQTT_USER','MQTT_PASSWORD','MQTT_TLS']
     if any(param in os.environ for param in mqtt_optional_env_params):
@@ -119,9 +120,11 @@ class CloudConnection:
         time.sleep(0.5)
         self.quicTunnel = True
         print('Done setup quic tunnel')
-      
+    
       self.client = self.connect_mqtt()
       self.client.loop_start()
+    else:
+      print('Trying to init MQTT connection but paho not found.  Install by pip3 install paho-mqtt==1.5.0')
     
   def getMail(self):
     with mutex:
@@ -149,12 +152,17 @@ class CloudConnection:
       
       def on_disconnect(client, userdata, rc):
         self.isConnected = False
-        print('MQTT disconnected:'+str(rc))
-        try:
-          print('Attempt reconnect')
-          client.connect(self.configInfo['MQTT_SERVER'], self.configInfo['MQTT_PORT'])
-        except:
-          print('Failed to reconnect')
+        tNow = time.time()
+        if tNow - self.tLastConnectionAttempt > 1.5:
+          print('MQTT disconnected:'+str(rc))
+          try:
+            print('Attempt reconnect')
+            self.tLastConnectionAttempt = tNow
+            client.connect(self.configInfo['MQTT_SERVER'], self.configInfo['MQTT_PORT'])
+          except:
+            print('Failed to reconnect')
+        else:
+          print('Debounce reconnect attempt')
       
       def on_mqtt_message(client, userdata, message):
         # Get message topic
@@ -227,13 +235,18 @@ class CloudConnection:
       client.on_disconnect = on_disconnect
       print(self.configInfo['MQTT_SERVER'], self.configInfo['MQTT_PORT'], self.configInfo['MQTT_USER'], self.configInfo['MQTT_PASSWORD'])
       try:
+        tNow = time.time()
+        self.tLastConnectionAttempt = tNow
+        print('Try to connect to MQTT broker!')
         client.connect(self.configInfo['MQTT_SERVER'], self.configInfo['MQTT_PORT'])
         client.on_subscribe = on_mqtt_subscribe
         client.on_message = on_mqtt_message
         client.on_publish = on_publish
         self.mqttConnected = True
+        print('MQTT Connected!')
       except:
         self.mqttConnected = False
+        print('MQTT failed to connect on first try!')
       return client
 
   def subscribe(self,topics,qos):
