@@ -1,0 +1,90 @@
+Configuration:
+  Name: sim
+  agentType: AV4
+  mapName: Franklin.set
+  printTimeDebug: 0
+  useGui: 1
+  sendWm: 1
+  imgTopic: /tower_cam_front/image_stamped/compressed
+  wmTopic: /pc_processor/multi_object_tracker/tracked_object_set
+  sendSnapshots: 0
+  broker: emqx
+  
+Subsystem:
+  Car:
+    Type: Sensor
+    Description: command to start simulator
+    Trigger: Startup, StartRequest, ARDX, or PMUX
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /CtrlStateFLG_10hz
+        HealthName: CAR
+        HealthTopicType: CtrlStateFLG
+        NomWarnErrRate: 10, 7, 5
+    Commands:
+      - Name: CAN Communication
+        Command: roslaunch nrc_leaf can_communication_ym0.launch ctrl_machine:=master meye3_machine:=airtop01 use_meye3:=true
+        NodeName: CanComNode
+        Type: Software
+        LaunchTime: 1
+      - Name: Mabx Communication
+        Command: rosrun nrc_svcs nrc_mab_com __name:=mab_com __ctrl_machine:=master
+        NodeName: MabComNode
+        Type: Software
+        LaunchTime: 1
+      - Name: M-Field Node
+        Command: rosrun nrc_svcs nrc_mfield __name:=nrc_mfield __machine:=airtop01 __mfield_lpf_value:=0.5
+        NodeName: MabComNode
+        Type: Software
+        LaunchTime: 1
+      - Name: Leaf TF
+        Command: roslaunch nrc_svcs leaf_tf_subsystem.launch
+        NodeName: MabComNode
+        Type: Software
+        LaunchTime: 1
+    Diagnostic:
+      Retry: 3
+      Timeout: 220
+    Depends:
+      - Launch:
+        Run:
+        
+  Teleop:
+    Type: Sensor
+    Description: command to start simulator
+    Trigger: Startup, StartRequest, ARDX, or PMUX
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /CtrlStateFLG_10hz
+        HealthName: CAR
+        HealthTopicType: CtrlStateFLG
+        NomWarnErrRate: 10, 7, 5
+    Commands:
+      - Name: CAN Communication
+        Command: roslaunch nrc_leaf can_communication_ym0.launch ctrl_machine:=master meye3_machine:=airtop01 use_meye3:=true
+        NodeName: CanComNode
+        Type: Software
+        LaunchTime: 1
+      - Name: Mabx Communication
+        Command: rosrun nrc_svcs nrc_mab_com __name:=mab_com __ctrl_machine:=master
+        NodeName: MabComNode
+        Type: Software
+        LaunchTime: 1
+      - Name: M-Field Node
+        Command: rosrun nrc_svcs nrc_mfield __name:=nrc_mfield __machine:=airtop01 __mfield_lpf_value:=0.5
+        NodeName: MabComNode
+        Type: Software
+        LaunchTime: 1
+      - Name: Leaf TF
+        Command: roslaunch nrc_svcs leaf_tf_subsystem.launch
+        NodeName: MabComNode
+        Type: Software
+        LaunchTime: 1
+    Diagnostic:
+      Retry: 3
+      Timeout: 220
+    Depends:
+      - Launch:
+        Run:
+    
+  
