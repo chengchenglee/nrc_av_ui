@@ -14,32 +14,32 @@ alias frontDisplay="rviz -d $rvizPath/FrontDisplay.rviz"
 alias manualDisplay="rviz -d $rvizPath/FrontDisplayManual.rviz"
 
 alias mountNfs="sudo mkdir -p /srv/nfs/avdata; sudo mount -t nfs 192.168.29.10:/AV_DATA /srv/nfs/avdata; echo \"NFS Mounted /srv/nfs/avdata\""
-# alias runBatchValidation="~/projects/nrc_ws/src/nrc_sim/src/simpleator/sim_base/score_bagfiles_parallel.sh /srv/nfs/avdata/snapshot_data_do_not_delete/curated_snapshots/Mike 4 0 resim 0 Mike"
+alias runBatchValidation="~/projects/nrc_ws/src/nrc_sim/src/simpleator/sim_base/score_bagfiles_parallel.sh /srv/nfs/avdata/snapshot_data_do_not_delete/curated_snapshots/Mike 4 0 resim 0 Mike"
 
-runBatchValidation () { 
+# runBatchValidation () { 
 # Usage: runBatchValidation Foxtrot  (Note: default platform name is Mike)
-  local current_dir=$(pwd)
-  roscd nrc_sim/src/simpleator/sim_base/
-  local platform=${1:-"Mike"}
-  echo "review simulation results in ~/projects/nrc_ws/src/nrc_sim/simResults/$platform"
-  ./score_bagfiles_parallel.sh /srv/nfs/avdata/snapshot_data_do_not_delete/curated_snapshots/$platform 4 0 resim 1 $platform 
-  cd $current_dir
-}
+#   local current_dir=$(pwd)
+#   roscd nrc_sim/src/simpleator/sim_base/
+#   local platform=${1:-"Mike"}
+#   echo "review simulation results in ~/projects/nrc_ws/src/nrc_sim/simResults/$platform"
+#   ./score_bagfiles_parallel.sh /srv/nfs/avdata/snapshot_data_do_not_delete/curated_snapshots/$platform 4 0 resim 1 $platform 
+#   cd $current_dir
+# }
 
-makeResimVideo () { 
-# Usage: makeResimVideo ~/Desktop/20250523_122359 (Note: default values is '.')
-  local current_dir=$(pwd)
-  roscd nrc_av_ui/src/nrc_video_production_tool
-  local resim_video_folder=${1:-"$HOME/projects/nrc_ws/src/nrc_sim/simResults"}
-  echo "Note: This command only works assuming all the *_resim.bag files are stored in '~/projects/nrc_ws/src/nrc_sim/simResults' folder."
-  echo "Review re-simulation videos in '$resim_video_folder/resim_videos'."
-  error_output=$(./video_gen_batch.sh $resim_video_folder 2> >(tee /dev/stderr) >/dev/null)
-#   Check for the specific error message
-  if echo $error_output | grep -q "No such file or directory"; then
-    echo "In case of error, see instructions listed in '~/projects/nrc_ws/src/nrc_av_ui/src/nrc_video_production_tool/ReadMe.md'."
-  fi
-  cd $current_dir
-}
+# makeResimVideo () { 
+# # Usage: makeResimVideo ~/Desktop/20250523_122359 (Note: default values is '.')
+#   local current_dir=$(pwd)
+#   roscd nrc_av_ui/src/nrc_video_production_tool
+#   local resim_video_folder=${1:-"$HOME/projects/nrc_ws/src/nrc_sim/simResults"}
+#   echo "Note: This command only works assuming all the *_resim.bag files are stored in '~/projects/nrc_ws/src/nrc_sim/simResults' folder."
+#   echo "Review re-simulation videos in '$resim_video_folder/resim_videos'."
+#   error_output=$(./video_gen_batch.sh $resim_video_folder 2> >(tee /dev/stderr) >/dev/null)
+# #   Check for the specific error message
+#   if echo $error_output | grep -q "No such file or directory"; then
+#     echo "In case of error, see instructions listed in '~/projects/nrc_ws/src/nrc_av_ui/src/nrc_video_production_tool/ReadMe.md'."
+#   fi
+#   cd $current_dir
+# }
 
 # # start up shortcuts
 # alias gpsCheck="rostopic echo /dynamic_global_pose_conv | grep status_"
