@@ -5,6 +5,7 @@ Configuration:
   printTimeDebug: 0
   useGui: 1
   sendWm: 2
+  sendWmObjectsWithEveryFrame: 1
   sendSnapshots: 0
   Map: Franklin.set
   broker: emqx
@@ -295,12 +296,12 @@ Subsystem:
 #        HealthTopicType: CameraInfo
 #        NomWarnErrRate: 10, 6, 3
     Commands:
-      - Name: Red5_USB
-        Command: roslaunch video_streamer video_encoders_usb.launch OS_version:=focal show_time:=true videostreamer_machine_fc:=node01 videostreamer_machine_fr:=node02 videostreamer_machine_fl:=node03 video_port_fl:=/dev/video0 video_port_fc:=/dev/video0 video_port_fr:=/dev/video0 video_port_rc:=/dev/video2
-        Type: Software
-        LaunchTime: 3.0
+#      - Name: Red5_USB
+#        Command: roslaunch video_streamer video_encoders_usb.launch OS_version:=focal show_time:=true videostreamer_machine_fc:=node01 videostreamer_machine_fr:=node02 videostreamer_machine_fl:=node03 video_port_fl:=/dev/video0 video_port_fc:=/dev/video0 video_port_fr:=/dev/video0 video_port_rc:=/dev/video2
+#        Type: Software
+#        LaunchTime: 3.0
       - Name: MQTT_telemetry
-        Command: roslaunch mqtt_telemetry mqtt_telemetry.launch agent_name:=NRC_Leaf_Delta lwt_telemetry:=true lwt_path:=true lwt_to:=true lwt_wmstring:=false
+        Command: roslaunch mqtt_telemetry mqtt_telemetry.launch agent_name:=NRC_Leaf_Delta lwt_telemetry:=true lwt_path:=true
         Type: Software
         LaunchTime: 3.0
       - Name: Teleop_VirtCar
@@ -309,6 +310,28 @@ Subsystem:
         LaunchTime: 3.0
     Diagnostic:
       LED: 8
+      Retry: 0
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:
+
+  SAFETYSHIELD:
+    Type: Algorithm
+    Description: SAM Teleop Safety Shield
+    Trigger:
+      - Source: StartRequest
+    Commands:
+      - Name: Safety_Shield
+        Command: roslaunch ros_mqtt_parser teleop.launch
+        Type: Software
+        LaunchTime: 3.0
+      - Name: Safety_Shield_Predicted_Path
+        Command: rosrun nrc_ralp_svcs SafetyControllerNode
+        Type: Software
+        LaunchTime: 3.0
+    Diagnostic:
+      LED: 9
       Retry: 0
       Timeout: 5
     Depends:
