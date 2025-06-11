@@ -156,6 +156,10 @@ Subsystem:
     Trigger:
       - Source: StartRequest
     HealthTopics:
+      - HealthTopic: /roof_cam_back/camera_info_2Hz
+        HealthName: RCB
+        HealthTopicType: CameraInfo
+        NomWarnErrRate: 2, 1, 0.1
       - HealthTopic: /roof_cam_front/camera_info_2Hz
         HealthName: RCF
         HealthTopicType: CameraInfo
@@ -170,7 +174,7 @@ Subsystem:
         NomWarnErrRate: 2, 1, 0.1
     Commands:
       - Name: LucidDriver
-        Command: roslaunch nrc_hw_svcs lucid_gige_cameras.launch vehicle_model:=Ariya vehicle_name:=Oscar FrCam:=true FrRCam:=true FrLCam:=true frame_rate:=10 lucidCam_machine2:=node02
+        Command: roslaunch nrc_hw_svcs lucid_gige_cameras.launch vehicle_model:=Ariya vehicle_name:=Oscar BCam:=true FrCam:=true FrRCam:=true FrLCam:=true frame_rate:=10 lucidCam_machine2:=node02
         Type: Software
         LaunchTime: 1.0
       - Name: RCF_Throttle
