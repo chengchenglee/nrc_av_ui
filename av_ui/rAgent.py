@@ -65,7 +65,8 @@ class MonitoredSubsystem:
 class MonitoredAgent:
   def __init__(self):
     self.name = []
-    self.cmdsMode = 'Sync'
+    # self.cmdsMode = 'Sync'
+    self.cmdsMode = 'Ctrl'
     self.cmdTopic = []
     self.nextCmdMsgTime = 0
     self.cmdData = {}
