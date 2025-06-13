@@ -12,7 +12,7 @@ WS=~/projects/nrc_ws/src
 
 # use multiple short lists so easier to read
 # maybe leave nrc_dummy out since it never branches?
-R1="nrc nrc_cmake nrc_dummy nrc_msgs nrc_algo nrc_svcs"
+R1="nrc nrc_cmake nrc_dummy nrc_msgs nrc_algo nrc_svcs nrc_av_ui"
 R2="nrc_perc nrc_pcp nrc_ralp nrc_dm nrc_wm nrc_wm2"
 R3="nrc_sim nrc_apps maav"
 R4="nrc_leaf nrc_hw"
