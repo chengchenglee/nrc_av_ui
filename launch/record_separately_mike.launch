@@ -7,7 +7,7 @@
 
   <!-- Enable / Disable subsystem recording -->
   <arg name="record_system_front_tower_cameras" default="true"/>
-  <arg name="record_system_other_cameras" default="false"/>
+  <arg name="record_system_other_cameras" default="true"/>
   <arg name="record_system_lidar" default="false"/>
   <arg name="record_system_main" default="true"/>
   <arg name="record_pc_processor_all" default="true"/>
@@ -21,11 +21,11 @@
   <arg name="record_aeva_pc" default="false"/>
   <arg name="record_aeva_ultrares_pc" default="false"/>
   <arg name="record_aeva_other_outputs" default="false"/>
-  <arg name="record_innovusion" default="false"/>
-  <arg name="record_ariya_messages" default="true"/>
+  <arg name="record_innovusion" default="true"/>
+  <arg name="record_ariya_messages" default="false"/>
   <arg name="record_cubtek_raw_messages" default="false"/>
-  <arg name="record_arbe_processed_messages" default="true"/>
-  <arg name="record_labeled_pc" default="false"/>
+  <arg name="record_arbe_processed_messages" default="false"/>
+  <arg name="record_labeled_pc" default="true"/>
   
   <arg name="prefix" default="autonomy_log" />
   <arg name="compression" default="false" /> <!--bz2 compression -->
@@ -34,7 +34,7 @@
   <arg name="system_front_tower_cameras_topics"
   default="/monitor_cam_front/image_stamped/compressed
   |/tower_cam_front/image_stamped/compressed
-  |/frontCenterCam/image_raw/compressed
+  |/roof_cam_front/image_rect_color/compressed
   |/humanising_autonomy_image/compressed
   |/humanising_autonomy_image_display_data_George/compressed
   |/humanising_autonomy_image_display_data_Foxtrot/compressed
@@ -47,7 +47,9 @@
   default="/monitor_cam_front/image_raw
   |/tower_cam_back/image_stamped/compressed
   |/tower_cam_backRight/image_stamped/compressed
-  |/tower_cam_backLeft/image_stamped/compressed"/>
+  |/tower_cam_backLeft/image_stamped/compressed
+  |/roof_cam_frontR/image_rect_color/compressed
+  |/roof_cam_frontL/image_rect_color/compressed"/>
   
   <arg name="system_lidar_topics"
   default="/velodyne_packets
@@ -136,7 +138,8 @@
   |/rd_processor/ariya_bs_radar_objects
   |/rd_processor/ariya_back_radar_objects
   |/rd_processor/ariya_front_radar_objects
-  |/rd_processor/tracked_object_set"/>
+  |/rd_processor/tracked_object_set
+  |/rd_processor/visible_space/visible_space_radial_points"/>
   
   <arg name="wm_all_topics" 
   default="/swm_node
@@ -199,7 +202,9 @@
   |/perfect_decel_lookup
   |/prm/reference_path_data
   |/prm/osp_constraints_lv_ids
-  |/prm/risk_classifier_output"/>
+  |/prm/risk_classifier_output
+  |/prm/risk_field_static_points
+  |/mprc_path"/>
   
   <arg name="validation_topics"
   default="/controller_state
