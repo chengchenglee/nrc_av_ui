@@ -24,7 +24,7 @@ Subsystem:
         NomWarnErrRate: 10, 7, 5
     Commands:
       - Name: NUVO_Startup
-        Command: roslaunch /home/nissan/Documents/remote_start_launch/remote_launch_FY23_OTA.launch vehicle:=ze1-01 machine:=nuvo
+        Command: roslaunch /home/nissan/projects/nrc_ws/src/nrc_av_ui/MM_launch/remote_launch_FY23_OTA.launch vehicle:=ze1-01 machine:=nuvo
         NodeName: NUVOStartmNode
         Type: Software
         LaunchTime: 1
@@ -48,7 +48,7 @@ Subsystem:
         NomWarnErrRate: 10, 7, 5
     Commands:
       - Name: Basic
-        Command: roslaunch /home/nissan/Documents/remote_start_launch/basic_OTA.launch
+        Command: roslaunch /home/nissan/projects/nrc_ws/src/nrc_av_ui/MM_launch/basic_OTA.launch
         NodeName: MabComNode
         Type: Software
         LaunchTime: 1   
@@ -71,7 +71,7 @@ Subsystem:
         NomWarnErrRate: 10, 7, 5
     Commands:
       - Name: TeleOp IF
-        Command: roslaunch /home/nissan/Documents/remote_start_launch/Teleop_OTA.launch
+        Command: roslaunch /home/nissan/projects/nrc_ws/src/nrc_av_ui/MM_launch/Teleop_OTA.launch
         NodeName: TeleOp
         Type: Software
         LaunchTime: 1
@@ -94,7 +94,7 @@ Subsystem:
         NomWarnErrRate: 10, 7, 5
     Commands:
       - Name: GPS_Startup
-        Command: roslaunch /home/nissan/Documents/remote_start_launch/GPS_OTA.launch gps_machine:=master ndt_machine:=airtop02 location:=mm use_trimble:=false use_garmin:=false use_oxts:=true
+        Command: roslaunch /home/nissan/projects/nrc_ws/src/nrc_av_ui/MM_launch/GPS_OTA.launch gps_machine:=master ndt_machine:=airtop02 location:=mm use_trimble:=false use_garmin:=false use_oxts:=true
         NodeName: GPS
         Type: Software
         LaunchTime: 1       
@@ -118,12 +118,12 @@ Subsystem:
         NomWarnErrRate: 10, 7, 5
     Commands:
       - Name: sensors_Startup
-        Command: roslaunch /home/nissan/Documents/remote_start_launch/sensors_OTA.launch vehicle:=ze1-01 use_ibeo:=true use_watec:=false use_tieriv:=true use_avm:=true use_luminar:=true use_velodyne:=false use_hesai:=true use_traffic_lights:=true ibeo_machine:=master ibeoIpAddress:=192.168.1.100 watec_front_machine:=airtop01 watec_side_machine:=airtop01 watec_rear_machine:=airtop01 tieriv_machine:=jetson02 avm_machine:=airtop03 luminar_machine:=airtop02 velodyne_machine:=airtop02 hesai_machine:=airtop02 traffic_light_machine:=airtop05
+        Command: roslaunch /home/nissan/projects/nrc_ws/src/nrc_av_ui/MM_launch/sensors_OTA.launch vehicle:=ze1-01 use_ibeo:=true use_watec:=false use_tieriv:=true use_avm:=true use_luminar:=true use_velodyne:=false use_hesai:=true use_traffic_lights:=true ibeo_machine:=master ibeoIpAddress:=192.168.1.100 watec_front_machine:=airtop01 watec_side_machine:=airtop01 watec_rear_machine:=airtop01 tieriv_machine:=jetson02 avm_machine:=airtop03 luminar_machine:=airtop02 velodyne_machine:=airtop02 hesai_machine:=airtop02 traffic_light_machine:=airtop05
         NodeName: GPS
         Type: Software
         LaunchTime: 1
       - Name: ym0_perc_Startup
-        Command: roslaunch /home/nissan/Documents/remote_start_launch/perception_ym0_OTA.launch vehicle:=ze1-01 location:=mm pointcloud_processing_machine:=airtop02 bevfusion_machine:=zbox01 image_processing_machine:=airtop01 vehicle_light_detection_machine:=airtop04 sensor_fusion_machine:=airtop02 traffic_light_machine:=airtop05 traffic_light_ped_machine:=airtop05
+        Command: roslaunch /home/nissan/projects/nrc_ws/src/nrc_av_ui/MM_launch/perception_ym0_OTA.launch vehicle:=ze1-01 location:=mm pointcloud_processing_machine:=airtop02 bevfusion_machine:=zbox01 image_processing_machine:=airtop01 vehicle_light_detection_machine:=airtop04 sensor_fusion_machine:=airtop02 traffic_light_machine:=airtop05 traffic_light_ped_machine:=airtop05
         NodeName: GPS
         Type: Software
         LaunchTime: 1       
@@ -146,7 +146,7 @@ Subsystem:
         NomWarnErrRate: 10, 7, 5
     Commands:
       - Name: bosch_Startup
-        Command: roslaunch /home/nissan/Documents/remote_start_launch/bosch_OTA.launch   nrc_bosch_com:=master
+        Command: roslaunch /home/nissan/projects/nrc_ws/src/nrc_av_ui/MM_launch/bosch_OTA.launch   nrc_bosch_com:=master
         NodeName: bosch
         Type: Software
         LaunchTime: 1      
@@ -169,7 +169,7 @@ Subsystem:
         NomWarnErrRate: 10, 7, 5
     Commands:
       - Name: localization_Startup
-        Command: roslaunch /home/nissan/Documents/remote_start_launch/localization_OTA.launch
+        Command: roslaunch /home/nissan/projects/nrc_ws/src/nrc_av_ui/MM_launch/localization_OTA.launch
         NodeName: localization
         Type: Software
         LaunchTime: 1   
@@ -192,7 +192,7 @@ Subsystem:
         NomWarnErrRate: 10, 7, 5
     Commands:
       - Name: localization_Startup
-        Command: roslaunch /home/nissan/Documents/remote_start_launch/local_model_OTA.launch
+        Command: roslaunch /home/nissan/projects/nrc_ws/src/nrc_av_ui/MM_launch/local_model_OTA.launch
         NodeName: localization
         Type: Software
         LaunchTime: 1   
@@ -215,7 +215,7 @@ Subsystem:
         NomWarnErrRate: 10, 7, 5
     Commands:
       - Name: routeplanner_Startup
-        Command: roslaunch /home/nissan/Documents/remote_start_launch/route_planner_OTA.launch use_decision_for_private_area:=true use_ym0_crossing_vehicle_decision:=true use_decision_for_straight_crosswalk:=true use_traffic_light_decisions:=true
+        Command: roslaunch /home/nissan/projects/nrc_ws/src/nrc_av_ui/MM_launch/route_planner_OTA.launch use_decision_for_private_area:=true use_ym0_crossing_vehicle_decision:=true use_decision_for_straight_crosswalk:=true use_traffic_light_decisions:=true
         NodeName: routeplanner
         Type: Software
         LaunchTime: 1   
@@ -239,7 +239,7 @@ Subsystem:
         NomWarnErrRate: 10, 7, 5
     Commands:
       - Name: world_model
-        Command: roslaunch /home/nissan/Documents/remote_start_launch/worldmodel_OTA.launch 
+        Command: roslaunch /home/nissan/projects/nrc_ws/src/nrc_av_ui/MM_launch/worldmodel_OTA.launch 
         NodeName: world_model
         Type: Software
         LaunchTime: 1
@@ -262,7 +262,7 @@ Subsystem:
         NomWarnErrRate: 10, 7, 5
     Commands:
       - Name: DecisionMaking_Startup
-        Command: roslaunch /home/nissan/Documents/remote_start_launch/DM_OTA.launch
+        Command: roslaunch /home/nissan/projects/nrc_ws/src/nrc_av_ui/MM_launch/DM_OTA.launch
         NodeName: Data_conversion
         Type: Software
         LaunchTime: 1

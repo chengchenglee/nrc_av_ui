@@ -1,0 +1,118 @@
+<?xml version="1.0" ?>
+<launch>
+
+
+  
+
+  <machine name="master" address="10.152.36.21" />
+  <machine name="airtop01" address="10.152.36.22" env-loader="/home/nissan/projects/nrc_ws/src/nrc_svcs/launch/env.sh" />
+  <machine name="airtop02" address="10.152.36.23" env-loader="/home/nissan/projects/nrc_ws/src/nrc_svcs/launch/env.sh" />
+  <machine name="airtop03" address="10.152.36.24" env-loader="/home/nissan/projects/nrc_ws/src/nrc_svcs/launch/env.sh" />
+  <machine name="airtop04" address="10.152.36.25" env-loader="/home/nissan/projects/nrc_ws/src/nrc_svcs/launch/env_venv.sh" />
+  <machine name="airtop05" address="10.152.36.26" env-loader="/home/nissan/projects/nrc_ws/src/nrc_svcs/launch/env_conda.sh" />
+
+  <!-- need to modify IP for jetson -->
+  <machine name="jetson01" address="10.152.36.28" env-loader="/home/nissan/projects/nrc_ws/src/nrc_svcs/launch/env_venv_jetson.sh" />
+  <machine name="jetson02" address="10.152.36.29" env-loader="/home/nissan/projects/nrc_ws/src/nrc_svcs/launch/env.sh" />
+  <machine name="zbox01" address="10.152.36.30" env-loader="/home/nissan/projects/nrc_ws/src/nrc_svcs/launch/env.sh" />
+  <machine name="nuvo" address="10.152.36.19" env-loader="/home/nissan/projects/nrc_ws/src/nrc_svcs/launch/env_pyenv.sh" />
+
+
+
+  <machine name="local" address="localhost"/>
+  <!-- <machine name="nuvo" address="10.152.36.19"/> -->
+  <arg name="machine" default="local"/>
+
+  <!-- <arg name="vehicle" value="ze1-01"/> -->
+  <arg name="location" value="mm"/>
+
+  <!-- Machines to use -->
+  <arg name="ctrl_machine" value="master"/>
+  <arg name="gps_machine" value="master"/>
+  <arg name="ibeo_machine" value="master" />
+  <arg name="watec_front_machine" value="airtop01" />
+  <arg name="watec_side_machine" value="airtop01" />
+  <arg name="watec_rear_machine" value="airtop01" />
+  <arg name="tieriv_machine" value="jetson02" />
+  <arg name="avm_machine" value="airtop03" />
+  <arg name="ndt_machine" value="airtop02" />
+  <arg name="luminar_machine" value="airtop02" />
+  <arg name="velodyne_machine" value="airtop02" />
+  <arg name="hesai_machine" value="airtop02" />
+  <arg name="bosch_com_machine" value="master" />
+  <arg name="traffic_light_machine" value="airtop05" />
+  <arg name="traffic_light_ped_machine" value="airtop05" />
+  <arg name="meye3_machine" value="airtop01" />
+  <arg name="pointcloud_processing_machine" value="airtop02" />
+  <arg name="bevfusion_machine" value="zbox01" />
+  <arg name="image_processing_machine" value="airtop01" />
+  <arg name="vehicle_light_detection_machine" value="airtop04" />
+  <arg name="sensor_fusion_machine" value="airtop02" />
+  <arg name="local_model_machine" value="master" />
+  <arg name="route_planner_machine" value="master" />
+  <arg name="behavior_exec_machine" value="master" />
+  <arg name="path_planning_machine" value="airtop03" />
+  <arg name="mfield_machine" value="airtop01" />
+  <arg name="teleop_machine" value="nuvo"/>
+
+  <!-- GPS -->
+  <arg name="use_trimble" value="false"/>
+  <arg name="use_garmin" value="false"/>
+  <arg name="use_oxts" value="true"/>
+
+  <!-- Sensors -->
+  <arg name="use_ibeo" value="true"/>
+  <arg name="use_watec" value="false"/>
+  <arg name="use_tieriv" value="true"/>
+  <arg name="use_avm" value="true"/>
+  <arg name="use_meye3" value="true"/>
+  <arg name="use_meye3_trw" value="false"/>
+  <arg name="use_luminar" value="true"/>
+  <arg name="use_velodyne" value="false"/>
+  <arg name="use_hesai" value="true"/>
+  <arg name="use_bosch_radar" value="true"/>
+  <arg name="use_traffic_lights" value="true"/>
+
+
+
+  <arg name="vehicle" default="ze1-01"/>
+  <arg if="$(eval vehicle == 'ze1-01')" name="VIN" default="YWR826"/>
+  <arg if="$(eval vehicle == 'ze1-02')" name="VIN" default="YWR827"/>
+
+
+
+
+  <node pkg="maas_pc" type="canSubMqtt_aws_FY23.py" name="canSubMqtt_aws_FY23"
+   args="-e a33mbfrwgrc1nn-ats.iot.ap-northeast-1.amazonaws.com -r $(find maas_pc)/src/mqtt2ros/awsiot_car_keys/root-CA.crt
+    -c $(find maas_pc)/src/mqtt2ros/awsiot_car_keys/1dee245895-certificate.pem.crt -k $(find maas_pc)/src/mqtt2ros/awsiot_car_keys/1dee245895-private.pem.key
+    -v $(arg VIN) -t $(arg VIN)/telemetry/update" output="screen" machine="$(arg machine)" launch-prefix="taskset -c 7"/> 
+
+  <node pkg="maas_pc" type="ego_pose_pub.py" name="ego_pose_pub"
+   args="-e a33mbfrwgrc1nn-ats.iot.ap-northeast-1.amazonaws.com -r $(find maas_pc)/src/mqtt2ros/awsiot_car_keys/root-CA.crt
+    -c $(find maas_pc)/src/mqtt2ros/awsiot_car_keys/1dee245895-certificate.pem.crt -k $(find maas_pc)/src/mqtt2ros/awsiot_car_keys/1dee245895-private.pem.key
+    -v $(arg VIN) -t $(arg VIN)/ego_pose/update" output="screen" machine="$(arg machine)" launch-prefix="taskset -c 7"/>
+
+  <node pkg="maas_pc" type="routeSubPub_FY21.py" name="routeSubPub_FY21"
+   args="-e a33mbfrwgrc1nn-ats.iot.ap-northeast-1.amazonaws.com -r $(find maas_pc)/src/mqtt2ros/awsiot_car_keys/root-CA.crt
+    -c $(find maas_pc)/src/mqtt2ros/awsiot_car_keys/1dee245895-certificate.pem.crt -k $(find maas_pc)/src/mqtt2ros/awsiot_car_keys/1dee245895-private.pem.key
+    -v $(arg VIN) -t editing_in_this_program_by_vin" output="screen" machine="$(arg machine)" launch-prefix="taskset -c 7"/>
+    
+  <node pkg="maas_pc" type="taxi_status_handler_FY21.py" name="taxi_status_handler_FY21" output="screen" machine="$(arg machine)" launch-prefix="taskset -c 7"/>
+
+	  <!-- <node pkg="maas_pc" type="rostopicsub2mqttpub.py" name="testoverride" output="screen" launch-prefix="taskset -c 7" /> -->
+
+  <node pkg="maas_pc" type="remote_command_cav.py" name="remote_command" 
+  args="-v $(arg VIN)" output="screen" machine="$(arg machine)" launch-prefix="taskset -c 5,6" />
+  
+  <!-- <node pkg="maas_pc" type="remote_route.py" name="remote_route" output="screen" machine="$(arg machine)"/> -->
+
+  <!-- <node pkg="maas_pc" type="bounding_box_visualizer_for_teleop_AR.py" name="bounding_box_visualizer" machine="$(arg machine)" launch-prefix="taskset -c 5,6"/> -->
+
+    <!-- heartbeat -->
+  <node pkg="maas_pc" type="heartbeat.py" name="heartbeat" machine="$(arg machine)" launch-prefix="taskset -c 5,6"/>
+
+  <!-- streaming -->
+  <node pkg="maas_pc" type="streamer_main.py" name="streamer_main"
+   args="-v $(arg VIN) -p horizontal" output="screen" machine="$(arg machine)" launch-prefix="taskset -c 0,1,2,3,4"/>
+
+</launch>

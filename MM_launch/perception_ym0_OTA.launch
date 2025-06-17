@@ -1,0 +1,91 @@
+<?xml version="1.0" ?>
+<launch>
+
+
+  
+
+  <machine name="master" address="10.152.36.21" />
+  <machine name="airtop01" address="10.152.36.22" env-loader="/home/nissan/projects/nrc_ws/src/nrc_svcs/launch/env.sh" />
+  <machine name="airtop02" address="10.152.36.23" env-loader="/home/nissan/projects/nrc_ws/src/nrc_svcs/launch/env.sh" />
+  <machine name="airtop03" address="10.152.36.24" env-loader="/home/nissan/projects/nrc_ws/src/nrc_svcs/launch/env.sh" />
+  <machine name="airtop04" address="10.152.36.25" env-loader="/home/nissan/projects/nrc_ws/src/nrc_svcs/launch/env_venv.sh" />
+  <machine name="airtop05" address="10.152.36.26" env-loader="/home/nissan/projects/nrc_ws/src/nrc_svcs/launch/env_conda.sh" />
+
+  <!-- need to modify IP for jetson -->
+  <machine name="jetson01" address="10.152.36.28" env-loader="/home/nissan/projects/nrc_ws/src/nrc_svcs/launch/env_venv_jetson.sh" />
+  <machine name="jetson02" address="10.152.36.29" env-loader="/home/nissan/projects/nrc_ws/src/nrc_svcs/launch/env.sh" />
+  <machine name="zbox01" address="10.152.36.30" env-loader="/home/nissan/projects/nrc_ws/src/nrc_svcs/launch/env.sh" />
+  <machine name="nuvo" address="10.152.36.19" env-loader="/home/nissan/projects/nrc_ws/src/nrc_svcs/launch/env_pyenv.sh" />
+
+
+
+  <machine name="local" address="localhost"/>
+  <!-- <machine name="nuvo" address="10.152.36.19"/> -->
+  <arg name="machine" default="local"/>
+
+  <arg name="vehicle" default="ze1-01"/>
+  <arg name="location" default="mm"/>
+
+  <!-- Machines to use -->
+  <arg name="ctrl_machine" default="master"/>
+  <arg name="gps_machine" default="master"/>
+  <arg name="ibeo_machine" default="master" />
+  <arg name="watec_front_machine" default="airtop01" />
+  <arg name="watec_side_machine" default="airtop01" />
+  <arg name="watec_rear_machine" default="airtop01" />
+  <arg name="tieriv_machine" default="jetson02" />
+  <arg name="avm_machine" default="airtop03" />
+  <arg name="ndt_machine" default="airtop02" />
+  <arg name="luminar_machine" default="airtop02" />
+  <arg name="velodyne_machine" default="airtop02" />
+  <arg name="hesai_machine" default="airtop02" />
+  <arg name="bosch_com_machine" default="master" />
+  <arg name="traffic_light_machine" default="airtop05" />
+  <arg name="traffic_light_ped_machine" default="airtop05" />
+  <arg name="meye3_machine" default="airtop01" />
+  <arg name="pointcloud_processing_machine" default="airtop02" />
+  <arg name="bevfusion_machine" default="zbox01" />
+  <arg name="image_processing_machine" default="airtop01" />
+  <arg name="vehicle_light_detection_machine" default="airtop04" />
+  <arg name="sensor_fusion_machine" default="airtop02" />
+  <arg name="local_model_machine" default="master" />
+  <arg name="route_planner_machine" default="master" />
+  <arg name="behavior_exec_machine" default="master" />
+  <arg name="path_planning_machine" default="airtop03" />
+  <arg name="mfield_machine" default="airtop01" />
+  <arg name="teleop_machine" default="nuvo"/>
+
+  <!-- GPS -->
+  <arg name="use_trimble" value="false"/>
+  <arg name="use_garmin" value="false"/>
+  <arg name="use_oxts" value="true"/>
+
+  <!-- Sensors -->
+  <arg name="use_ibeo" value="true"/>
+  <arg name="use_watec" value="false"/>
+  <arg name="use_tieriv" value="true"/>
+  <arg name="use_avm" value="true"/>
+  <arg name="use_meye3" value="true"/>
+  <arg name="use_meye3_trw" value="false"/>
+  <arg name="use_luminar" value="true"/>
+  <arg name="use_velodyne" value="false"/>
+  <arg name="use_hesai" value="true"/>
+  <arg name="use_bosch_radar" value="true"/>
+  <arg name="use_traffic_lights" value="true"/>
+
+
+  <!-- Perception -->
+  <include file="$(find nrc_perc_svcs)/launch/perception_ym0.launch">
+    <arg name="vehicle" value="$(arg vehicle)"/>
+    <arg name="location" value="$(arg location)"/>
+    <arg name="pointcloud_processing_machine" value="$(arg pointcloud_processing_machine)"/>
+    <arg name="bevfusion_machine" value="$(arg bevfusion_machine)"/>
+    <arg name="image_processing_machine" value="$(arg image_processing_machine)"/>
+    <arg name="vehicle_light_detection_machine" value="$(arg vehicle_light_detection_machine)"/>
+    <arg name="sensor_fusion_machine" value="$(arg sensor_fusion_machine)"/>
+    <arg name="traffic_light_machine" value="$(arg traffic_light_machine)"/>
+    <arg name="traffic_light_ped_machine" value="$(arg traffic_light_ped_machine)"/>
+  </include>
+
+
+</launch>
