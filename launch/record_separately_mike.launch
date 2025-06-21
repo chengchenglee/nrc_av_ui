@@ -21,11 +21,11 @@
   <arg name="record_aeva_pc" default="false"/>
   <arg name="record_aeva_ultrares_pc" default="false"/>
   <arg name="record_aeva_other_outputs" default="false"/>
-  <arg name="record_innovusion" default="true"/>
+  <arg name="record_innovusion" default="false"/>
   <arg name="record_ariya_messages" default="false"/>
   <arg name="record_cubtek_raw_messages" default="false"/>
   <arg name="record_arbe_processed_messages" default="false"/>
-  <arg name="record_labeled_pc" default="true"/>
+  <arg name="record_labeled_pc" default="false"/>
   
   <arg name="prefix" default="autonomy_log" />
   <arg name="compression" default="false" /> <!--bz2 compression -->

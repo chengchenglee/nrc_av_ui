@@ -88,12 +88,24 @@ Subsystem:
       - Launch:
         Run:
 
-  Arbe TOS:
+  Arbe:
     Type: Sensor
     Description: Arbe 4D imaging radars, left , center and right
     Trigger:
       - Source: StartRequest
     HealthTopics:
+      - HealthTopic: /arbe/processed/stationary_pc/0
+        HealthName: PC_0
+        HealthTopicType: arbePcFloatMsg
+        NomWarnErrRate: 17, 10, 3
+      - HealthTopic: /arbe/processed/stationary_pc/1
+        HealthName: PC_1
+        HealthTopicType: arbePcFloatMsg
+        NomWarnErrRate: 17, 10, 3
+      - HealthTopic: /arbe/processed/stationary_pc/2
+        HealthName: PC_2
+        HealthTopicType: arbePcFloatMsg
+        NomWarnErrRate: 17, 10, 3
       - HealthTopic: /cubtek_fuse_health
         HealthName: TOS
         HealthTopicType: DiagnosticArray
@@ -103,6 +115,10 @@ Subsystem:
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
     Commands:
+      - Name: Arbe_raw_node
+        Command: roslaunch nrc_hw_svcs arbe.launch
+        Type: Software
+        LaunchTime: 2.0
       - Name: Cubtek_fuse
         Command: rosrun nrc_wm2_svcs cubtek_fuse
         Type: Software
@@ -139,7 +155,7 @@ Subsystem:
         Type: Software
         LaunchTime: 1.0
       - Name: PCP
-        Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Foxtrot:=false Ariya_Oscar:=true do_curb_detection:=false do_curb_points_accumulation:=false include_curb_points_for_drivable_area:=false include_lateral_curb_points_for_drivable_area:=false include_accumulated_curb_points_for_drivable_area:=false srcgs/cluster_height_threshold:=0.3 dynamic_global_pose_topic_name:=/dynamic_global_pose
+        Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Foxtrot:=false Ariya_Oscar:=true do_curb_detection:=false do_curb_points_accumulation:=false include_curb_points_for_drivable_area:=false include_lateral_curb_points_for_drivable_area:=false include_accumulated_curb_points_for_drivable_area:=false srcgs/cluster_height_threshold:=0.3 dynamic_global_pose_topic_name:=/dynamic_global_pose publish_labeled_points:=true
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
