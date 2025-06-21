@@ -164,9 +164,6 @@
   |/traffic_light_state
   |/traffic_light/detection
   |/smart_eye_driver_state
-  |/driver_input
-  |/controller_state
-  |/accel_state 
   |/intelligent_pedal
   |/abstractors/information/center_line_points
   |/woz/keystroke"/>
