@@ -219,7 +219,7 @@ class CloudConnection:
       print ("Create mqtt connection:",self.clientId) 
       client_id = 'natcsv-mqtt-client.'+self.clientId
       # client = mqtt_client.Client(mqtt_client.CallbackAPIVersion.VERSION1, client_id, clean_session=True)
-      client = mqtt_client.Client(client_id, clean_session=True)
+      client = mqtt_client.Client(mqtt_client.CallbackAPIVersion.VERSION1, client_id, clean_session=True)
       if 'MQTT_USER' in self.configInfo:
         client.username_pw_set(self.configInfo['MQTT_USER'], self.configInfo['MQTT_PASSWORD'])
       

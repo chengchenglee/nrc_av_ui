@@ -2,6 +2,7 @@
 
 import rospy
 import sys
+import yaml
 
 from include.subsystem import Subsystem
 from include.monitor import Monitor
@@ -154,6 +155,7 @@ def read_subsystems(text, printDebug):
       if '- Name:' in line:
         name = line.split(': ')[1]
         current_command = Command(name)
+
         
       elif 'NodeName:' in line:
         name = line.split(': ')[1]
@@ -196,6 +198,44 @@ def read_subsystems(text, printDebug):
         current_subsystem = []
 
   return subsystems
+
+
+def extract_machines_block(text):
+  lines = text.split('\n')
+  machines_block = []
+  capture = False
+
+  if lines:
+    for line in lines:
+      if line.strip() == 'Machines:':
+        machines_block.append(line)
+        capture = True
+      elif capture:
+        # Stop if we hit an empty line 
+        if line.strip() == '':
+          break
+        if capture:
+          machines_block.append(line)
+    
+  return '\n'.join(machines_block)
+
+
+def read_machine_definitions(text, printDebug):
+  machine_defs = []
+
+  machines_block = yaml.safe_load(extract_machines_block(text))
+  if machines_block:
+    for name, props in machines_block.get("Machines", {}).items():
+      address = props.get("address", "")
+      env_loader = props.get("env-loader")
+      if env_loader:
+        machine_defs.append(f'<machine name="{name}" address="{address}" env-loader="{env_loader}" />')
+      else:
+        machine_defs.append(f'<machine name="{name}" address="{address}" />')
+
+  if printDebug: print('machine_defs:', machine_defs)
+  return machine_defs
+
 
 def subscribe_health_msgs(subsystems):    
   for subsystem in subsystems:

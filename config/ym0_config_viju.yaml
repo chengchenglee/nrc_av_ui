@@ -1,0 +1,88 @@
+Configuration:
+  Name: sim
+  agentType: AV4
+  mapName: Franklin.set
+  printTimeDebug: 0
+  useGui: 1
+  sendWm: 1
+  imgTopic: /tower_cam_front/image_stamped/compressed
+  wmTopic: /pc_processor/multi_object_tracker/tracked_object_set
+  sendSnapshots: 0
+  broker: emqx
+  
+Machines:
+  master:
+    address: localhost
+    env-loader: 
+  airtop01:
+    address: ubuntu20-2
+    env-loader: "$(find nrc_svcs)/launch/env.sh"
+  airtop2: 
+    address: airtop2
+    env-loader: "$(find nrc_svcs)/launch/env.sh"
+  airtop3:
+    address: airtop3
+    env-loader: "$(find nrc_svcs)/launch/env.sh"
+  airtop4: 
+    address: airtop4
+    env-loader: "$(find nrc_svcs)/launch/env_venv.sh"
+  airtop5: 
+    address: airtop5
+    env-loader: "$(find nrc_svcs)/launch/env_conda.sh"
+  jetson01: 
+    address: jetson01
+    env-loader: "$(find nrc_svcs)/launch/env_venv_jetson.sh"
+  jetson02: 
+    address: jetson02
+    env-loader: "$(find nrc_svcs)/launch/env.sh"
+  zbox01: 
+    address: zbox01
+    env-loader: "$(find nrc_svcs)/launch/env.sh"
+  nuvo: 
+    address: nuvo
+    env-loader: "$(find nrc_svcs)/launch/env_pyenv.sh"
+
+
+Subsystem:
+
+  Sim:
+    Type: Sensor
+    Description: command to start simulator
+    Trigger: Startup, StartRequest, ARDX, or PMUX
+      - Source: Startup
+    HealthTopics:
+      - HealthTopic: /CtrlStateFLG_10hz
+        HealthName: CAR
+        HealthTopicType: CtrlStateFLG
+        NomWarnErrRate: 10, 7, 5
+      - HealthTopic: /dynamic_global_pose_10hz
+        HealthName: DGP
+        HealthTopicType: DynamicPoseWithCovar
+        NomWarnErrRate: 10, 8, 6
+    Commands:
+      - Name: Simulator
+        Command: rosrun nrc_sim SimpleatorSimNode __name:=SimpleSimNode
+        NodeName: SimpleSimNode
+        Type: Software
+        LaunchTime: 1
+      - Name: TfSys
+        Command: roslaunch nrc_svcs leaf_tf_subsystem.launch sanborn:=true
+        Type: Software
+        LaunchTime: 1
+      - Name: GPS_Raw
+        Command: roslaunch nrc_hw_svcs gps_leaf.launch sanborn:=true
+        Type: Software
+        LaunchTime: 1.0    
+      - Name: BAG
+        Command: roslaunch nrc_av_ui record_separately.launch record_machine:=airtop01
+        Type: Software
+        LaunchTime: 3.0            
+    Diagnostic:
+      Retry: 3
+      Timeout: 220
+    Depends:
+      - Launch:
+        Run:
+    
+    
+ 

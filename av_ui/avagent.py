@@ -81,6 +81,7 @@ class AvAgent:
     with open(self.filename, 'r') as file:
       text = file.read()
     printDebug = int(verbose)
+    self.machineDefs = Loader.read_machine_definitions(text, printDebug)
     self.subsystems = Loader.read_subsystems(text, printDebug)
     self.mapName = Loader.getField(text,'mapName','Franklin.set')
     #self.mqttConfig = Loader.getField(text,'mqttConfig','local')
@@ -114,6 +115,11 @@ class AvAgent:
     todaysDate = ''.join(time.strftime("%Y-%m-%d"))
     self.pathToBags = '/opt/data/snapshots/'+todaysDate+'/'
     self.fileInTransit = FileInTransit(self.pathToBags)
+
+    # Update launch files with machine definitions, if available
+    if self.machineDefs:
+      for ss in self.subsystems:
+        ss.updateLaunchFilesWithMachineDefs(self.machineDefs, printDebug)
 
   def pubSubSetup(self):
     # Setup ros publishers and subscribers
@@ -587,3 +593,4 @@ class AvAgent:
     avStatusLedMsg.layout.data_offset = 8
     avStatusLedMsg.data = ledVec
     self.avLedStatusPub.publish(avStatusLedMsg)
+
