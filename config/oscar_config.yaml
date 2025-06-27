@@ -27,7 +27,7 @@ Subsystem:
         Type: Software
         LaunchTime: 5.0
       - Name: Me2Yolo
-        Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch Leaf_Foxtrot:=false Ariya_Oscar:=true
+        Command: roslaunch nrc_perc_svcs mobileye_yolo_converters.launch vehicle_name:=Ariya-Oscar
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -88,12 +88,24 @@ Subsystem:
       - Launch:
         Run:
 
-  Arbe TOS:
+  Arbe:
     Type: Sensor
     Description: Arbe 4D imaging radars, left , center and right
     Trigger:
       - Source: StartRequest
     HealthTopics:
+      - HealthTopic: /arbe/processed/stationary_pc/0
+        HealthName: PC_0
+        HealthTopicType: arbePcFloatMsg
+        NomWarnErrRate: 17, 10, 3
+      - HealthTopic: /arbe/processed/stationary_pc/1
+        HealthName: PC_1
+        HealthTopicType: arbePcFloatMsg
+        NomWarnErrRate: 17, 10, 3
+      - HealthTopic: /arbe/processed/stationary_pc/2
+        HealthName: PC_2
+        HealthTopicType: arbePcFloatMsg
+        NomWarnErrRate: 17, 10, 3
       - HealthTopic: /cubtek_fuse_health
         HealthName: TOS
         HealthTopicType: DiagnosticArray
@@ -103,6 +115,10 @@ Subsystem:
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
     Commands:
+      - Name: Arbe_raw_node
+        Command: roslaunch nrc_hw_svcs arbe.launch
+        Type: Software
+        LaunchTime: 2.0
       - Name: Cubtek_fuse
         Command: rosrun nrc_wm2_svcs cubtek_fuse
         Type: Software
@@ -139,7 +155,7 @@ Subsystem:
         Type: Software
         LaunchTime: 1.0
       - Name: PCP
-        Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Foxtrot:=false Ariya_Mike:=true do_curb_detection:=false do_curb_points_accumulation:=false include_curb_points_for_drivable_area:=false include_lateral_curb_points_for_drivable_area:=false include_accumulated_curb_points_for_drivable_area:=false srcgs/cluster_height_threshold:=0.3 dynamic_global_pose_topic_name:=/dynamic_global_pose
+        Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Foxtrot:=false Ariya_Oscar:=true do_curb_detection:=false do_curb_points_accumulation:=false include_curb_points_for_drivable_area:=false include_lateral_curb_points_for_drivable_area:=false include_accumulated_curb_points_for_drivable_area:=false srcgs/cluster_height_threshold:=0.3 dynamic_global_pose_topic_name:=/dynamic_global_pose publish_labeled_points:=true
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -156,15 +172,57 @@ Subsystem:
     Trigger:
       - Source: StartRequest
     HealthTopics:
-      - HealthTopic: /frontCenterCam/image_raw/compressed
-        HealthName: LUC
-        HealthTopicType: CompressedImage
-        NomWarnErrRate: 15, 10, 6
+      - HealthTopic: /roof_cam_back/camera_info_2Hz
+        HealthName: RCB
+        HealthTopicType: CameraInfo
+        NomWarnErrRate: 2, 1, 0.1
+      - HealthTopic: /roof_cam_front/camera_info_2Hz
+        HealthName: RCF
+        HealthTopicType: CameraInfo
+        NomWarnErrRate: 2, 1, 0.1
+      - HealthTopic: /roof_cam_frontR/camera_info_2Hz
+        HealthName: RCFR
+        HealthTopicType: CameraInfo
+        NomWarnErrRate: 2, 1, 0.1
+      - HealthTopic: /roof_cam_frontL/camera_info_2Hz
+        HealthName: RCFL
+        HealthTopicType: CameraInfo
+        NomWarnErrRate: 2, 1, 0.1
     Commands:
       - Name: LucidDriver
-        Command: roslaunch nrc_hw_svcs lucid_gige_multi-cameras.launch
+        Command: roslaunch nrc_hw_svcs lucid_gige_cameras.launch vehicle_model:=Ariya vehicle_name:=Oscar ptp_enable:=false total_num_cameras:=4 packet_delay_enable:=false BCam:=true FrCam:=true FrRCam:=true FrLCam:=true frame_rate:=10 lucidCam_machine2:=node02
         Type: Software
         LaunchTime: 1.0
+      - Name: RCF_Throttle
+        Command: rosrun topic_tools throttle messages /roof_cam_front/camera_info 2.0 /roof_cam_front/camera_info_2Hz
+        NodeName: RCF_Throttle
+        Type: Software
+        LaunchTime: 1
+      - Name: RCFR_Throttle
+        Command: rosrun topic_tools throttle messages /roof_cam_frontR/camera_info 2.0 /roof_cam_frontR/camera_info_2Hz
+        NodeName: RCFR_Throttle
+        Type: Software
+        LaunchTime: 1
+      - Name: RCFL_Throttle
+        Command: rosrun topic_tools throttle messages /roof_cam_frontL/camera_info 2.0 /roof_cam_frontL/camera_info_2Hz
+        NodeName: RCFL_Throttle
+        Type: Software
+        LaunchTime: 1
+      - Name: RCB_Throttle
+        Command: rosrun topic_tools throttle messages /roof_cam_back/camera_info 2.0 /roof_cam_back/camera_info_2Hz
+        NodeName: RCB_Throttle
+        Type: Software
+        LaunchTime: 1
+      - Name: RCBR_Throttle
+        Command: rosrun topic_tools throttle messages /roof_cam_backR/camera_info 2.0 /roof_cam_backR/camera_info_2Hz
+        NodeName: RCBR_Throttle
+        Type: Software
+        LaunchTime: 1
+      - Name: RCBL_Throttle
+        Command: rosrun topic_tools throttle messages /roof_cam_backL/camera_info 2.0 /roof_cam_backL/camera_info_2Hz
+        NodeName: RCBL_Throttle
+        Type: Software
+        LaunchTime: 1
     Diagnostic:
       LED: 3
       Retry: 3

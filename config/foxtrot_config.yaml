@@ -132,41 +132,37 @@ Subsystem:
     Trigger:
       - Source: StartRequest
     HealthTopics:
-      - HealthTopic: /tower_cam_front/camera_info
+      - HealthTopic: /roof_cam_front/camera_info
         HealthName: TCF
         HealthTopicType: CameraInfo
         NomWarnErrRate: 10, 6, 0.1
-      - HealthTopic: /tower_cam_frontRight/camera_info
+      - HealthTopic: /tower_cam_frontRight/camera_out/camera_info
         HealthName: TCFR
         HealthTopicType: CameraInfo
         NomWarnErrRate: 10, 6, 0.1
-      - HealthTopic: /tower_cam_frontLeft/camera_info
+      - HealthTopic: /tower_cam_frontLeft/camera_out/camera_info
         HealthName: TCFL
         HealthTopicType: CameraInfo
         NomWarnErrRate: 10, 6, 0.1
-      - HealthTopic: /tower_cam_back/camera_info
+      - HealthTopic: /tower_cam_back/camera_out/camera_info
         HealthName: TCB
         HealthTopicType: CameraInfo
         NomWarnErrRate: 10, 6, 0.1
-      - HealthTopic: /tower_cam_backRight/camera_info
+      - HealthTopic: /tower_cam_backRight/camera_out/camera_info
         HealthName: TCBR
         HealthTopicType: CameraInfo
         NomWarnErrRate: 10, 6, 0.1
-      - HealthTopic: /tower_cam_backLeft/camera_info
+      - HealthTopic: /tower_cam_backLeft/camera_out/camera_info
         HealthName: TCBL
         HealthTopicType: CameraInfo
         NomWarnErrRate: 10, 6, 0.1
     Commands:
       - Name: TowerCam
-        Command: roslaunch nrc_hw_svcs lucid_gige_cameras.launch FrCam:=true
+        Command: roslaunch nrc_hw_svcs lucid_gige_cameras.launch FrCam:=true lucidCam_machine1:=node02
         Type: Software
         LaunchTime: 3.0
       - Name: TowerCamOthers
         Command: roslaunch nrc_hw_svcs pgr_gige_cameras.launch leaf_foxtrot:=true allCams:=true FrCam:=false 
-        Type: Software
-        LaunchTime: 3.0
-      - Name: Helm
-        Command: roslaunch nrc_perc_svcs helm_perc.launch
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -201,7 +197,7 @@ Subsystem:
         Type: Software
         LaunchTime: 1.0
       - Name: PCP
-        Command: roslaunch nrc_pcp_svcs pc_processor.launch dynamic_global_pose_topic_name:=/dynamic_global_pose do_road_surf_change_detection:=true include_road_surf_change_boundary_pts_for_drivable_area:=true Leaf_Foxtrot:=true publish_labeled_points:=true
+        Command: roslaunch nrc_pcp_svcs pc_processor.launch dynamic_global_pose_topic_name:=/dynamic_global_pose do_road_surf_change_detection:=true include_road_surf_change_boundary_pts_for_drivable_area:=true Leaf_Foxtrot:=true publish_labeled_points:=true mot_sub_pc_object_set_with_fusion_topic_name:="/bevfusion/pc_object_set_with_fusion"
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -320,7 +316,7 @@ Subsystem:
         NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: BAG
-        Command: roslaunch nrc_av_ui record_separately.launch record_machine:=node02
+        Command: roslaunch nrc_av_ui record_separately.launch record_machine:=node02 record_raw_machine:=node03
         Type: Software
         LaunchTime: 3.0
       - Name: SNAP
