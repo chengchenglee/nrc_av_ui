@@ -23,7 +23,7 @@ This package provides the Autonomous Vehicle User Interface (AV UI) and control 
 
 `av_ui.py` is the main control script for the autonomous vehicle system. It manages the communication between the vehicle and cloud services, handles real-time monitoring, and provides an optional graphical user interface for system interaction.
 
-<img src="documents/av_ui.png" width="30%" height="30%" alt="av_ui">
+![av_ui.png](documents/av_ui.png "AV UI")
 
 ### Key Features
 
@@ -91,11 +91,12 @@ The script maintains different update frequencies for various components:
    - Automatic process cleanup
 
 
+
 ## remoteMonitor.py
 
 The Remote Monitor script provides functionality for remote monitoring and control of the autonomous vehicle system through ROS (Robot Operating System). It uses MQTT messaging for communicating with the components running on the vehicle.
 
-<img src="documents/remoteMonitor.png" width="40%" height="40%" alt="av_ui">
+![remoteMonitor.png](documents/remoteMonitor.png "Remote Monitor UI")
 
 ### Key Features
 
