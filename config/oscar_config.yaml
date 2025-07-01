@@ -313,7 +313,7 @@ Subsystem:
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 100, 60, 10
       - HealthTopic: /metrics/health
-        HealthName: Metrics
+        HealthName: KPI
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
     Commands:

@@ -72,8 +72,7 @@
   |/dds_object_databse_fused_data
   |/ailsv_tracked_objects
   |/ailsv_predicted_trajectories
-  |/prediction_error
-  |/metrics"/>
+  |/prediction_error"/>
 
   <arg name="snapshot_ralp_all_topics"
   default="/lane_planner_state
@@ -94,7 +93,8 @@
   |/prm/osp_constraints_lv_ids
   |/prm/risk_classifier_output
   |/move_base_simple/goal
-  |/driver_route_state"/>
+  |/driver_route_state
+  |/metrics"/>
   
   <arg name="bmap_topics"
   default="/bmap_recorder/data"/>

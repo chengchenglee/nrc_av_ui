@@ -149,8 +149,7 @@
   |/dds_object_databse_fused_data
   |/ailsv_tracked_objects
   |/ailsv_predicted_trajectories
-  |/prediction_error
-  |/metrics"/>
+  |/prediction_error"/>
   
   <arg name="dm_lite_topics" 
   default="/drive_plan
@@ -202,7 +201,8 @@
   |/prm/osp_constraints_lv_ids
   |/prm/risk_classifier_output
   |/prm/risk_field_static_points
-  |/mprc_path"/>
+  |/mprc_path
+  |/metrics"/>
   
   <arg name="validation_topics"
   default="/controller_state
