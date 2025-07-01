@@ -35,6 +35,7 @@
   |/controller_state
   |/control_inputs
   |/driver_input
+  |/accel_state
   |/dynamic_global_pose
   |/gps_state/dynamic_global_pose_f9r
   |/gps_state/gps_state_f9r
@@ -92,7 +93,8 @@
   |/prm/osp_constraints_lv_ids
   |/prm/risk_classifier_output
   |/move_base_simple/goal
-  |/driver_route_state"/>
+  |/driver_route_state
+  |/metrics"/>
   
   <arg name="bmap_topics"
   default="/bmap_recorder/data"/>

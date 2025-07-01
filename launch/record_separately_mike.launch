@@ -201,7 +201,8 @@
   |/prm/osp_constraints_lv_ids
   |/prm/risk_classifier_output
   |/prm/risk_field_static_points
-  |/mprc_path"/>
+  |/mprc_path
+  |/metrics"/>
   
   <arg name="validation_topics"
   default="/controller_state

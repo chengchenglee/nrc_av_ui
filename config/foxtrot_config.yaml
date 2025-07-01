@@ -269,6 +269,10 @@ Subsystem:
         HealthName: TRC
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 50, 3, 10
+      - HealthTopic: /metrics/health
+        HealthName: KPI
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: RouteWaypoints
         Command: rosrun nrc_wm2_svcs multi_set_dest_repeater.py
@@ -282,6 +286,10 @@ Subsystem:
         LaunchTime: 3.0
       - Name: Trajectory Planner
         Command: roslaunch nrc_ralp_svcs leaf_planner.launch include_riskClassifier:=true
+        Type: Software
+        LaunchTime: 3.0
+      - Name: AV Metrics Analyzer
+        Command: rosrun nrc_wm2_svcs av_metrics_node
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
