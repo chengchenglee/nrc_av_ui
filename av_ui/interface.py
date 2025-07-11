@@ -71,7 +71,11 @@ class Interface:
         for p in params:
           apair = p.split(':')
           if (len(apair)==2):
-            rospy.set_param(apair[0],apair[1])
+            #print('DEBUG',apair[0],'and',apair[1])
+            # running rosparam at the command line handles string values as desired
+            os.system('rosparam set '+apair[0]+' '+apair[1])
+            # don't use 'set_param' on raw output from MapManager (all strings)
+            #rospy.set_param(apair[0],apair[1])
           else:
             print('WARN: problem in MapManger -r param output')
       except:
