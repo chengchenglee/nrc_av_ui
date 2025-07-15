@@ -220,7 +220,7 @@ Subsystem:
         NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: NisPose
-        Command: rosed nrc_hw_svcs nissan_pose.launch
+        Command: roslaunch nrc_hw_svcs nissan_pose.launch nissan_pose_machine:=node03
         Type: Software
         LaunchTime: 1.0
     Diagnostic:
