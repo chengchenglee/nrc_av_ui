@@ -43,6 +43,31 @@
         </material>
         </visual>
     </link>
+    
+    <link name ="cubtek_L">
+        <visual>
+        <origin xyz="3.5 0.71 -0.32" rpy="0.0 0.0 0.872665" />
+            <geometry>
+            <box size="0.05 0.05 0.05"/>
+            </geometry>
+            <material name="MobileEye_0_color">
+                <color rgba="1.0 0.0 0.0 0"/>
+            </material>
+        </visual>
+    </link>
+    
+    <link name ="cubtek_R">
+        <visual>
+        <origin xyz="3.5 -0.722 -0.32" rpy="0.0 0.0 -0.872665" />
+            <geometry>
+            <box size="0.05 0.05 0.05"/>
+            </geometry>
+            <material name="MobileEye_0_color">
+                <color rgba="1.0 0.0 0.0 0"/>
+            </material>
+        </visual>
+    </link>
+    
   <link name ="luminar_front">
       <visual>
         <origin xyz="1.5 0.0 -1.0" rpy="0.0 0.0 0.0" />
@@ -398,6 +423,18 @@
      <parent link ="sensor_hub"/>
      <child link ="lunewave"/>
      <origin xyz="3.1 0.0 1" rpy="0 0.0 0.0"/>
+   </joint>
+   
+   <joint name ="cubtek_L" type = "fixed">
+     <parent link ="sensor_hub"/>
+     <child link ="cubtek_L"/>
+     <origin xyz="3.53 0.73 -0.32" rpy="0 0.0 0.872665"/>
+   </joint>
+   
+   <joint name ="cubtek_R" type = "fixed">
+     <parent link ="sensor_hub"/>
+     <child link ="cubtek_R"/>
+     <origin xyz="3.53 -0.742 -0.32" rpy="0 0.0 -0.872665"/>
    </joint>
    
    <joint name ="mobileye4" type = "fixed">
