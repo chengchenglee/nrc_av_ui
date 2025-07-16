@@ -208,6 +208,29 @@ Subsystem:
       - Launch:
         Run:
         
+  NisPose:
+    Type: Algorithm
+    Description: Nissan Pose
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /nissan_pose/health
+        HealthName: NIS_POSE
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: NisPose
+        Command: roslaunch nrc_hw_svcs nissan_pose.launch nissan_pose_machine:=node03
+        Type: Software
+        LaunchTime: 1.0
+    Diagnostic:
+      LED: 5
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:
+
   WM:
     Type: Algorithm
     Description: World Model
