@@ -12,11 +12,13 @@ import numpy as np
 from argparse import ArgumentParser
 import rospkg
 
-running = True
+# move 'running' to interface.wantToRun
+# running = True
 
 def signal_handler(sig, frame):
-  global running
-  running = False
+  #global running
+  #running = False
+  interface.wantToRun = False
   print('Caught ctrl-c')
   
 # Catch ctrl-c
@@ -92,7 +94,7 @@ if True:
   nextSnapSend = time.time()+1
   debugTiming = False
   rndTripMsgTime = 0
-  while running:
+  while interface.wantToRun:
     # Wait for updates
     prevTime = time.time()
     dtStamps = np.zeros(4)
