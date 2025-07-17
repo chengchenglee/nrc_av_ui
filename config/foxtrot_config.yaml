@@ -214,9 +214,9 @@ Subsystem:
     Trigger:
       - Source: StartRequest
     HealthTopics:
-      - HealthTopic: /nissan_pose/health
-        HealthName: NIS_POSE
-        HealthTopicType: DiagnosticArray
+      - HealthTopic: /nissan_image
+        HealthName: NISPOS
+        HealthTopicType: Image
         NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: NisPose
