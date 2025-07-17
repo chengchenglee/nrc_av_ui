@@ -202,7 +202,8 @@
   |/prm/risk_classifier_output
   |/prm/risk_field_static_points
   |/mprc_path
-  |/metrics"/>
+  |/metrics
+  |/follower_debugSignals"/>
   
   <arg name="validation_topics"
   default="/controller_state
