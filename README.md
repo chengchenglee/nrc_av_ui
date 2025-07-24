@@ -40,6 +40,9 @@ This package provides the Autonomous Vehicle User Interface (AV UI) and control 
 - Required Python packages:
   - rospy
   - numpy
+  - eclipse-zenoh
+
+- Need certificates for mTLS ( mutual TLS ) when using Zenoh, see appendix  
 
 ### Usage
 
@@ -49,9 +52,10 @@ This package provides the Autonomous Vehicle User Interface (AV UI) and control 
 
 | Argument | Long Form | Description                  | Default Value |
 |----------|-----------|------------------------------|---------------|
-| `-c` | `--config` | Configuration file full path | From environment variable `AGENT_CONFIG` |
-| `-a` | `--agent` | Agent name                   | From environment variable `AGENT_NAME` |
-| `-v` | `--verbose` | Enable verbose mode          | False |
+| `-c` | `--config`    | Configuration file full path | From environment variable `AGENT_CONFIG` |
+| `-a` | `--agent`     | Agent name                   | From environment variable `AGENT_NAME` |
+| `-v` | `--verbose`   | Enable verbose mode          | False |
+| `-p` | `--protocol`  | Messaging technology         | mqtt  | or `zenoh`
 
 Note:- If AGENT_CONFIG is set, then it looks for that file under `config` folder
 
@@ -111,9 +115,10 @@ The Remote Monitor script provides functionality for remote monitoring and contr
 
 #### Command Line Arguments
 
-| Argument | Long Form   | Description                                                       | Default Value |
-|----------|-------------|-------------------------------------------------------------------|---------------|
-| `-b`     | `--broker`  | MQTT Broker name as defined in config\mqtt_connection_config.yaml | emqx |
+| Argument | Long Form     | Description                                                       | Default Value |
+|----------|---------------|-------------------------------------------------------------------|---------------|
+| `-b`     | `--broker`    | MQTT Broker name as defined in config\mqtt_connection_config.yaml | emqx |
+| `-p`     | `--protocol`  | Messaging technology         | mqtt  | or `zenoh`
 
 
 ### ROS Topics
@@ -146,3 +151,24 @@ The remote monitor subscribes to various ROS topics for system monitoring:
    - Monitors connection health
    - Tracks system state changes
    - Reports system diagnostics
+
+### Appendix
+
+
+#### Zenoh Certificates.
+
+To retrieve the debian package that has ONLY the certificates for the vehicle ( in order to connect to the Zenoh router ):
+
+
+```
+git archive --remote=ssh://git@stash.ail-sv.com/debian/packages HEAD av_zenoh-certificates-ubuntu.all.deb | tar x
+```
+
+
+Then -
+
+```
+sudo dpkg -i av_zenoh-certificates-ubuntu.all.deb
+```
+
+
