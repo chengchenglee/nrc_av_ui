@@ -203,7 +203,8 @@
   |/prm/risk_field_static_points
   |/mprc_path
   |/metrics
-  |/follower_debugSignals"/>
+  |/follower_debugSignals
+  |/follower_debugSignals/predTraj"/>
   
   <arg name="validation_topics"
   default="/controller_state
