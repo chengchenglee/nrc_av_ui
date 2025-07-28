@@ -287,7 +287,7 @@ Subsystem:
         Type: Software
         LaunchTime: 3.0
       - Name: AutoGoals
-        Command: roslaunch nrc_wm2_svcs leaf_route.launch inclRoutePlanner:=true
+        Command: roslaunch nrc_wm2_svcs leaf_route.launch inclRoutePlanner:=true frontLidarOnly:=true useArbeVisiblePoints:=true
         NodeName: AutoGoals_node
         Type: Software
         LaunchTime: 3.0
