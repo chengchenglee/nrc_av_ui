@@ -204,7 +204,7 @@
   |/mprc_path
   |/metrics
   |/follower_debugSignals
-  |/follower_debugSignals/predTraj"/>
+  |/follower_debugSignals/mpcTraj"/>
   
   <arg name="validation_topics"
   default="/controller_state
