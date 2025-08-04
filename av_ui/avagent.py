@@ -121,6 +121,7 @@ class AvAgent:
     Loader.subscribe_health_msgs(self.subsystems)
     self.avLedStatusPub = rospy.Publisher("ailsv_av_led",Int16MultiArray,queue_size=1)
     self.teleopPub      = rospy.Publisher("ailsv_teleop",MarkerArray, queue_size=1)
+    self.healthPub      = rospy.Publisher("ailsv_av_health", String, queue_size=1)
     self.wypPub         = rospy.Publisher("/mspf_waypoints", String, queue_size=1)
     self.poseSub     = rospy.Subscriber("/dynamic_global_pose",     DynamicPoseWithCovar,self.pose_callback,queue_size=1)
     self.pose10hzSub = rospy.Subscriber("/dynamic_global_pose_10Hz",DynamicPoseWithCovar,self.pose10hz_callback,queue_size=1)
@@ -247,6 +248,7 @@ class AvAgent:
       for m in s.monitors:
         data += 'm,'+m.name+','+m.statusStr+'\n'
     self.cloud.publishCsv(topic,data,qos)
+    self.healthPub.publish(data)
     
   def parseWmMsg(self,msg):
     self.wmStatus.updateObjs(msg)
