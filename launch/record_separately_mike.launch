@@ -49,6 +49,7 @@
   |/tower_cam_backRight/image_stamped/compressed
   |/tower_cam_backLeft/image_stamped/compressed
   |/roof_cam_frontR/image_rect_color/compressed
+  |/roof_cam_back/image_rect_color/compressed
   |/roof_cam_frontL/image_rect_color/compressed"/>
   
   <arg name="system_lidar_topics"
