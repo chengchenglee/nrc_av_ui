@@ -140,7 +140,8 @@
   |/rd_processor/ariya_back_radar_objects
   |/rd_processor/ariya_front_radar_objects
   |/rd_processor/tracked_object_set
-  |/rd_processor/visible_space/visible_space_radial_points"/>
+  |/rd_processor/visible_space/visible_space_radial_points
+  |/rd_processor/blind_spot_warning"/>
   
   <arg name="wm_all_topics" 
   default="/swm_node
