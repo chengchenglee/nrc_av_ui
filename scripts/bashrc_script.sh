@@ -34,10 +34,13 @@ run_resim() {
   local RESIM_OR_REPLAY=resim
   local RECORD_BAGFILE=1
   local DEV_PLATFORM=Mike
+  local SEND_SLACK_MSG=0
+  local UPDATE_DB=0
+  local GENERATE_VIDEO=1
 
   local current_dir=$(pwd)
   roscd nrc_sim/src/simpleator/sim_base/ 
-  ./score_bagfiles_parallel.sh $BAG_DIR $MAX_PARALLEL_JOBS $USE_RVIZ $RESIM_OR_REPLAY $RECORD_BAGFILE $DEV_PLATFORM
+  ./score_bagfiles_parallel.sh $BAG_DIR $MAX_PARALLEL_JOBS $USE_RVIZ $RESIM_OR_REPLAY $RECORD_BAGFILE $DEV_PLATFORM $SEND_SLACK_MSG $UPDATE_DB $GENERATE_VIDEO
   cd $current_dir
 }
 
