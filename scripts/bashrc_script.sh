@@ -13,8 +13,36 @@ rvizPath=~/projects/nrc_ws/src/nrc_ralp/nrc_ralp_svcs/config/
 alias frontDisplay="rviz -d $rvizPath/FrontDisplay.rviz"
 alias manualDisplay="rviz -d $rvizPath/FrontDisplayManual.rviz"
 
+alias resim='run_resim'
 alias mountNfs="sudo mkdir -p /srv/nfs/avdata; sudo mount -t nfs 192.168.29.10:/AV_DATA /srv/nfs/avdata; echo \"NFS Mounted /srv/nfs/avdata\""
 #alias runBatchValidation="~/projects/nrc_ws/src/nrc_sim/src/simpleator/sim_base/score_bagfiles_parallel.sh /srv/nfs/avdata/snapshot_data_do_not_delete/curated_snapshots/Mike 4 0 resim 0 Mike"
+
+run_resim() {
+  # If no directory name is passed, then use current dir if it has rosbag files or a "bagfiles" subfolder. If not, set it to nrc_sim/resimScenarios
+  if [ -n "$1" ]; then
+    BAG_DIR="$1"
+  elif [ -d "bagfiles" ]; then
+    BAG_DIR=$(pwd)
+  elif find . -maxdepth 1 -type f -name "*.bag" | read; then
+    BAG_DIR=$(pwd)
+  else
+    BAG_DIR="$(rospack find nrc_sim)/resimScenarios"
+  fi
+
+  local MAX_PARALLEL_JOBS=2
+  local USE_RVIZ=0
+  local RESIM_OR_REPLAY=resim
+  local RECORD_BAGFILE=1
+  local DEV_PLATFORM=Mike
+  local SEND_SLACK_MSG=0
+  local UPDATE_DB=0
+  local GENERATE_VIDEO=1
+
+  local current_dir=$(pwd)
+  roscd nrc_sim/src/simpleator/sim_base/ 
+  ./score_bagfiles_parallel.sh $BAG_DIR $MAX_PARALLEL_JOBS $USE_RVIZ $RESIM_OR_REPLAY $RECORD_BAGFILE $DEV_PLATFORM $SEND_SLACK_MSG $UPDATE_DB $GENERATE_VIDEO
+  cd $current_dir
+}
 
 runBatchValidation () { 
 # Usage: runBatchValidation Foxtrot  (Note: default platform name is Mike)
