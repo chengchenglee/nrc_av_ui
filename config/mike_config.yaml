@@ -1,5 +1,6 @@
 Configuration:
   Name: Mike
+  vehicleType: Ariya
   agentType: AV2
   mapName: Franklin.set
   printTimeDebug: 0

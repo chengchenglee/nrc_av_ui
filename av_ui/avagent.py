@@ -81,6 +81,7 @@ class AvAgent:
     with open(self.filename, 'r') as file:
       text = file.read()
     printDebug = int(verbose)
+    self.vehicleType = Loader.getField(text,'vehicleType','Leaf')
     self.subsystems = Loader.read_subsystems(text, printDebug)
     self.mapName = Loader.getField(text,'mapName','Franklin.set')
     #self.mqttConfig = Loader.getField(text,'mqttConfig','local')

@@ -75,7 +75,7 @@ if True:
   
   if (agent.useGui == 1): interface.setupWindow(agent)
 
-  os.system("rosrun nrc_av_ui paramsForDriving.sh")
+  os.system("rosrun nrc_av_ui paramsForDriving.sh " + agent.vehicleType)
   #os.system("rosrun nrc_svcs paramsForMap.sh "+agent.mapName)
   interface.updateMap(agent.mapName)
   os.system("rosparam set /robot_description -t "+rospkg.RosPack().get_path('nrc_av_ui')+'/scripts/'+agent.agentUrdf+'.urdf')
