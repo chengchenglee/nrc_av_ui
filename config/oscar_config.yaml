@@ -97,15 +97,15 @@ Subsystem:
       - HealthTopic: /arbe/processed/stationary_pc/0
         HealthName: PC_0
         HealthTopicType: arbePcFloatMsg
-        NomWarnErrRate: 17, 10, 3
+        NomWarnErrRate: 17, 10, 0.1
       - HealthTopic: /arbe/processed/stationary_pc/1
         HealthName: PC_1
         HealthTopicType: arbePcFloatMsg
-        NomWarnErrRate: 17, 10, 3
+        NomWarnErrRate: 17, 10, 0.1
       - HealthTopic: /arbe/processed/stationary_pc/2
         HealthName: PC_2
         HealthTopicType: arbePcFloatMsg
-        NomWarnErrRate: 17, 10, 3
+        NomWarnErrRate: 17, 10, 0.1
       - HealthTopic: /cubtek_fuse_health
         HealthName: TOS
         HealthTopicType: DiagnosticArray
