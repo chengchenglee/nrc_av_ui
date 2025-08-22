@@ -146,3 +146,36 @@ The remote monitor subscribes to various ROS topics for system monitoring:
    - Monitors connection health
    - Tracks system state changes
    - Reports system diagnostics
+
+
+## Message Format
+
+avagent publishes several messages - status, telemetry etc. The format of these messgaes and how to interpret them are shown below.
+
+### Status messgage
+Topic: ```dt/<agent_name>/status```
+
+Payload Type: ```String```
+
+Payload Sample:``` "a,Viju_Agent\ns,Sim\nm,CAR,3087\nm,DGP,3096\ns,WM\nm,Fusion,3017\nm,TLR,3017\nm,Virtual,3009\n\
+  m,WOS,3008\ns,Goals\nm,ROUTE,3014\nm,GOALS,3007\ns,Plan\nm,TrajP,3005\nm,TrajC,3013\n\
+  m,KPI,3012\n" ```
+
+Each line in the message starts with the following letters indicating:
+``````
+a: Agent Name
+s: The subsystem name
+m: Services/nodes belonging to the above subsystem
+``````
+
+The integer corresponding to each service is a combination of the status of the service and the message count. Here is how to interpret them.
+
+Assuming value is the number corresponding to the service...
+``````
+value / 1000 (quotient)  : gives the status (either 0, 1, 2, 3)
+value % 1000 (remainder) : gives the message count.
+Status 0 : Not Started/ Not ready
+Status 1 : Failed
+Status 2 : Failing
+Status 3 : Running
+``````

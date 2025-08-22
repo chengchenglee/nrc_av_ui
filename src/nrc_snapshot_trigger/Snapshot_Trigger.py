@@ -30,6 +30,7 @@ from left_right_class import LEFT_RIGHT_CLASS
 from left_right_class import OBJ_OBS
 from av_metrics_class import AV_METRICS_CLASS
 import write_json
+import itertools
 
 
 class CsvWriterAVinterface:
@@ -166,17 +167,15 @@ class CsvWriterAVinterface:
 
         self.soft_evnt.softwareEventTrig_waitForTimerCallback = False
         
-        self.av_metrics.TTC.metricTrig_waitForTimerCallback = False
-        self.av_metrics.COL.metricTrig_waitForTimerCallback = False
-
         self.writeSnapshot, self.detailsDict = self.brk_acc.BRK.process_override(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose)
         self.writeSnapshot, self.detailsDict = self.brk_acc.ACC.process_override(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose)
         
         self.writeSnapshot, self.detailsDict = self.soft_evnt.process_softwareEventTrig(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose)
 
         if self.METRICS_TRIGGER_ENABLED:
-            self.writeSnapshot, self.detailsDict = self.av_metrics.TTC.process_metricTrig(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose)
-            self.writeSnapshot, self.detailsDict = self.av_metrics.COL.process_metricTrig(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose)
+            for metric_obj in itertools.chain(self.av_metrics.perfMetrics, self.av_metrics.healthMetrics):
+                self.writeSnapshot, self.detailsDict = metric_obj.process_metricTrig(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose)
+
 
         # Turns and lane changes are included in the snapshots only if there are some desired tracked objects 
         # present near the AV during the beginning of the turn or lane change.
@@ -230,7 +229,7 @@ class CsvWriterAVinterface:
             anyTriggersStillActive = bool(self.brk_acc.BRK.override or self.brk_acc.ACC.override or swTriggerActive or
                                           self.left_right.Right.turnSignalActive or self.left_right.Left.turnSignalActive)
             if self.METRICS_TRIGGER_ENABLED:
-                anyTriggersStillActive = anyTriggersStillActive or bool(self.av_metrics.TTC.metricTrig or self.av_metrics.COL.metricTrig)
+                anyTriggersStillActive = anyTriggersStillActive or self.av_metrics.anyTriggersStillActive()
 
             if anyTriggersStillActive:
                 # Reset the writeTime and the snapshotFutureDistanceTraveled to the value of the first trigger, if there are more triggers active still.
