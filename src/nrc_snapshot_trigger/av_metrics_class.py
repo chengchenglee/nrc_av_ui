@@ -17,6 +17,7 @@ class METRIC:
         self.metricTrigTimer = 0
         self.metricTrig_startTime = 0
         self.metricTrig_startPose = None
+        self.prev_metricValue = None
 
 
     def process_metricTrig(self, wasAutonomous, writeSnapshot, detailsDict, currentPose):
@@ -81,8 +82,17 @@ class METRIC:
 class AV_METRICS_CLASS:
     def __init__(self):
         
-        self.TTC = METRIC('ttc_comfort')
-        self.COL = METRIC('no_collision')
+        # AV Performance Metrics Triggers
+        self.perfMetrics = []
+        for trigger in ['ttc_comfort', 'no_collision']:
+            self.perfMetrics.append(METRIC(trigger))
+
+        
+        # AV Health Metrics Triggers
+        self.healthMetrics = []
+        for trigger in ['H-WM-Fusion', 'H-WM-TLR', 'H-WM-Virtual', 'H-WM-WOS', 'H-Plan-TrajP', 'H-Plan-TrajC']:
+            self.healthMetrics.append(METRIC(trigger))
+
 
         # Initialize bool_metrics_dict with all metrics set to default values
         self.BOOL_METRICS_DEFAULTS = {
@@ -99,6 +109,10 @@ class AV_METRICS_CLASS:
         }
 
 
+    def anyTriggersStillActive(self):
+        return any(metric_obj.metricTrig for metric_obj in self.perfMetrics + self.healthMetrics)
+    
+    
     def parse_metrics_data(self, data_str):
         """
         Parse metrics data string and update bool_metrics_defaults dictionary if keys match.
@@ -134,7 +148,40 @@ class AV_METRICS_CLASS:
                     elif metrics_dict[key].lower() == 'false':
                         updated_metrics[key] = False
 
+            # Parse and include any health ("H-") metrics into updated_metrics
+            for key, value in metrics_dict.items():
+                if key.startswith('H-'):
+                    v = value.strip()
+                    try:
+                        v_num = int(v)
+                    except ValueError:
+                        v_num = v
+                    updated_metrics[key] = v_num
+
         return updated_metrics
+
+
+    def process_av_metric_trigger(self, metrics_dict, metric_obj):
+        if metric_obj.metricName in metrics_dict:
+            if metrics_dict[metric_obj.metricName] is False:
+                metric_obj.metricTrig = True
+                metric_obj.metricTrig_waitForTimerCallback = True
+            else:
+                if not metric_obj.metricTrig_waitForTimerCallback:
+                    metric_obj.metricTrig = False
+
+
+    def process_health_metric_trigger(self, metrics_dict, metric_obj):
+        if metric_obj.metricName in metrics_dict:
+            current_value = metrics_dict[metric_obj.metricName]
+            if metric_obj.prev_metricValue is not None:
+                if current_value < metric_obj.prev_metricValue:  # Running to Stopped (goes from 3->2->0)
+                    metric_obj.metricTrig = True
+                    metric_obj.metricTrig_waitForTimerCallback = True
+                elif current_value == 0:  # Stopped
+                    if not metric_obj.metricTrig_waitForTimerCallback:
+                        metric_obj.metricTrig = False
+            metric_obj.prev_metricValue = current_value
 
 
     def metricsCallback(self, data):
@@ -142,23 +189,13 @@ class AV_METRICS_CLASS:
         # Parse the data string and update the metrics dictionary
         metrics_dict = self.parse_metrics_data(data.data)
 
-        if metrics_dict['ttc_comfort'] == False:
-            self.TTC.metricTrig = True
-            self.TTC.metricTrig_waitForTimerCallback = True
-        else:
-            if not self.TTC.metricTrig_waitForTimerCallback:
-                self.TTC.metricTrig = False
+        # Handle AV Metrics triggers
+        for metric_obj in self.perfMetrics:
+            self.process_av_metric_trigger(metrics_dict, metric_obj)
 
-        if metrics_dict['no_collision'] == False:
-            self.COL.metricTrig = True
-            self.COL.metricTrig_waitForTimerCallback = True
-        else:
-            if not self.COL.metricTrig_waitForTimerCallback:
-                self.COL.metricTrig = False
-
-
-
-
+        # Handle Health triggers (services/nodes going down)
+        for metric_obj in self.healthMetrics:
+            self.process_health_metric_trigger(metrics_dict, metric_obj)
 
 
 
