@@ -26,6 +26,7 @@
   <arg name="system_front_tower_cameras_topics"
   default="/tower_cam_front/image_raw/compressed
   |/roof_cam_front/image_raw/compressed
+  |/roof_cam_front/image_rect_color/compressed
   |/tower_cam_frontRight/camera_out/image_raw/compressed
   |/tower_cam_frontLeft/camera_out/image_raw/compressed
   |/trigger_signal"/>
