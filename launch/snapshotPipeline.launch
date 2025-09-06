@@ -4,11 +4,12 @@
   <machine name="node02" address="node02" env-loader="$(find nrc_svcs)/launch/env.sh" />
   <arg name="snapshot_machine"  default="local" />
 
-  <arg name="recordSnapshots"   default="True"/>
-  <arg name="recordBmapData"    default="False"/>
-  <arg name="checkEngaged"      default="True" />
-  <arg name="car"               default="Foxtrot" />
-  <arg name="snapshotDirectory" default="/opt/data/snapshots"/>
+  <arg name="recordSnapshots"       default="True"/>
+  <arg name="recordSnapshotsPerc"   default="True"/>
+  <arg name="recordBmapData"        default="False"/>
+  <arg name="checkEngaged"          default="True" />
+  <arg name="car"                   default="Foxtrot" />
+  <arg name="snapshotDirectory"     default="/opt/data/snapshots"/>
 
   <!-- (.*) does not work with snapshot rosbag command. So added a seperate snapshot main topics-->
   <arg name="snapshot_system_main_topics"
@@ -48,7 +49,11 @@
   default="/snapshot/image/compressed
   |/tower_cam_front/image_cropped2/compressed
   |/frontCenterCam/image_raw/compressed"/>
-  
+
+  <arg name="snapshot_system_cameras_topics"
+  default="/roof_cam_front/image_rect_color/compressed
+  |/frontCenterCam/image_rect/compressed"/>
+
   <arg name="snapshot_system_lidar_topics"
   default="/velodyne_packets
   |/velodyne_points
@@ -104,9 +109,13 @@
     <node pkg="nrc_av_ui" type="Snapshot_Trigger.py" name="snapshot_trigger_node" output="screen" args="-e $(arg checkEngaged) -c $(arg car)"/>
     
     <!--Snapshot bagfile recorder-->
-    <node pkg="nrc_av_ui" type="rosbagSnapshot.sh" name="rosbag_snapshot" output="screen"
+    <node pkg="nrc_av_ui" type="rosbagSnapshot.sh" name="rosbag_snapshot" output="screen" ns="general"
     args="$(arg snapshot_system_front_tower_cameras_topics) $(arg snapshot_system_main_topics) $(arg snapshot_pc_processor_all_topics) $(arg snapshot_wm_all_topics) $(arg snapshot_ralp_all_topics)"/>
-    
+
+    <!--Snapshot Perception bagfile recorder-->
+    <node if="$(arg recordSnapshotsPerc)" pkg="nrc_av_ui" type="rosbagSnapshot.sh" name="rosbag_snapshot_perc" output="screen" ns="perc"
+    args="$(arg snapshot_system_cameras_topics)"/>
+
     <node pkg="nrc_av_ui" type="rosbagRecordMonitor.py" name="snapshot_monitor" args="-d ~/projects/disengagementData/bags/ -t SnapshotHealth -n SnapshotMonitor -m Trigger" machine="$(arg snapshot_machine)" output="screen"/>
     
     <node if="False" name="snapshot" pkg="nodelet" type="nodelet"
