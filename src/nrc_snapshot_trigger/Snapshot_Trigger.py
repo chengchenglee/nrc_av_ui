@@ -267,35 +267,45 @@ class CsvWriterAVinterface:
             #prefix = '_'.join(self.detailsDict['prefixList'])
             #self.filename = '{}_{}'.format(timeStamp, prefix)
             self.filename = '{}_snapshot'.format(timeStamp)
-
+               
             try:
                 # Get the current ROS time
-                currentTime = rospy.Time.now()
-                # print(" Past Horizon of snapshot: ", self.triggerPastHorizon)
-                # print(" Future Horizon of snapshot: ", ((currentTime-self.snapshotStartTime) - rospy.Duration(self.triggerPastHorizon)).to_sec())
-                # Construct the YAML string for the rosservice call
-                yaml_string = """
-                                filename: '{}.bag'
-                                start_time: {{ secs: {}, nsecs: {} }}
-                                stop_time: {{ secs: {}, nsecs: {} }}
-                                """.format(self.filename, self.snapshotStartTime.secs, self.snapshotStartTime.nsecs, currentTime.secs, currentTime.nsecs)
+                current_time = rospy.Time.now()
 
-                # Properly escape the YAML string for shell execution
-                escaped_yaml_string = yaml_string.replace('"', '\\"')
+                # Format snapshot time range
+                start_secs, start_nsecs = self.snapshotStartTime.secs, self.snapshotStartTime.nsecs
+                stop_secs, stop_nsecs = current_time.secs, current_time.nsecs
 
-                # Construct the command
-                #cmd = ("rosservice call /trigger_snapshot \"" + escaped_yaml_string + "\"")
-                cmd = ("rosservice call /trigger_snapshot \"" + escaped_yaml_string + "\"" + " &")
+                # YAML templates
+                def build_yaml(filename):
+                    yaml_str = f"""
+                        filename: '{filename}.bag'
+                        start_time: {{ secs: {start_secs}, nsecs: {start_nsecs} }}
+                        stop_time: {{ secs: {stop_secs}, nsecs: {stop_nsecs} }}
+                    """
+                    return yaml_str.replace('"', '\\"')
 
-                #cmd = "cd " + self.csvDir + ";rosrun rosbag_snapshot snapshot -t -n -O {}.bag".format(self.filename)
-                # cmd = "cd " + self.csvDir + ";rosrun rosbag_snapshot snapshot -t -O {}.bag".format(self.filename)
+                # Build YAML strings
+                yaml_general = build_yaml(self.filename)
+                yaml_perc = build_yaml(f"{self.filename}_perc")
+
+                # Build commands
+                cmd_general = f'rosservice call /general/trigger_snapshot "{yaml_general}" &'
+                cmd_perc = f'rosservice call /perc/trigger_snapshot "{yaml_perc}" &'
+
+                # Reset recording state
                 self.startedRecordingSnapshot = False
                 self.snapshotFutureDistanceTraveled = 0.0
-                subprocess.call(cmd, shell=True)
-                
-            except:
-                print("rosbag_snapshot package not found. Please install to record disengagement/override snapshot bagfiles")
-                
+
+                # Execute commands
+                subprocess.call(cmd_general, shell=True)
+                subprocess.call(cmd_perc, shell=True)
+
+            except Exception as e:
+                print("rosbag_snapshot package not found or failed to trigger snapshot.")
+                print(f"Error: {e}")
+
+
             write_json.create_json_file(self.csvDir, self.filename, self.snapshotStartTime, self.avEngaged_startTimeList, self.avEngaged_stopTimeList, self.detailsDict)
 
             self.writeSnapshot = False
