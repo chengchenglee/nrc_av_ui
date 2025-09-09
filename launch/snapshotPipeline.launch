@@ -49,18 +49,7 @@
   default="/snapshot/image/compressed
   |/tower_cam_front/image_cropped2/compressed
   |/frontCenterCam/image_raw/compressed"/>
-
-  <arg name="snapshot_system_cameras_topics"
-  default="/roof_cam_front/image_rect_color/compressed
-  |/frontCenterCam/image_rect/compressed"/>
-
-  <arg name="snapshot_system_lidar_topics"
-  default="/velodyne_packets
-  |/velodyne_points
-  |/luminar_front/pointCloud
-  |/luminar_left/pointCloud
-  |/luminar_right/pointCloud"/>
-  
+ 
   <arg name="snapshot_pc_processor_all_topics" 
   default="/drivable_area_boundary_points
   |/pc_processor/multi_object_tracker/tracked_object_set
@@ -100,7 +89,26 @@
   |/move_base_simple/goal
   |/driver_route_state
   |/metrics"/>
-  
+
+
+  <!--Topics for Perception Snapshot bagfile -->
+
+  <arg name="snapshot_perc_camera_topics"
+  default="/roof_cam_front/image_rect_color/compressed
+  |/roof_cam_frontR/image_rect_color/compressed
+  |/roof_cam_back/image_rect_color/compressed
+  |/roof_cam_frontL/image_rect_color/compressed
+  |/tower_cam_frontRight/camera_out/image_raw/compressed
+  |/tower_cam_frontLeft/camera_out/image_raw/compressed
+  |/tower_cam_backRight/camera_out/image_raw/compressed
+  |/tower_cam_backLeft/camera_out/image_raw/compressed
+  |/tower_cam_back/camera_out/image_raw/compressed"/>
+
+  <arg name="snapshot_perc_lidar_topics"
+  default="/iv_points
+  |/velodyne_packets"/>
+
+
   <arg name="bmap_topics"
   default="/bmap_recorder/data"/>
   
@@ -114,7 +122,7 @@
 
     <!--Snapshot Perception bagfile recorder-->
     <node if="$(arg recordSnapshotsPerc)" pkg="nrc_av_ui" type="rosbagSnapshot.sh" name="rosbag_snapshot_perc" output="screen" ns="perc"
-    args="$(arg snapshot_system_cameras_topics)"/>
+    args="$(arg snapshot_perc_camera_topics) $(arg snapshot_perc_lidar_topics)"/>
 
     <node pkg="nrc_av_ui" type="rosbagRecordMonitor.py" name="snapshot_monitor" args="-d ~/projects/disengagementData/bags/ -t SnapshotHealth -n SnapshotMonitor -m Trigger" machine="$(arg snapshot_machine)" output="screen"/>
     
