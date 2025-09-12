@@ -28,12 +28,16 @@ from brk_acc_class import BRK_ACC_CLASS
 from soft_evnt_class import SOFT_EVNT_CLASS
 from left_right_class import LEFT_RIGHT_CLASS
 from left_right_class import OBJ_OBS
+from av_metrics_class import AV_METRICS_CLASS
 import write_json
+import itertools
 
 
 class CsvWriterAVinterface:
     def __init__(self, args):
-        
+
+        self.METRICS_TRIGGER_ENABLED = False
+
         self.csvFileName = 'trigger_node_default.csv'
         self.timerInterval = 0.1        # Interval at which the timer callback will run.
         
@@ -48,6 +52,7 @@ class CsvWriterAVinterface:
         self.brk_acc = BRK_ACC_CLASS()
         self.soft_evnt = SOFT_EVNT_CLASS()
         self.left_right = LEFT_RIGHT_CLASS()
+        self.av_metrics = AV_METRICS_CLASS()
 
         # Snapshot trigger.
         self.wasAutonomous = False
@@ -162,12 +167,16 @@ class CsvWriterAVinterface:
 
         self.soft_evnt.softwareEventTrig_waitForTimerCallback = False
         
-       
         self.writeSnapshot, self.detailsDict = self.brk_acc.BRK.process_override(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose)
         self.writeSnapshot, self.detailsDict = self.brk_acc.ACC.process_override(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose)
         
         self.writeSnapshot, self.detailsDict = self.soft_evnt.process_softwareEventTrig(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose)
-        
+
+        if self.METRICS_TRIGGER_ENABLED:
+            for metric_obj in itertools.chain(self.av_metrics.perfMetrics, self.av_metrics.healthMetrics):
+                self.writeSnapshot, self.detailsDict = metric_obj.process_metricTrig(self.wasAutonomous, self.writeSnapshot, self.detailsDict, self.currentPose)
+
+
         # Turns and lane changes are included in the snapshots only if there are some desired tracked objects 
         # present near the AV during the beginning of the turn or lane change.
         if False:
@@ -217,8 +226,10 @@ class CsvWriterAVinterface:
             # Basically, if any trigger happens within the future horizon, then the future horizon is reinitialized and then recalculated when there is 
             # no active trigger anymore.
             swTriggerActive = abs(time.time() - self.soft_evnt.lastMsgReceived) < 0.5
-            anyTriggersStillActive = bool(self.brk_acc.BRK.override or self.brk_acc.ACC.override or swTriggerActive or self.left_right.Right.turnSignalActive or
-                                          self.left_right.Left.turnSignalActive)
+            anyTriggersStillActive = bool(self.brk_acc.BRK.override or self.brk_acc.ACC.override or swTriggerActive or
+                                          self.left_right.Right.turnSignalActive or self.left_right.Left.turnSignalActive)
+            if self.METRICS_TRIGGER_ENABLED:
+                anyTriggersStillActive = anyTriggersStillActive or self.av_metrics.anyTriggersStillActive()
 
             if anyTriggersStillActive:
                 # Reset the writeTime and the snapshotFutureDistanceTraveled to the value of the first trigger, if there are more triggers active still.
@@ -256,35 +267,45 @@ class CsvWriterAVinterface:
             #prefix = '_'.join(self.detailsDict['prefixList'])
             #self.filename = '{}_{}'.format(timeStamp, prefix)
             self.filename = '{}_snapshot'.format(timeStamp)
-
+               
             try:
                 # Get the current ROS time
-                currentTime = rospy.Time.now()
-                # print(" Past Horizon of snapshot: ", self.triggerPastHorizon)
-                # print(" Future Horizon of snapshot: ", ((currentTime-self.snapshotStartTime) - rospy.Duration(self.triggerPastHorizon)).to_sec())
-                # Construct the YAML string for the rosservice call
-                yaml_string = """
-                                filename: '{}.bag'
-                                start_time: {{ secs: {}, nsecs: {} }}
-                                stop_time: {{ secs: {}, nsecs: {} }}
-                                """.format(self.filename, self.snapshotStartTime.secs, self.snapshotStartTime.nsecs, currentTime.secs, currentTime.nsecs)
+                current_time = rospy.Time.now()
 
-                # Properly escape the YAML string for shell execution
-                escaped_yaml_string = yaml_string.replace('"', '\\"')
+                # Format snapshot time range
+                start_secs, start_nsecs = self.snapshotStartTime.secs, self.snapshotStartTime.nsecs
+                stop_secs, stop_nsecs = current_time.secs, current_time.nsecs
 
-                # Construct the command
-                #cmd = ("rosservice call /trigger_snapshot \"" + escaped_yaml_string + "\"")
-                cmd = ("rosservice call /trigger_snapshot \"" + escaped_yaml_string + "\"" + " &")
+                # YAML templates
+                def build_yaml(filename):
+                    yaml_str = f"""
+                        filename: '{filename}.bag'
+                        start_time: {{ secs: {start_secs}, nsecs: {start_nsecs} }}
+                        stop_time: {{ secs: {stop_secs}, nsecs: {stop_nsecs} }}
+                    """
+                    return yaml_str.replace('"', '\\"')
 
-                #cmd = "cd " + self.csvDir + ";rosrun rosbag_snapshot snapshot -t -n -O {}.bag".format(self.filename)
-                # cmd = "cd " + self.csvDir + ";rosrun rosbag_snapshot snapshot -t -O {}.bag".format(self.filename)
+                # Build YAML strings
+                yaml_general = build_yaml(self.filename)
+                yaml_perc = build_yaml(f"{self.filename}_perc")
+
+                # Build commands
+                cmd_general = f'rosservice call /general/trigger_snapshot "{yaml_general}" &'
+                cmd_perc = f'rosservice call /perc/trigger_snapshot "{yaml_perc}" &'
+
+                # Reset recording state
                 self.startedRecordingSnapshot = False
                 self.snapshotFutureDistanceTraveled = 0.0
-                subprocess.call(cmd, shell=True)
-                
-            except:
-                print("rosbag_snapshot package not found. Please install to record disengagement/override snapshot bagfiles")
-                
+
+                # Execute commands
+                subprocess.call(cmd_general, shell=True)
+                subprocess.call(cmd_perc, shell=True)
+
+            except Exception as e:
+                print("rosbag_snapshot package not found or failed to trigger snapshot.")
+                print(f"Error: {e}")
+
+
             write_json.create_json_file(self.csvDir, self.filename, self.snapshotStartTime, self.avEngaged_startTimeList, self.avEngaged_stopTimeList, self.detailsDict)
 
             self.writeSnapshot = False
@@ -514,7 +535,10 @@ class CsvWriterAVinterface:
         rospy.Subscriber('/CtrlStateFLG', CtrlStateFLG, self.CtrlStateFLGcallback)
 
         rospy.Subscriber('/CAN_V_reader', CANVReader, self.CAN_V_readerCallback)
-        
+
+        if self.METRICS_TRIGGER_ENABLED:
+            rospy.Subscriber('/metrics', String, self.av_metrics.metricsCallback)
+
         if self.car == "Mike":
             rospy.Subscriber('/driver_input', DriverInput, self.driverInputCallback)
 

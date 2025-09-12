@@ -1,5 +1,6 @@
 Configuration:
   Name: Mike
+  vehicleType: Ariya
   agentType: AV2
   mapName: Franklin.set
   printTimeDebug: 0
@@ -267,9 +268,17 @@ Subsystem:
         HealthName: TRC
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 100, 60, 0.2
+      - HealthTopic: /metrics/health
+        HealthName: KPI
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: Trajectory Planning
         Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=AriyaFS vehicle_type_react:=AriyaFS_React include_riskClassifier:=true
+        Type: Software
+        LaunchTime: 3.0
+      - Name: AV Metrics Analyzer
+        Command: rosrun nrc_wm2_svcs av_metrics_node
         Type: Software
         LaunchTime: 3.0
     Diagnostic:

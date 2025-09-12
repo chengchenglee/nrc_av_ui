@@ -197,7 +197,7 @@ Subsystem:
         Type: Software
         LaunchTime: 1.0
       - Name: PCP
-        Command: roslaunch nrc_pcp_svcs pc_processor.launch dynamic_global_pose_topic_name:=/dynamic_global_pose do_road_surf_change_detection:=true include_road_surf_change_boundary_pts_for_drivable_area:=true Leaf_Foxtrot:=true publish_labeled_points:=true mot_sub_pc_object_set_with_fusion_topic_name:="/bevfusion/pc_object_set_with_fusion"
+        Command: roslaunch nrc_pcp_svcs pc_processor.launch dynamic_global_pose_topic_name:=/dynamic_global_pose do_road_surf_change_detection:=true include_road_surf_change_boundary_pts_for_drivable_area:=true Leaf_Foxtrot:=true publish_labeled_points:=true
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -208,6 +208,29 @@ Subsystem:
       - Launch:
         Run:
         
+  NisPose:
+    Type: Algorithm
+    Description: Nissan Pose
+    Trigger:
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /nissan_image
+        HealthName: NISPOS
+        HealthTopicType: Image
+        NomWarnErrRate: 10, 6, 3
+    Commands:
+      - Name: NisPose
+        Command: roslaunch nrc_hw_svcs nissan_pose.launch nissan_pose_machine:=node03
+        Type: Software
+        LaunchTime: 1.0
+    Diagnostic:
+      LED: 5
+      Retry: 3
+      Timeout: 5
+    Depends:
+      - Launch:
+        Run:
+
   WM:
     Type: Algorithm
     Description: World Model
@@ -269,6 +292,10 @@ Subsystem:
         HealthName: TRC
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 50, 3, 10
+      - HealthTopic: /metrics/health
+        HealthName: KPI
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: RouteWaypoints
         Command: rosrun nrc_wm2_svcs multi_set_dest_repeater.py
@@ -282,6 +309,10 @@ Subsystem:
         LaunchTime: 3.0
       - Name: Trajectory Planner
         Command: roslaunch nrc_ralp_svcs leaf_planner.launch include_riskClassifier:=true
+        Type: Software
+        LaunchTime: 3.0
+      - Name: AV Metrics Analyzer
+        Command: rosrun nrc_wm2_svcs av_metrics_node
         Type: Software
         LaunchTime: 3.0
     Diagnostic:

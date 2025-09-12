@@ -33,6 +33,7 @@ class Interface:
     self.window = []
     self.windowOpen = False
     self.launchAllReq = False
+    self.wantToRun = True # keep true until exit desired
     
     self.selectedMap = mapName
     self.mapsel = []
@@ -53,6 +54,7 @@ class Interface:
   
   def onClosing(self):
     print("OnClosing")
+    self.wantToRun=False;
     self.windowOpen = False
     self.window.quit()
   
@@ -70,8 +72,15 @@ class Interface:
         params = output.decode().splitlines()
         for p in params:
           apair = p.split(':')
+          if apair[0]=='ERROR': continue
+          if apair[0]=='WARN': continue
+          if apair[0]=='INFO': continue
           if (len(apair)==2):
-            rospy.set_param(apair[0],apair[1])
+            #print('DEBUG',apair[0],'and',apair[1])
+            # running rosparam at the command line handles string values as desired
+            os.system('rosparam set '+apair[0]+' '+apair[1])
+            # don't use 'set_param' on raw output from MapManager (all strings)
+            #rospy.set_param(apair[0],apair[1])
           else:
             print('WARN: problem in MapManger -r param output')
       except:
@@ -197,6 +206,9 @@ class Interface:
 
     button4 = Tkinter.Button(allLaunchFrame, text="Start All", width=buttonWidth*2, padx=1, relief="raised",command=agent.setLaunchAll)
     button4.grid(column=4, row=2, sticky=Tkinter.W+Tkinter.E)
+
+    buttonQuit = Tkinter.Button(allLaunchFrame, text="Quit", width=buttonWidth*2, padx=1, relief="raised",command=self.onClosing)
+    buttonQuit.grid(column=6, row=2, sticky=Tkinter.W+Tkinter.E)
 
     # use global map_name - global mapsel controls the menu selection
     mapsel = Tkinter.StringVar(allLaunchFrame);

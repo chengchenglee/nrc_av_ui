@@ -4,11 +4,12 @@
   <machine name="node02" address="node02" env-loader="$(find nrc_svcs)/launch/env.sh" />
   <arg name="snapshot_machine"  default="local" />
 
-  <arg name="recordSnapshots"   default="True"/>
-  <arg name="recordBmapData"    default="False"/>
-  <arg name="checkEngaged"      default="True" />
-  <arg name="car"               default="Foxtrot" />
-  <arg name="snapshotDirectory" default="/opt/data/snapshots"/>
+  <arg name="recordSnapshots"       default="True"/>
+  <arg name="recordSnapshotsPerc"   default="True"/>
+  <arg name="recordBmapData"        default="False"/>
+  <arg name="checkEngaged"          default="True" />
+  <arg name="car"                   default="Foxtrot" />
+  <arg name="snapshotDirectory"     default="/opt/data/snapshots"/>
 
   <!-- (.*) does not work with snapshot rosbag command. So added a seperate snapshot main topics-->
   <arg name="snapshot_system_main_topics"
@@ -35,6 +36,7 @@
   |/controller_state
   |/control_inputs
   |/driver_input
+  |/accel_state
   |/dynamic_global_pose
   |/gps_state/dynamic_global_pose_f9r
   |/gps_state/gps_state_f9r
@@ -47,14 +49,7 @@
   default="/snapshot/image/compressed
   |/tower_cam_front/image_cropped2/compressed
   |/frontCenterCam/image_raw/compressed"/>
-  
-  <arg name="snapshot_system_lidar_topics"
-  default="/velodyne_packets
-  |/velodyne_points
-  |/luminar_front/pointCloud
-  |/luminar_left/pointCloud
-  |/luminar_right/pointCloud"/>
-  
+ 
   <arg name="snapshot_pc_processor_all_topics" 
   default="/drivable_area_boundary_points
   |/pc_processor/multi_object_tracker/tracked_object_set
@@ -92,8 +87,28 @@
   |/prm/osp_constraints_lv_ids
   |/prm/risk_classifier_output
   |/move_base_simple/goal
-  |/driver_route_state"/>
-  
+  |/driver_route_state
+  |/metrics"/>
+
+
+  <!--Topics for Perception Snapshot bagfile -->
+
+  <arg name="snapshot_perc_camera_topics"
+  default="/roof_cam_front/image_rect_color/compressed
+  |/roof_cam_frontR/image_rect_color/compressed
+  |/roof_cam_back/image_rect_color/compressed
+  |/roof_cam_frontL/image_rect_color/compressed
+  |/tower_cam_frontRight/camera_out/image_raw/compressed
+  |/tower_cam_frontLeft/camera_out/image_raw/compressed
+  |/tower_cam_backRight/camera_out/image_raw/compressed
+  |/tower_cam_backLeft/camera_out/image_raw/compressed
+  |/tower_cam_back/camera_out/image_raw/compressed"/>
+
+  <arg name="snapshot_perc_lidar_topics"
+  default="/iv_points
+  |/velodyne_packets"/>
+
+
   <arg name="bmap_topics"
   default="/bmap_recorder/data"/>
   
@@ -102,9 +117,13 @@
     <node pkg="nrc_av_ui" type="Snapshot_Trigger.py" name="snapshot_trigger_node" output="screen" args="-e $(arg checkEngaged) -c $(arg car)"/>
     
     <!--Snapshot bagfile recorder-->
-    <node pkg="nrc_av_ui" type="rosbagSnapshot.sh" name="rosbag_snapshot" output="screen"
+    <node pkg="nrc_av_ui" type="rosbagSnapshot.sh" name="rosbag_snapshot" output="screen" ns="general"
     args="$(arg snapshot_system_front_tower_cameras_topics) $(arg snapshot_system_main_topics) $(arg snapshot_pc_processor_all_topics) $(arg snapshot_wm_all_topics) $(arg snapshot_ralp_all_topics)"/>
-    
+
+    <!--Snapshot Perception bagfile recorder-->
+    <node if="$(arg recordSnapshotsPerc)" pkg="nrc_av_ui" type="rosbagSnapshot.sh" name="rosbag_snapshot_perc" output="screen" ns="perc"
+    args="$(arg snapshot_perc_camera_topics) $(arg snapshot_perc_lidar_topics)"/>
+
     <node pkg="nrc_av_ui" type="rosbagRecordMonitor.py" name="snapshot_monitor" args="-d ~/projects/disengagementData/bags/ -t SnapshotHealth -n SnapshotMonitor -m Trigger" machine="$(arg snapshot_machine)" output="screen"/>
     
     <node if="False" name="snapshot" pkg="nodelet" type="nodelet"

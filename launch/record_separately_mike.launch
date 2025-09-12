@@ -24,8 +24,8 @@
   <arg name="record_innovusion" default="true"/>
   <arg name="record_ariya_messages" default="false"/>
   <arg name="record_cubtek_raw_messages" default="false"/>
-  <arg name="record_arbe_processed_messages" default="false"/>
-  <arg name="record_labeled_pc" default="true"/>
+  <arg name="record_arbe_processed_messages" default="true"/>
+  <arg name="record_labeled_pc" default="false"/>
   
   <arg name="prefix" default="autonomy_log" />
   <arg name="compression" default="false" /> <!--bz2 compression -->
@@ -49,6 +49,7 @@
   |/tower_cam_backRight/image_stamped/compressed
   |/tower_cam_backLeft/image_stamped/compressed
   |/roof_cam_frontR/image_rect_color/compressed
+  |/roof_cam_back/image_rect_color/compressed
   |/roof_cam_frontL/image_rect_color/compressed"/>
   
   <arg name="system_lidar_topics"
@@ -139,7 +140,8 @@
   |/rd_processor/ariya_back_radar_objects
   |/rd_processor/ariya_front_radar_objects
   |/rd_processor/tracked_object_set
-  |/rd_processor/visible_space/visible_space_radial_points"/>
+  |/rd_processor/visible_space/visible_space_radial_points
+  |/rd_processor/blind_spot_warning"/>
   
   <arg name="wm_all_topics" 
   default="/swm_node
@@ -164,9 +166,6 @@
   |/traffic_light_state
   |/traffic_light/detection
   |/smart_eye_driver_state
-  |/driver_input
-  |/controller_state
-  |/accel_state 
   |/intelligent_pedal
   |/abstractors/information/center_line_points
   |/woz/keystroke"/>
@@ -204,7 +203,10 @@
   |/prm/osp_constraints_lv_ids
   |/prm/risk_classifier_output
   |/prm/risk_field_static_points
-  |/mprc_path"/>
+  |/mprc_path
+  |/metrics
+  |/follower_debugSignals
+  |/follower_debugSignals/mpcTraj"/>
   
   <arg name="validation_topics"
   default="/controller_state

@@ -1,5 +1,6 @@
 Configuration:
   Name: Oscar
+  vehicleType: Ariya
   agentType: AV2
   mapName: Franklin.set
   printTimeDebug: 0
@@ -88,12 +89,24 @@ Subsystem:
       - Launch:
         Run:
 
-  Arbe TOS:
+  Arbe:
     Type: Sensor
     Description: Arbe 4D imaging radars, left , center and right
     Trigger:
       - Source: StartRequest
     HealthTopics:
+      - HealthTopic: /arbe/processed/stationary_pc/0
+        HealthName: PC_0
+        HealthTopicType: arbePcFloatMsg
+        NomWarnErrRate: 17, 10, 0.1
+      - HealthTopic: /arbe/processed/stationary_pc/1
+        HealthName: PC_1
+        HealthTopicType: arbePcFloatMsg
+        NomWarnErrRate: 17, 10, 0.1
+      - HealthTopic: /arbe/processed/stationary_pc/2
+        HealthName: PC_2
+        HealthTopicType: arbePcFloatMsg
+        NomWarnErrRate: 17, 10, 0.1
       - HealthTopic: /cubtek_fuse_health
         HealthName: TOS
         HealthTopicType: DiagnosticArray
@@ -103,6 +116,10 @@ Subsystem:
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 10, 6, 3
     Commands:
+      - Name: Arbe_raw_node
+        Command: roslaunch nrc_hw_svcs arbe.launch
+        Type: Software
+        LaunchTime: 2.0
       - Name: Cubtek_fuse
         Command: rosrun nrc_wm2_svcs cubtek_fuse
         Type: Software
@@ -139,7 +156,7 @@ Subsystem:
         Type: Software
         LaunchTime: 1.0
       - Name: PCP
-        Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Foxtrot:=false Ariya_Oscar:=true do_curb_detection:=false do_curb_points_accumulation:=false include_curb_points_for_drivable_area:=false include_lateral_curb_points_for_drivable_area:=false include_accumulated_curb_points_for_drivable_area:=false srcgs/cluster_height_threshold:=0.3 dynamic_global_pose_topic_name:=/dynamic_global_pose
+        Command: roslaunch nrc_pcp_svcs pc_processor.launch Leaf_Foxtrot:=false Ariya_Oscar:=true do_curb_detection:=false do_curb_points_accumulation:=false include_curb_points_for_drivable_area:=false include_lateral_curb_points_for_drivable_area:=false include_accumulated_curb_points_for_drivable_area:=false srcgs/cluster_height_threshold:=0.3 dynamic_global_pose_topic_name:=/dynamic_global_pose publish_labeled_points:=true
         Type: Software
         LaunchTime: 3.0
     Diagnostic:
@@ -174,7 +191,7 @@ Subsystem:
         NomWarnErrRate: 2, 1, 0.1
     Commands:
       - Name: LucidDriver
-        Command: roslaunch nrc_hw_svcs lucid_gige_cameras.launch vehicle_model:=Ariya vehicle_name:=Oscar BCam:=true FrCam:=true FrRCam:=true FrLCam:=true frame_rate:=10 lucidCam_machine2:=node02
+        Command: roslaunch nrc_hw_svcs lucid_gige_cameras.launch vehicle_model:=Ariya vehicle_name:=Oscar ptp_enable:=false total_num_cameras:=4 packet_delay_enable:=false BCam:=true FrCam:=true FrRCam:=true FrLCam:=true frame_rate:=10 lucidCam_machine2:=node02 hdr_enable:=false
         Type: Software
         LaunchTime: 1.0
       - Name: RCF_Throttle
@@ -271,7 +288,7 @@ Subsystem:
         Type: Software
         LaunchTime: 3.0
       - Name: AutoGoals
-        Command: roslaunch nrc_wm2_svcs leaf_route.launch inclRoutePlanner:=true
+        Command: roslaunch nrc_wm2_svcs leaf_route.launch inclRoutePlanner:=true frontLidarOnly:=true useArbeVisiblePoints:=true
         NodeName: AutoGoals_node
         Type: Software
         LaunchTime: 3.0
@@ -296,9 +313,17 @@ Subsystem:
         HealthName: TRC
         HealthTopicType: DiagnosticArray
         NomWarnErrRate: 100, 60, 10
+      - HealthTopic: /metrics/health
+        HealthName: KPI
+        HealthTopicType: DiagnosticArray
+        NomWarnErrRate: 10, 6, 3
     Commands:
       - Name: Trajectory Planning
-        Command: roslaunch nrc_ralp_svcs leaf_planner.launch use_predictor:=true publish_force_control:=true vehicle_type:=AriyaFS vehicle_type_react:=AriyaFS_React include_riskClassifier:=true
+        Command: roslaunch nrc_ralp_svcs leaf_planner.launch publish_force_control:=true vehicle_type:=AriyaFS vehicle_type_react:=AriyaFS_React include_riskClassifier:=true frontLidarOnly:=true useArbeVisiblePoints:=true
+        Type: Software
+        LaunchTime: 3.0
+      - Name: AV Metrics Analyzer
+        Command: rosrun nrc_wm2_svcs av_metrics_node
         Type: Software
         LaunchTime: 3.0
     Diagnostic:

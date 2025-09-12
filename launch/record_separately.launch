@@ -160,9 +160,6 @@
   |/traffic_light_state
   |/traffic_light/detection
   |/smart_eye_driver_state
-  |/driver_input
-  |/controller_state
-  |/accel_state 
   |/intelligent_pedal
   |/abstractors/information/center_line_points
   |/woz/keystroke"/>
@@ -195,7 +192,8 @@
   |/ailsv_osp_merge
   |/prm/reference_path_data
   |/prm/osp_constraints_lv_ids
-  |/prm/risk_classifier_output"/>
+  |/prm/risk_classifier_output
+  |/metrics"/>
 
   <arg name="ralp_follower_topics"
   default="|/lane_follower_state

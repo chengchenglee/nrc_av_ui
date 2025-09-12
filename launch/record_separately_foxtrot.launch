@@ -25,6 +25,8 @@
 
   <arg name="system_front_tower_cameras_topics"
   default="/tower_cam_front/image_raw/compressed
+  |/roof_cam_front/image_raw/compressed
+  |/roof_cam_front/image_rect_color/compressed
   |/tower_cam_frontRight/camera_out/image_raw/compressed
   |/tower_cam_frontLeft/camera_out/image_raw/compressed
   |/trigger_signal"/>
@@ -143,9 +145,6 @@
   |/traffic_light_state
   |/traffic_light/detection
   |/smart_eye_driver_state
-  |/driver_input
-  |/controller_state
-  |/accel_state 
   |/intelligent_pedal
   |/abstractors/information/center_line_points
   |/woz/keystroke"/>
@@ -178,7 +177,8 @@
   |/ailsv_osp_merge
   |/prm/reference_path_data
   |/prm/osp_constraints_lv_ids
-  |/prm/risk_classifier_output"/>
+  |/prm/risk_classifier_output
+  |/metrics"/>
 
   <arg name="ralp_follower_topics"
   default="|/lane_follower_state
