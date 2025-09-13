@@ -5,6 +5,7 @@ from os.path import expanduser
 import os
 import glob
 import rospy
+from pathlib import Path
 
 # mqtt messages
 from msgs.heartbeat_msg_defs import HeartbeatData
@@ -81,8 +82,8 @@ class AvAgent:
     with open(self.filename, 'r') as file:
       text = file.read()
     printDebug = int(verbose)
-    self.machineDefs = Loader.read_machine_definitions(text, printDebug)
-    self.vehicleType = Loader.getField(text,'vehicleType','Leaf')
+    # self.machineDefs = Loader.read_machine_definitions(text, printDebug)
+    self.vehicleType = Loader.getField(text,'vehicleType','Leaf').rstrip()
     self.subsystems = Loader.read_subsystems(text, printDebug)
     self.mapName = Loader.getField(text,'mapName','Franklin.set')
     #self.mqttConfig = Loader.getField(text,'mqttConfig','local')
@@ -116,6 +117,22 @@ class AvAgent:
     todaysDate = ''.join(time.strftime("%Y-%m-%d"))
     self.pathToBags = '/opt/data/snapshots/'+todaysDate+'/'
     self.fileInTransit = FileInTransit(self.pathToBags)
+
+    # Load the configuration for the given vehicle type
+    vehicletype_config_file = Path( os.path.dirname(self.filename) + "/vehicletype_" + self.vehicleType + ".yaml" )
+    try:
+      vehicletype_config = vehicletype_config_file.read_text(encoding='utf-8')
+      self.machineDefs = Loader.read_vehicletype_machine_defs(vehicletype_config)
+      self.defaultArguments = Loader.read_vehicletype_default_arguments(vehicletype_config)
+      # Update launch files with machine definitions, if available
+      if self.machineDefs:
+        for ss in self.subsystems:
+          ss.updateLaunchFilesWithMachineDefs(self.machineDefs, printDebug)      
+    except FileNotFoundError:
+        print(f"INFO: No config file found for the given vehicle type.")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+
 
   def pubSubSetup(self):
     # Setup ros publishers and subscribers

@@ -1,0 +1,101 @@
+##########################################################
+# Machine Definitions
+##########################################################
+
+Machines:
+  master:
+    address: localhost
+    env-loader: ""
+  airtop01:
+    address: airtop01
+    env-loader: "$(find nrc_svcs)/launch/env.sh"
+  airtop2: 
+    address: airtop2
+    env-loader: "$(find nrc_svcs)/launch/env.sh"
+  airtop3:
+    address: airtop3
+    env-loader: "$(find nrc_svcs)/launch/env.sh"
+  airtop4: 
+    address: airtop4
+    env-loader: "$(find nrc_svcs)/launch/env_venv.sh"
+  airtop5: 
+    address: airtop5
+    env-loader: "$(find nrc_svcs)/launch/env_conda.sh"
+  jetson01: 
+    address: jetson01
+    env-loader: "$(find nrc_svcs)/launch/env_venv_jetson.sh"
+  jetson02: 
+    address: jetson02
+    env-loader: "$(find nrc_svcs)/launch/env.sh"
+  zbox01: 
+    address: zbox01
+    env-loader: "$(find nrc_svcs)/launch/env.sh"
+  nuvo: 
+    address: nuvo
+    env-loader: "$(find nrc_svcs)/launch/env_pyenv.sh"
+
+
+##########################################################
+# Default Arguments
+##########################################################
+
+default_arguments:
+
+  # Vehicle and Location
+  vehicle: ze1-01
+  location: mm
+
+  # Machine Assignments
+  ctrl_machine: master
+  gps_machine: master
+  ublox_machine: airtop03
+  ibeo_machine: master
+  watec_front_machine: airtop01
+  watec_side_machine: airtop01
+  watec_rear_machine: airtop01
+  tieriv_machine: jetson02
+  avm_machine: airtop03
+  ndt_machine: airtop02
+  loc_autoinit_machine: airtop02
+  luminar_machine: airtop02
+  velodyne_machine: airtop02
+  hesai_machine: airtop02
+  bosch_com_machine: master
+  traffic_light_machine: airtop05
+  traffic_light_ped_machine: airtop05
+  meye3_machine: airtop01
+  pointcloud_processing_machine: airtop02
+  bevfusion_machine: zbox01
+  image_processing_machine: airtop01
+  vehicle_keypoint_detection_machine: airtop04
+  vehicle_light_detection_machine: airtop04
+  parked_car_image_based_detection_machine: airtop03
+  sensor_fusion_machine: airtop02
+  local_model_machine: master
+  route_planner_machine: master
+  behavior_exec_machine: master
+  path_planning_machine: airtop03
+  mfield_machine: airtop01
+  teleop_machine: nuvo
+
+  # GPS Configuration
+  use_trimble: false
+  use_garmin: false
+  use_oxts: true
+
+  # Sensor Configuration
+  use_ibeo: true
+  use_watec: false
+  use_tieriv: true
+  use_avm: true
+  use_meye3: true
+  use_meye3_trw: false
+  use_luminar: true
+  use_velodyne: false
+  use_hesai: true
+  use_bosch_radar: true
+  use_traffic_lights: true
+  ibeoIpAddress: 192.168.1.100
+
+  # Decision Making
+  use_decision_for_private_area: true

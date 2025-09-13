@@ -3,6 +3,7 @@
 import rospy
 import sys
 import yaml
+from typing import Dict, Any, List
 
 from include.subsystem import Subsystem
 from include.monitor import Monitor
@@ -200,42 +201,126 @@ def read_subsystems(text, printDebug):
   return subsystems
 
 
-def extract_machines_block(text):
-  lines = text.split('\n')
-  machines_block = []
-  capture = False
+# def extract_machines_block(text):
+#   lines = text.split('\n')
+#   machines_block = []
+#   capture = False
 
-  if lines:
-    for line in lines:
-      if line.strip() == 'Machines:':
-        machines_block.append(line)
-        capture = True
-      elif capture:
-        # Stop if we hit an empty line 
-        if line.strip() == '':
-          break
-        if capture:
-          machines_block.append(line)
+#   if lines:
+#     for line in lines:
+#       if line.strip() == 'Machines:':
+#         machines_block.append(line)
+#         capture = True
+#       elif capture:
+#         # Stop if we hit an empty line 
+#         if line.strip() == '':
+#           break
+#         if capture:
+#           machines_block.append(line)
     
-  return '\n'.join(machines_block)
+#   return '\n'.join(machines_block)
 
 
-def read_machine_definitions(text, printDebug):
-  machine_defs = []
+# def read_machine_definitions(text, printDebug):
+#   machine_defs = []
 
-  machines_block = yaml.safe_load(extract_machines_block(text))
-  if machines_block:
-    for name, props in machines_block.get("Machines", {}).items():
-      address = props.get("address", "")
-      env_loader = props.get("env-loader")
-      if env_loader:
-        machine_defs.append(f'<machine name="{name}" address="{address}" env-loader="{env_loader}" />')
-      else:
-        machine_defs.append(f'<machine name="{name}" address="{address}" />')
+#   machines_block = yaml.safe_load(extract_machines_block(text))
+#   if machines_block:
+#     for name, props in machines_block.get("Machines", {}).items():
+#       address = props.get("address", "")
+#       env_loader = props.get("env-loader")
+#       if env_loader:
+#         machine_defs.append(f'<machine name="{name}" address="{address}" env-loader="{env_loader}" />')
+#       else:
+#         machine_defs.append(f'<machine name="{name}" address="{address}" />')
 
-  if printDebug: print('machine_defs:', machine_defs)
-  return machine_defs
+#   if printDebug: print('machine_defs:', machine_defs)
+#   return machine_defs
 
+
+def read_vehicletype_machine_defs(yaml_content: str) -> List[str]:
+    """
+    Convert the Machines section from YAML to a list of XML machine definitions.
+    
+    Args:
+        yaml_content (str): The entire YAML content as a string
+        
+    Returns:
+        List[str]: List of XML formatted machine definitions
+    """
+    try:
+        # Parse YAML content
+        yaml_data = yaml.safe_load(yaml_content)
+        
+        # Check if Machines section exists
+        if not yaml_data or 'Machines' not in yaml_data:
+            return []
+        
+        xml_lines = []
+        
+        # Convert each machine entry to XML format
+        for machine_name, machine_info in yaml_data['Machines'].items():
+            # Start with required attributes
+            attributes = [
+                f'name="{machine_name}"',
+                f'address="{machine_info["address"]}"'
+            ]
+            
+            # Add env-loader if it exists and is not empty
+            if machine_info.get("env-loader"):
+                attributes.append(f'env-loader="{machine_info["env-loader"]}"')
+            
+            # Create XML tag
+            xml_line = f'<machine {" ".join(attributes)} />'
+            xml_lines.append(xml_line)
+        
+        return xml_lines
+    
+    except yaml.YAMLError as e:
+        return [f"Error parsing YAML: {str(e)}"]
+    except Exception as e:
+        return [f"Error processing content: {str(e)}"]
+
+
+
+def read_vehicletype_default_arguments(yaml_content: str) -> List[str]:
+    """
+    Extract the default_arguments block from YAML text and convert to XML-style argument list.
+    
+    Args:
+        yaml_content (str): The content of the YAML file
+        
+    Returns:
+        List[str]: List of XML-style argument strings, or empty list if not found
+    """
+    try:
+        # Parse the YAML text
+        yaml_data = yaml.safe_load(yaml_content)
+        
+        # Check if default_arguments exists
+        if not yaml_data or 'default_arguments' not in yaml_data:
+            return []
+        
+        # Convert each key-value pair to XML-style argument
+        args_list = []
+        for key, value in yaml_data['default_arguments'].items():
+            # Convert boolean values to lowercase strings
+            if isinstance(value, bool):
+                value = str(value).lower()
+            # Convert all other values to strings
+            else:
+                value = str(value)
+            
+            # Create XML-style argument string
+            arg_str = f'<arg name="{key}" value="{value}"/>'
+            args_list.append(arg_str)
+            
+        return args_list
+        
+    except yaml.YAMLError as e:
+        print(f"Error parsing YAML: {e}")
+        return []
+    
 
 def subscribe_health_msgs(subsystems):    
   for subsystem in subsystems:
