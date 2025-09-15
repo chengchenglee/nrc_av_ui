@@ -82,7 +82,6 @@ class AvAgent:
     with open(self.filename, 'r') as file:
       text = file.read()
     printDebug = int(verbose)
-    # self.machineDefs = Loader.read_machine_definitions(text, printDebug)
     self.vehicleType = Loader.getField(text,'vehicleType','Leaf').rstrip()
     self.subsystems = Loader.read_subsystems(text, printDebug)
     self.mapName = Loader.getField(text,'mapName','Franklin.set')
@@ -124,10 +123,10 @@ class AvAgent:
       vehicletype_config = vehicletype_config_file.read_text(encoding='utf-8')
       self.machineDefs = Loader.read_vehicletype_machine_defs(vehicletype_config)
       self.defaultArguments = Loader.read_vehicletype_default_arguments(vehicletype_config)
-      # Update launch files with machine definitions, if available
-      if self.machineDefs:
+      # Update launch files, if available
+      if self.machineDefs or self.defaultArguments:
         for ss in self.subsystems:
-          ss.updateLaunchFilesWithMachineDefs(self.machineDefs, printDebug)      
+          ss.updateLaunchFilesWithVehicleTypeConfig(self.machineDefs, self.defaultArguments, printDebug)      
     except FileNotFoundError:
         print(f"INFO: No config file found for the given vehicle type.")
     except Exception as e:
