@@ -1,7 +1,8 @@
 Configuration:
   Name: sim
+  vehicleType: ze1-01
   agentType: AV4
-  mapName: Franklin.set
+  mapName: new_MM_map
   printTimeDebug: 0
   useGui: 1
   sendWm: 1
