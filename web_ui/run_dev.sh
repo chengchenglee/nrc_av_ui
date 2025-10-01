@@ -27,16 +27,25 @@ export FLASK_DEBUG=1
 # Run the web application from the web_ui directory
 cd "${SCRIPT_DIR}"
 
-# Parse broker argument
+# Parse broker argument and optional install flag
 BROKER="emqx"
-while getopts ":b:" opt; do
+INSTALL_REQS=0
+while getopts ":b:i" opt; do
     case $opt in
         b) BROKER="$OPTARG"
+        ;;
+        i) INSTALL_REQS=1
         ;;
         \?) echo "Invalid option -$OPTARG" >&2
         ;;
     esac
 done
+
+# Optionally install requirements
+if [ "$INSTALL_REQS" -eq 1 ]; then
+    echo "Installing python requirements..."
+    pip3 install -r requirements.txt
+fi
 
 # Start the application
 exec python3 -u app.py -b "$BROKER"

@@ -1,193 +1,272 @@
 #!/usr/bin/python3
 
-# Monkey patch at the very beginning
 import eventlet
 eventlet.monkey_patch()
 
 import os
-import signal
 import sys
-import json
 import time
-from threading import Lock
+import base64
 import argparse
-from flask import Flask, render_template, jsonify, request
+import json
+from threading import Lock
+from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
 
 # Set up paths
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
-template_dir = os.path.join(current_dir, 'templates')
-static_dir = os.path.join(current_dir, 'static')
 
 if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
-# Initialize Flask with explicit template and static folders
-app = Flask(__name__,
-           template_folder=template_dir,
-           static_folder=static_dir)
-
-# Now import the modules
+# Import required modules
 from av_ui.rAgent import *
 from av_ui.include.cloud_connection import CloudConnection
 
-# Configure Flask application
-app.config.update(
-    SECRET_KEY='secret!',
-    APPLICATION_ROOT='/',
-    DEBUG=True  # Set to True for development
-)
+# Initialize Flask app
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'remote-monitor-secret'
 
-# Initialize SocketIO with eventlet
-socketio = SocketIO(
-    app,
-    async_mode='eventlet',
-    cors_allowed_origins='*',
-    logger=True,
-    engineio_logger=True
-)
-
-# Thread management
-thread = None
-thread_lock = Lock()
+# Initialize SocketIO
+socketio = SocketIO(app, async_mode='eventlet', cors_allowed_origins='*', logger=False)
 
 # Global variables
+thread = None
+thread_lock = Lock()
 running = True
 cloud = None
 monitoredAgents = []
 newSubscriptions = ['dt/agents/heartbeat']
 subscribedTopics = []
 
+# Update frequency control
+BACKGROUND_UPDATE_INTERVAL = 0.5  # Update every 500ms
+FRONTEND_UPDATE_INTERVAL = 1.0    # Send to frontend every 1s
+last_frontend_update = 0
+
 def background_thread():
-    global monitoredAgents, newSubscriptions, cloud
+    """Background thread that handles MQTT communication and periodic updates"""
+    global monitoredAgents, newSubscriptions, cloud, last_frontend_update
     
     while running:
-        # Update agent wmState subscriptions
-        updateTeleopSubs()
+        try:
+            # Update subscriptions
+            updateStatusSubs()
+            
+            # Parse incoming messages
+            messages = cloud.getMail()
+            if messages:
+                parseMsgs(messages)
+            
+            # Periodic command publishing (same as desktop app)
+            for agent in monitoredAgents:
+                if time.time() > getattr(agent, 'nextCmdMsgTime', 0):
+                    agent.nextCmdMsgTime = time.time() + 1.5
+                    if hasattr(agent, 'cmdTopic') and agent.cmdTopic:
+                        try:
+                            cloud.publishCsv(agent.cmdTopic, agent.getCmdData(), 0)
+                        except Exception as e:
+                            print(f"Error publishing cmd for {agent.name}: {e}")
+            
+            # Send updates to frontend at controlled rate
+            current_time = time.time()
+            if current_time - last_frontend_update >= FRONTEND_UPDATE_INTERVAL:
+                last_frontend_update = current_time
+                send_status_update()
+                
+        except Exception as e:
+            print(f"Background thread error: {e}")
         
-        # Update agent status subscriptions
-        updateStatusSubs()
-        
-        # Parse updates
-        parseMsgs(cloud.getMail())
-        
-        # Emit data to connected clients
-        agent_data = []
-        for agent in monitoredAgents:
+        socketio.sleep(BACKGROUND_UPDATE_INTERVAL)
+
+def send_status_update():
+    """Send current status to all connected clients"""
+    agent_data = []
+    for agent in monitoredAgents:
+        try:
+            # Basic agent info
             agent_info = {
                 'name': agent.name,
-                'status': agent.heartbeat.toDict() if agent.heartbeat else None,
-                'wmStatus': agent.wmStatus.toDict() if agent.wmStatus else None,
-                'imgStreamData': agent.imgStreamData.toDict() if agent.imgStreamData else None
+                'selected': getattr(agent, 'selected', False),
+                'cmdsMode': getattr(agent, 'cmdsMode', 'Sync'),
+                'lastUpdate': time.time()
             }
+            
+            # Subsystems info
+            subsystems = []
+            for subsystem in getattr(agent, 'subsystems', []):
+                sub_info = {
+                    'name': subsystem.name,
+                    'isRunning': getattr(subsystem, 'isRunning', 0),
+                    'monitorCount': len(getattr(subsystem, 'monitors', []))
+                }
+                subsystems.append(sub_info)
+            agent_info['subsystems'] = subsystems
+            
+            # World model status (for teleop)
+            if hasattr(agent, 'wmStatus'):
+                try:
+                    agent_info['wmStatus'] = agent.wmStatus.toDict()
+                except:
+                    agent_info['wmStatus'] = None
+            
             agent_data.append(agent_info)
-        
-        socketio.emit('status_update', {'agents': agent_data})
-        socketio.sleep(0.1)
+            
+        except Exception as e:
+            print(f"Error serializing agent {getattr(agent, 'name', 'unknown')}: {e}")
+    
+    socketio.emit('status_update', {'agents': agent_data})
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
 @socketio.on('connect')
-def connect():
+def on_connect():
     global thread
+    print("Client connected")
     with thread_lock:
         if thread is None:
             thread = socketio.start_background_task(background_thread)
 
-@socketio.on('teleop_command')
-def handle_teleop_command(data):
-    global monitoredAgents, cloud
+@socketio.on('disconnect')
+def on_disconnect():
+    print("Client disconnected")
+
+@socketio.on('agent_select')
+def handle_agent_select(data):
+    """Handle agent selection"""
     agent_name = data.get('agent')
-    command = data.get('command')
+    for agent in monitoredAgents:
+        if agent.name == agent_name:
+            try:
+                agent.select()
+                # Immediate command publish
+                if hasattr(agent, 'cmdTopic') and agent.cmdTopic:
+                    cloud.publishCsv(agent.cmdTopic, agent.getCmdData(), 0)
+                print(f"Agent {agent_name} selected: {agent.selected}")
+                return {'success': True, 'selected': agent.selected}
+            except Exception as e:
+                print(f"Error selecting agent {agent_name}: {e}")
+                return {'success': False, 'error': str(e)}
+    return {'success': False, 'error': 'Agent not found'}
+
+@socketio.on('agent_set_cmds')
+def handle_agent_set_cmds(data):
+    """Handle agent cmds mode toggle"""
+    agent_name = data.get('agent')
+    for agent in monitoredAgents:
+        if agent.name == agent_name:
+            try:
+                agent.setCmds()
+                # Immediate command publish
+                if hasattr(agent, 'cmdTopic') and agent.cmdTopic:
+                    cloud.publishCsv(agent.cmdTopic, agent.getCmdData(), 0)
+                print(f"Agent {agent_name} cmdsMode: {agent.cmdsMode}")
+                return {'success': True, 'cmdsMode': agent.cmdsMode}
+            except Exception as e:
+                print(f"Error setting cmds for agent {agent_name}: {e}")
+                return {'success': False, 'error': str(e)}
+    return {'success': False, 'error': 'Agent not found'}
+
+@socketio.on('subsystem_toggle')
+def handle_subsystem_toggle(data):
+    """Handle subsystem start/stop toggle"""
+    agent_name = data.get('agent')
+    subsystem_name = data.get('subsystem')
     
     for agent in monitoredAgents:
         if agent.name == agent_name:
-            agent.teleopCmdData.fromDict(command)
-            cloud.publishCsv(agent.teleopTopic, agent.getTeleopCmd(), 0)
-            break
+            for subsystem in getattr(agent, 'subsystems', []):
+                if subsystem.name == subsystem_name:
+                    try:
+                        old_state = subsystem.isRunning
+                        subsystem.stop()  # This toggles isRunning
+                        new_state = subsystem.isRunning
+                        
+                        # Immediate command publish
+                        if hasattr(agent, 'cmdTopic') and agent.cmdTopic:
+                            cloud.publishCsv(agent.cmdTopic, agent.getCmdData(), 0)
+                        
+                        print(f"Subsystem {subsystem_name} toggled: {old_state} -> {new_state}")
+                        return {'success': True, 'isRunning': new_state}
+                    except Exception as e:
+                        print(f"Error toggling subsystem {subsystem_name}: {e}")
+                        return {'success': False, 'error': str(e)}
+    return {'success': False, 'error': 'Subsystem not found'}
 
 def parseMsgs(messages):
+    """Parse incoming MQTT messages"""
     global monitoredAgents, newSubscriptions
     for msg in messages:
-        # Received heartbeat from an agent
-        if "heartbeat" in msg['topic']:
-            hb = HeartbeatData()
-            hb.fromMsg(msg)
-            agentName = hb.agentName.value
+        try:
+            if "heartbeat" in msg['topic']:
+                # Handle heartbeat
+                hb = HeartbeatData()
+                hb.fromMsg(msg)
+                agentName = hb.agentName.value
 
-            newAgent = True
-            for t in subscribedTopics:
-                if agentName in t:
-                    newAgent = False
-                    break
+                # Check if new agent
+                newAgent = True
+                for t in subscribedTopics:
+                    if agentName in t:
+                        newAgent = False
+                        break
 
-            if newAgent:
-                topic = 'dt/'+agentName+'/status'
-                newSubscriptions.append(topic)
-            else:
-                for ma in monitoredAgents:
-                    if agentName in ma.name:
-                        ma.tLastMsg = time.time()
-                        ma.agentMsgCount = hb.msgCount.value
-                        ma.nextCmdMsgTime = time.time()
+                if newAgent:
+                    topic = 'dt/' + agentName + '/status'
+                    newSubscriptions.append(topic)
+                else:
+                    # Update existing agent timestamp
+                    for ma in monitoredAgents:
+                        if agentName in ma.name:
+                            ma.tLastMsg = time.time()
+                            ma.agentMsgCount = hb.msgCount.value
+                            ma.nextCmdMsgTime = time.time()
 
-        # Received a status update from an agent
-        elif "status" in msg['topic']:
-            updatedAgentData = MonitoredAgent()
-            updatedAgentData.parseMsgPayloadCsv(msg['data'])
+            elif "status" in msg['topic']:
+                # Handle status update
+                updatedAgentData = MonitoredAgent()
+                updatedAgentData.parseMsgPayloadCsv(msg['data'])
 
-            found = False
-            for a in monitoredAgents:
-                if a.name == updatedAgentData.name:
-                    found = True
-                    a.update(updatedAgentData)
-            
-            if not found:
-                monitoredAgents.append(updatedAgentData)
+                found = False
+                for agent in monitoredAgents:
+                    if agent.name == updatedAgentData.name:
+                        found = True
+                        agent.update(updatedAgentData)
 
-        # Received a world model state from an agent
-        elif "wmState" in msg['topic']:
-            for a in monitoredAgents:
-                if a.name in msg['topic']:
-                    a.updateWmFromMqtt(msg['data'])
-                    break
+                if not found:
+                    monitoredAgents.append(updatedAgentData)
 
-        elif "imgStream" in msg['topic']:
-            for a in monitoredAgents:
-                if a.name in msg['topic']:
-                    a.updateImgFromMqtt(msg['data'])
-                    break
+        except Exception as e:
+            print(f"Error parsing message {msg.get('topic', 'unknown')}: {e}")
 
 def updateStatusSubs():
+    """Update status subscriptions"""
     global cloud, newSubscriptions, subscribedTopics
-    for t in newSubscriptions:
-        alreadySubscribed = False
-        for ts in subscribedTopics:
-            if t == ts:
-                alreadySubscribed = True
-        if not alreadySubscribed:
-            qos = 0
-            cloud.subscribe([t], qos)
-            subscribedTopics.append(t)
+    for topic in newSubscriptions:
+        if topic not in subscribedTopics:
+            try:
+                cloud.subscribe([topic], 0)
+                subscribedTopics.append(topic)
+                print(f"Subscribed to: {topic}")
+            except Exception as e:
+                print(f"Error subscribing to {topic}: {e}")
+    newSubscriptions.clear()
 
-def updateTeleopSubs():
-    global cloud, subscribedTopics
-    # Implementation similar to original but adapted for web interface
-    pass
-
-def init_cloud(broker):
+def init_app(broker):
+    """Initialize the application"""
     global cloud
-    cloud = CloudConnection("RemoteMonitor", broker)
+    cloud = CloudConnection("WebRemoteMonitor", broker)
     cloud.init()
+    print(f"Connected to broker: {broker}")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-b', '--broker', default='emqx')
+    parser.add_argument('-b', '--broker', default='emqx', help='MQTT broker name')
     args = parser.parse_args()
     
-    with app.app_context():
-        init_cloud(args.broker)
-        socketio.run(app, host='0.0.0.0', port=5000)
+    init_app(args.broker)
+    print("Starting web remote monitor...")
+    socketio.run(app, host='0.0.0.0', port=5000, debug=False)
