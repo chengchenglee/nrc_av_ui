@@ -48,13 +48,24 @@ class HeartbeatData:
     csvStr = ''
     for i in range(len(self.data)):
       for j in range(len(self.data[i])):
-        if j == 0 and i>0:
-          csvStr += '\n'
-        if j > 0:
+        if csvStr != '':
           csvStr += ','
         csvStr += str(self.data[i][j].value)
-    #print('mqtt_defs, toMsg:\n'+str(csvStr))
     return csvStr
+    
+  def toDict(self):
+    return {
+        'agentName': self.agentName.value,
+        'agentType': self.agentType.value,
+        'pos_x': self.pos_x.value,
+        'pos_y': self.pos_y.value,
+        'pos_th': self.pos_th.value,
+        'spd': self.spd.value,
+        'yawRate': self.yawRate.value,
+        'lat': self.lat.value,
+        'lon': self.lon.value,
+        'msgCount': self.msgCount.value
+    }
     
   def fromMsg(self, msgIn):
     for lineData in msgIn['data']:

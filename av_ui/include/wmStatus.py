@@ -122,6 +122,19 @@ class WmObject:
   
   def xythvw(self):
     return [self.data[xIdx],self.data[yIdx],self.data[thIdx],self.data[vIdx],self.data[yrIdx]]
+    
+  def toDict(self):
+    return {
+        'object_id': self.object_id,
+        'x': float(self.data[xIdx]),
+        'y': float(self.data[yIdx]),
+        'th': float(self.data[thIdx]),
+        'width': float(self.data[wIdx]),
+        'length': float(self.data[lIdx]),
+        'speed': float(self.data[vIdx]),
+        'yawRate': float(self.data[yrIdx]),
+        'classification': int(self.data[clIdx])
+    }
   
   def cornersInFrame(self,frame):
     pose = np.dot(frame.poseInv,self.centerPose)
@@ -336,6 +349,15 @@ class WmStatus:
     #else:
         #print("Unexpected data format")
 
+  def toDict(self):
+    return {
+        'dgp': self.dgp.toDict(),
+        'objects': [obj.toDict() for obj in self.objs],
+        'msgCount': self.msgCount,
+        'agentMsgCount': self.agentMsgCount,
+        'cloud': [{'x': x, 'y': y, 'z': z} for x, y, z in self.cloud] if self.cloud else []
+    }
+    
   def updateObjs(self,tosMsg):
     #if False:
       #newObj = TrackedObject()

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Remote Monitor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <div class="container-fluid">
+        <ul class="nav nav-tabs" id="monitorTabs" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" id="status-tab" data-bs-toggle="tab" href="#status" role="tab">Status</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="teleop-tab" data-bs-toggle="tab" href="#teleop" role="tab">Teleop</a>
+            </li>
+        </ul>
+        
+        <div class="tab-content" id="monitorTabContent">
+            <!-- Status Tab -->
+            <div class="tab-pane fade show active" id="status" role="tabpanel">
+                <div class="row" id="agent-status-container">
+                    <!-- Agent status cards will be inserted here -->
+                </div>
+            </div>
+            
+            <!-- Teleop Tab -->
+            <div class="tab-pane fade" id="teleop" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="canvas-container">
+                            <canvas id="teleop-canvas"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div id="teleop-panel">
+                            <h4>Teleop Controls</h4>
+                            <select class="form-select mb-3" id="agent-select">
+                                <option value="">Select Agent</option>
+                            </select>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="teleop-enable">
+                                <label class="form-check-label" for="teleop-enable">
+                                    Enable Teleop
+                                </label>
+                            </div>
+                            <div id="teleop-controls" class="text-center">
+                                <div></div>
+                                <button class="btn btn-primary control-button" data-direction="forward">↑</button>
+                                <div></div>
+                                <button class="btn btn-primary control-button" data-direction="left">←</button>
+                                <button class="btn btn-primary control-button" data-direction="stop">□</button>
+                                <button class="btn btn-primary control-button" data-direction="right">→</button>
+                                <div></div>
+                                <button class="btn btn-primary control-button" data-direction="backward">↓</button>
+                                <div></div>
+                            </div>
+                            <div class="stats-panel mt-3">
+                                <h5>Status</h5>
+                                <div id="teleop-stats"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const socket = io();
+        let selectedAgent = null;
+        let teleopEnabled = false;
+        const canvas = document.getElementById('teleop-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Socket.IO event handlers
+        socket.on('connect', () => {
+            console.log('Connected to server');
+        });
+
+        socket.on('status_update', (data) => {
+            updateAgentStatus(data.agents);
+            if (selectedAgent) {
+                updateTeleopView(data.agents);
+            }
+        });
+
+        // Update agent status cards
+        function updateAgentStatus(agents) {
+            const container = document.getElementById('agent-status-container');
+            container.innerHTML = '';
+            
+            agents.forEach(agent => {
+                const card = document.createElement('div');
+                card.className = 'col-md-4';
+                const status = agent.status ? 'online' : 'offline';
+                card.innerHTML = `
+                    <div class="agent-card">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <span class="status-indicator status-${status}"></span>
+                                ${agent.name}
+                            </h5>
+                        </div>
+                        <div class="mt-3">
+                            <small class="text-muted">Last Updated: ${new Date().toLocaleTimeString()}</small>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            
+            updateAgentSelect(agents);
+        }
+
+        // Update agent selection dropdown
+        function updateAgentSelect(agents) {
+            const select = document.getElementById('agent-select');
+            const currentValue = select.value;
+            
+            while (select.options.length > 1) {
+                select.remove(1);
+            }
+            
+            agents.forEach(agent => {
+                const option = document.createElement('option');
+                option.value = agent.name;
+                option.text = agent.name;
+                select.add(option);
+            });
+            
+            if (currentValue) {
+                select.value = currentValue;
+            }
+        }
+
+        // Update teleop view
+        function updateTeleopView(agents) {
+            const agent = agents.find(a => a.name === selectedAgent);
+            if (!agent) return;
+            
+            // Clear canvas
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw world model state
+            if (agent.wmStatus) {
+                drawWorldModel(agent.wmStatus);
+            }
+            
+            // Update stats
+            const stats = document.getElementById('teleop-stats');
+            stats.innerHTML = `
+                <div>Agent: ${agent.name}</div>
+                <div>Status: ${agent.status ? 'Online' : 'Offline'}</div>
+                <div>Teleop: ${teleopEnabled ? 'Enabled' : 'Disabled'}</div>
+            `;
+        }
+
+        // Draw world model on canvas
+        function drawWorldModel(wmStatus) {
+            // Implementation depends on your world model data structure
+            // This is a placeholder for visualization
+            ctx.fillStyle = 'rgba(0, 0, 255, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Event Listeners
+        document.getElementById('agent-select').addEventListener('change', (e) => {
+            selectedAgent = e.target.value;
+            teleopEnabled = false;
+            document.getElementById('teleop-enable').checked = false;
+        });
+
+        document.getElementById('teleop-enable').addEventListener('change', (e) => {
+            if (!selectedAgent) {
+                e.target.checked = false;
+                return;
+            }
+            
+            teleopEnabled = e.target.checked;
+            socket.emit('teleop_command', {
+                agent: selectedAgent,
+                command: {
+                    enabled: teleopEnabled
+                }
+            });
+        });
+
+        // Teleop control buttons
+        document.querySelectorAll('#teleop-controls .control-button').forEach(button => {
+            button.addEventListener('click', (e) => {
+                if (!selectedAgent || !teleopEnabled) return;
+                
+                const direction = e.target.dataset.direction;
+                socket.emit('teleop_command', {
+                    agent: selectedAgent,
+                    command: {
+                        type: 'move',
+                        direction: direction
+                    }
+                });
+            });
+        });
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (!selectedAgent || !teleopEnabled) return;
+            
+            let direction = null;
+            switch(e.key) {
+                case 'ArrowUp': direction = 'forward'; break;
+                case 'ArrowDown': direction = 'backward'; break;
+                case 'ArrowLeft': direction = 'left'; break;
+                case 'ArrowRight': direction = 'right'; break;
+                case ' ': direction = 'stop'; break;
+            }
+            
+            if (direction) {
+                socket.emit('teleop_command', {
+                    agent: selectedAgent,
+                    command: {
+                        type: 'move',
+                        direction: direction
+                    }
+                });
+            }
+        });
+
+        // Resize canvas when window resizes
+        window.addEventListener('resize', () => {
+            if (canvas) {
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+                if (selectedAgent) {
+                    updateTeleopView([selectedAgent]);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -46,6 +46,19 @@ class ImgStreamData:
   
   def isFfmpeg(self):
     return self.fields[encIdx] != 'jpeg'
+    
+  def toDict(self):
+    return {
+        'msgCount': self.fields[msgCountIdx],
+        'stamp': self.fields[stampIdx],
+        'seq': self.fields[seqIdx],
+        'width': self.fields[widthIdx],
+        'height': self.fields[heightIdx],
+        'encoding': self.fields[pktsIdx],
+        'flags': self.fields[flgsIdx],
+        'encoderType': self.fields[encIdx],
+        'unprocessedFrame': self.unprocessedFrame
+    }
   
   def toMsg(self,rosMsg, width=0, height=0):
     isFfmpeg = hasattr(rosMsg,"encoding")

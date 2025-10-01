@@ -3,11 +3,11 @@
 import json, ast
 from collections import OrderedDict
 import time
-from include.wmStatus import WmStatus
-from msgs.heartbeat_msg_defs import HeartbeatData
-from msgs.waypoints_msg_defs import WaypointData
-from msgs.ffmpeg_msg_defs import ImgStreamData
-from msgs.teleop_msg_defs import TeleopEntry, TeleopCmdData
+from av_ui.include.wmStatus import WmStatus
+from av_ui.msgs.heartbeat_msg_defs import HeartbeatData
+from av_ui.msgs.waypoints_msg_defs import WaypointData
+from av_ui.msgs.ffmpeg_msg_defs import ImgStreamData
+from av_ui.msgs.teleop_msg_defs import TeleopEntry, TeleopCmdData
 
 class MonitoredProcess:
   def __init__(self):
