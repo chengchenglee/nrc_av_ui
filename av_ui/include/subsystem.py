@@ -218,7 +218,23 @@ class Subsystem:
 
     return None
 
-  
+
+  @staticmethod
+  def remove_duplicate_args(lines, defaultArguments):
+    if not defaultArguments or not lines:
+        return lines
+
+    for insert_line in defaultArguments:
+        arg_name_prefix = insert_line.split('value=')[0]
+        # Modify lines that start with arg_name_prefix, ignoring leading whitespace
+        lines = [
+            f'  <!-- {line.strip()} -->\n' if line.lstrip().startswith(arg_name_prefix) else line
+            for line in lines
+        ]
+
+    return lines
+
+
   def updateLaunchFilesWithVehicleTypeConfig(self, machineDefs, defaultArguments, printDebug):
     for cmd in self.commands:
       orig_launch_file = self.extract_launch_filename(cmd.command)
@@ -234,7 +250,10 @@ class Subsystem:
         with open(orig_launch_file, 'r') as file:
           lines = file.readlines()
 
-        # insert machineDefs and deaultArguments and write it to the new file
+        # comment out if any of the default arguments already present in the original launch file
+        lines = self.remove_duplicate_args(lines, defaultArguments)
+
+        # insert machineDefs and defaultArguments and write it to the new file
         new_lines = []
         inserted = False
         for line in lines:

@@ -6,6 +6,8 @@ from nrc_msgs.msg import FailureModeRequest
 from include.subsystem import Subsystem
 import rospy
 import subprocess
+# button callbacks
+from functools import partial
 #from MultiSetDest import MultiSetDest
 #from MultiSetDest import MULTI_DEST_LIST
 
@@ -47,10 +49,13 @@ class Interface:
     self.valSpdSelect = []
     self.valStrSelect = []
     
+    self.teleopFolder = ""
     self.teleopMenu = []
 
     #self.MultiDestList = self.load_multi_destList(MULTI_DEST_LIST)
     self.MultiDestList = []
+
+    self.failureModeRequestPub = rospy.Publisher("/failure_mode_request",FailureModeRequest,queue_size=1)
   
   def onClosing(self):
     print("OnClosing")
@@ -280,6 +285,78 @@ class Interface:
       d.label.grid(column=0, row=multiDestRow, sticky=Tkinter.W+Tkinter.E)
       multiDestRow = multiDestRow + 1
 
+    self.teleopFolder = os.getenv("HOME")+"/projects/nrc_ws/src/nrc_ralp/nrc_ralp_svcs/launch/recorded-teleop-plans/"
+    teleopFileList = []
+    try:
+        teleopFileList = [fname for fname in os.listdir(teleopFolder) if fname.endswith('.yaml')]
+    except:
+        print("Cannot find teleop folder.")
+            
+    colWidth = 14
+    teleopDesc = Tkinter.Button(vehValFrame, text="Send Teleop", width=colWidth, padx=1, relief="raised", command=partial(self.getValCmd,FailureModeRequest.TYPE_SEND_TELEOPPATH_OVERRIDE))
+    teleopDesc.grid(row=1, column=1,sticky=Tkinter.W+Tkinter.E)
+    self.teleopMenu = ttk.Combobox(vehValFrame, values=teleopFileList, state='readonly')
+    if len(teleopFileList)>0 :
+        self.teleopMenu.current(len(teleopFileList)-1)
+    self.teleopMenu.grid(row=1, column=2, columnspan=3, sticky=Tkinter.W+Tkinter.E)
+
+    teleopSpd = Tkinter.Button(vehValFrame, text="Override Path Speed", width=colWidth, padx=1, relief="raised", command=partial(self.getValCmd,FailureModeRequest.TYPE_PATH_SPD_OVERRIDE))
+    teleopSpd.grid(row=2, column=1, columnspan=4, sticky=Tkinter.W+Tkinter.E)
+    
+    valSpdTextBoxDesc = Tkinter.Label(vehValFrame, text="Tgt Speed (kph)", width=colWidth)
+    valSpdTextBoxDesc.grid(row=3, column=1, sticky=Tkinter.W)
+    self.valSpdTextbox = Tkinter.Spinbox(vehValFrame, from_=0, to=150, increment=1, width=10)
+    self.valSpdTextbox.grid(row=3, column=2, sticky=Tkinter.W+Tkinter.E)
+    
+    var1 = Tkinter.StringVar()
+    valStrTextBoxDesc = Tkinter.Label(vehValFrame, text="Tgt Lat G (G)", width=colWidth)
+    valStrTextBoxDesc.grid(row=3, column=3, sticky=Tkinter.W)
+    self.valStrTextbox = Tkinter.Spinbox(vehValFrame, from_=-1, to=1, increment=0.1, width=10, textvariable=var1)
+    self.valStrTextbox.grid(row=3, column=4, sticky=Tkinter.W+Tkinter.E)
+    var1.set(0)
+    
+    valAccelTextBoxDesc = Tkinter.Label(vehValFrame, text="Tgt Accel (m/s2)", width=colWidth)
+    valAccelTextBoxDesc.grid(row=4, column=1, sticky=Tkinter.W)
+    self.valAccelTextbox = Tkinter.Spinbox(vehValFrame, from_=0, to=5, increment=0.1, width=10)
+    self.valAccelTextbox.grid(row=4, column=2, sticky=Tkinter.W+Tkinter.E)
+
+    var2 = Tkinter.StringVar()
+    valStrAngleTextBoxDesc = Tkinter.Label(vehValFrame, text="Tgt Steering (deg)", width=colWidth)
+    valStrAngleTextBoxDesc.grid(row=4, column=3, sticky=Tkinter.W)
+    self.valStrAngleTextbox = Tkinter.Spinbox(vehValFrame, from_=-180, to=180, increment=1, width=10, textvariable=var2)
+    self.valStrAngleTextbox.grid(row=4, column=4, sticky=Tkinter.W+Tkinter.E)
+    var2.set(0)
+    
+    valSpdCommit = Tkinter.Button(vehValFrame, text="Go!", width=colWidth, padx=1, relief="raised", command=partial(self.getValCmd,FailureModeRequest.TYPE_GO_OVERRIDE))
+    valSpdCommit.grid(column=1, row=5, sticky=Tkinter.W+Tkinter.E)
+    
+    valSelect = Tkinter.Label(vehValFrame, text="Use params:", width=colWidth)
+    valSelect.grid(row=5, column=2, sticky=Tkinter.W)
+    
+    self.valSpdSelect = ttk.Combobox(vehValFrame, values=["Tgt Speed (kph)","Tgt Accel (m/s2)"], state='readonly', width=colWidth)
+    self.valSpdSelect.current(0)
+    self.valSpdSelect.grid(row=5, column=3, sticky=Tkinter.W)
+
+    self.valStrSelect = ttk.Combobox(vehValFrame, values=["Tgt Lat G (G)","Tgt Steering (deg)"], state='readonly', width=colWidth)
+    self.valStrSelect.current(0)
+    self.valStrSelect.grid(row=5, column=4, sticky=Tkinter.W)
+
+    valReset = Tkinter.Button(vehValFrame, text="Reset", width=colWidth, padx=1, relief="raised", command=partial(self.getValCmd,FailureModeRequest.TYPE_RESET_OVERRIDE))
+    valReset.grid(column=1, columnspan=2, row=6, sticky=Tkinter.W+Tkinter.E)
+    
+
+    valSpdStop = Tkinter.Button(vehValFrame, text="Stop!", width=colWidth, padx=1, relief="raised", command=partial(self.getValCmd,FailureModeRequest.TYPE_STOP_OVERRIDE))
+    valSpdStop.grid(column=3, columnspan=2, row=6, sticky=Tkinter.W+Tkinter.E)
+    
+    valOvrLeft = Tkinter.Button(vehValFrame, text="Override Left!", width=colWidth, padx=1, relief="raised", command=partial(self.getValCmd,FailureModeRequest.TYPE_LEFT_OVERRIDE))
+    valOvrLeft.grid(column=1, columnspan=2, row=7, sticky=Tkinter.W+Tkinter.E)
+    valOvrRight = Tkinter.Button(vehValFrame, text="Override Right!", width=colWidth, padx=1, relief="raised", command=partial(self.getValCmd,FailureModeRequest.TYPE_RIGHT_OVERRIDE))
+    valOvrRight.grid(column=3, columnspan=2, row=7, sticky=Tkinter.W+Tkinter.E)
+    valOvrAcc = Tkinter.Button(vehValFrame, text="Override Accel!", width=colWidth, padx=1, relief="raised", command=partial(self.getValCmd,FailureModeRequest.TYPE_ACCEL_OVERRIDE))
+    valOvrAcc.grid(column=1, columnspan=2, row=8, sticky=Tkinter.W+Tkinter.E)
+    valOvrDec = Tkinter.Button(vehValFrame, text="Override Decel!", width=colWidth, padx=1, relief="raised", command=partial(self.getValCmd,FailureModeRequest.TYPE_DECEL_OVERRIDE))
+    valOvrDec.grid(column=3, columnspan=2, row=8, sticky=Tkinter.W+Tkinter.E)
+
   def load_multi_destList(self, multi_dest_list = None):
 
     if multi_dest_list is None:
@@ -311,7 +388,7 @@ class Interface:
     inputValue2=self.valStrSelect.get()
     return inputValue1, inputValue2
 
-  def getValCmd(arg):
+  def getValCmd(self,arg):
       
     msg = FailureModeRequest()
     msg.failure_mode_type = arg;
@@ -332,8 +409,8 @@ class Interface:
       print("Ovr reset!")
     elif arg == FailureModeRequest.TYPE_GO_OVERRIDE:
       
-      targetSpeed, lateralAcceleration, targetAccel, steeringAngle = retrieve_valInput()
-      spdSelect, strSelect = retrieve_valTypeInput()
+      targetSpeed, lateralAcceleration, targetAccel, steeringAngle = self.retrieve_valInput()
+      spdSelect, strSelect = self.retrieve_valTypeInput()
 
       printGOparams = "Ovr go!    "
       if spdSelect == "Tgt Speed (kph)":
@@ -370,8 +447,8 @@ class Interface:
     elif arg == FailureModeRequest.TYPE_SEND_TELEOPPATH_OVERRIDE:
       msg.teleop_filename = self.teleopMenu.get()
       print ("Publishing teleop path: ", msg.teleop_filename)
-      publishTeleopCmd = "bash " + teleopFolder + "publish-teleop.sh "
-      publishTeleopCmd += teleopFolder + msg.teleop_filename
+      publishTeleopCmd = "bash " + self.teleopFolder + "publish-teleop.sh "
+      publishTeleopCmd += self.teleopFolder + msg.teleop_filename
       try:
           #os.system(publishTeleopCmd)
           a=1
@@ -379,7 +456,7 @@ class Interface:
           print("Unable to publish teleop path.")
           
     elif arg == FailureModeRequest.TYPE_PATH_SPD_OVERRIDE:
-      targetSpeed, lateralAcceleration, targetAccel, steeringAngle = retrieve_valInput()
+      targetSpeed, lateralAcceleration, targetAccel, steeringAngle = self.retrieve_valInput()
 
       printPATHSPDparams = "Ovr path spd! "
     
@@ -389,7 +466,7 @@ class Interface:
       
       print (printPATHSPDparams)
       
-    return msg
+    self.failureModeRequestPub.publish(msg)
   
   def statusToColor(self,status):
     if status == 3:

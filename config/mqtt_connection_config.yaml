@@ -16,7 +16,7 @@ Brokers:
     MQTT_TLS: true
     
   emqx:
-    MQTT_SERVER: avt-mqtt.nrcsv.com
+    MQTT_SERVER: avt-mqtt.natcsv.com
     MQTT_PORT: 30203
     MQTT_USER: av_team_client
     MQTT_PASSWORD: atfRKyUeprZqjv9m8i
@@ -53,8 +53,8 @@ Brokers:
   ym0_aws:
     MQTT_SERVER: asq16ad9vujas-ats.iot.ap-northeast-1.amazonaws.com
     MQTT_PORT: 8883
-    CA_PATH: /home/nissan/Documents/viju/AmazonRootCA1.pem
-    CERT_PATH: /home/nissan/Documents/viju/certificate.pem.crt
-    KEY_PATH: /home/nissan/Documents/viju/private.pem.key
+    CA_PATH: /home/nissan/Documents/aws_mqtt_keys/AmazonRootCA1.pem
+    CERT_PATH: /home/nissan/Documents/aws_mqtt_keys/certificate.pem.crt
+    KEY_PATH: /home/nissan/Documents/aws_mqtt_keys/private.pem.key
     MQTT_TLS: true
     IOT_CORE: true

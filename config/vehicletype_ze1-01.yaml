@@ -7,28 +7,28 @@ Machines:
     address: localhost
     env-loader: ""
   airtop01:
-    address: airtop01
+    address: 10.152.36.22
     env-loader: "$(find nrc_svcs)/launch/env.sh"
-  airtop2: 
-    address: airtop2
+  airtop02: 
+    address: 10.152.36.23
     env-loader: "$(find nrc_svcs)/launch/env.sh"
-  airtop3:
-    address: airtop3
+  airtop03:
+    address: 10.152.36.24
     env-loader: "$(find nrc_svcs)/launch/env.sh"
-  airtop4: 
-    address: airtop4
+  airtop04: 
+    address: 10.152.36.25
     env-loader: "$(find nrc_svcs)/launch/env_venv.sh"
-  airtop5: 
-    address: airtop5
+  airtop05: 
+    address: 10.152.36.26
     env-loader: "$(find nrc_svcs)/launch/env_conda.sh"
   jetson01: 
-    address: jetson01
+    address: 10.152.36.28
     env-loader: "$(find nrc_svcs)/launch/env_venv_jetson.sh"
   jetson02: 
-    address: jetson02
+    address: 10.152.36.29
     env-loader: "$(find nrc_svcs)/launch/env.sh"
   zbox01: 
-    address: zbox01
+    address: 10.152.36.30
     env-loader: "$(find nrc_svcs)/launch/env.sh"
   nuvo: 
     address: nuvo
@@ -99,3 +99,8 @@ default_arguments:
 
   # Decision Making
   use_decision_for_private_area: true
+
+  # Route Planner
+  use_ym0_crossing_vehicle_decision: true
+  use_decision_for_straight_crosswalk: true
+  use_traffic_light_decisions: true

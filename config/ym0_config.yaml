@@ -10,7 +10,7 @@ Configuration:
   wmTopic: /pc_processor/multi_object_tracker/tracked_object_set
   sendSnapshots: 0
   broker: ym0_aws
-  
+
 Subsystem:
 
   NUVO:
@@ -25,13 +25,13 @@ Subsystem:
         NomWarnErrRate: 10, 7, 5
     Commands:
       - Name: NUVO_Startup
-        Command: roslaunch /home/nissan/projects/nrc_ws/src/nrc_av_ui/MM_launch/remote_launch_FY23_OTA.launch vehicle:=ze1-01 machine:=nuvo
+        Command: roslaunch maas_pc remote_launch_FY25.launch
         NodeName: NUVOStartmNode
         Type: Software
-        LaunchTime: 1
+        LaunchTime: 30
     Diagnostic:
       Retry: 3
-      Timeout: 220
+      Timeout: 60
     Depends:
       - Launch:
         Run:
@@ -48,41 +48,43 @@ Subsystem:
         HealthTopicType: CtrlStateFLG
         NomWarnErrRate: 10, 7, 5
     Commands:
-      - Name: Basic
-        Command: roslaunch /home/nissan/projects/nrc_ws/src/nrc_av_ui/MM_launch/basic_OTA.launch
+      - Name: Leaf_TF_Startup
+        Command: roslaunch nrc_svcs leaf_tf_subsystem.launch
+        NodeName: LeafTFNode
+        Type: Software
+        LaunchTime: 5
+      - Name: CAN_Communication
+        Command: roslaunch nrc_leaf can_communication_ym0.launch
+        NodeName: CanComNode
+        Type: Software
+        LaunchTime: 5
+      - Name: Mabx_Communication
+        Command: rosrun nrc_svcs nrc_mab_com __name:=mab_com __machine:=master
         NodeName: MabComNode
         Type: Software
-        LaunchTime: 1   
-    Diagnostic:
-      Retry: 3
-      Timeout: 220
-    Depends:
-      - Launch:
-        Run:
-        
-  Teleop:
-    Type: Teleop
-    Description: command to start simulator
-    Trigger: Startup, StartRequest, ARDX, or PMUX
-      - Source: StartRequest
-    HealthTopics:
-      - HealthTopic: /CtrlStateFLG_10hz
-        HealthName: CAR
-        HealthTopicType: CtrlStateFLG
-        NomWarnErrRate: 10, 7, 5
-    Commands:
-      - Name: TeleOp IF
-        Command: roslaunch /home/nissan/projects/nrc_ws/src/nrc_av_ui/MM_launch/Teleop_OTA.launch
-        NodeName: TeleOp
+        LaunchTime: 5
+      - Name: MField_Node
+        Command: rosrun nrc_svcs nrc_mfield __name:=nrc_mfield __machine:=airtop01 _mfield_lpf_value:=0.5
+        NodeName: MFieldNode
         Type: Software
-        LaunchTime: 1
+        LaunchTime: 5
+      - Name: TF_Updater
+        Command: rosrun nrc_svcs TFUpdater.py __name:=TFUpdater
+        NodeName: TFUpdaterNode
+        Type: Software
+        LaunchTime: 5
+      - Name: PC_Compressor
+        Command: rosrun nrc_pcp_svcs nrc_pc_compress __name:=nrc_pc_compress
+        NodeName: PCCompressNode
+        Type: Software
+        LaunchTime: 5
     Diagnostic:
       Retry: 3
       Timeout: 220
     Depends:
       - Launch:
         Run:
-    
+
   GPS:
     Type: GPS
     Description: GPS
@@ -95,10 +97,10 @@ Subsystem:
         NomWarnErrRate: 10, 7, 5
     Commands:
       - Name: GPS_Startup
-        Command: roslaunch /home/nissan/projects/nrc_ws/src/nrc_av_ui/MM_launch/GPS_OTA.launch gps_machine:=master ndt_machine:=airtop02 location:=mm use_trimble:=false use_garmin:=false use_oxts:=true
-        NodeName: GPS
+        Command: roslaunch nrc_hw_svcs gps.launch
+        NodeName: GPSNode
         Type: Software
-        LaunchTime: 1       
+        LaunchTime: 10
     Diagnostic:
       Retry: 3
       Timeout: 220
@@ -118,16 +120,16 @@ Subsystem:
         HealthTopicType: CtrlStateFLG
         NomWarnErrRate: 10, 7, 5
     Commands:
-      - Name: sensors_Startup
-        Command: roslaunch /home/nissan/projects/nrc_ws/src/nrc_av_ui/MM_launch/sensors_OTA.launch vehicle:=ze1-01 use_ibeo:=true use_watec:=false use_tieriv:=true use_avm:=true use_luminar:=true use_velodyne:=false use_hesai:=true use_traffic_lights:=true ibeo_machine:=master ibeoIpAddress:=192.168.1.100 watec_front_machine:=airtop01 watec_side_machine:=airtop01 watec_rear_machine:=airtop01 tieriv_machine:=jetson02 avm_machine:=airtop03 luminar_machine:=airtop02 velodyne_machine:=airtop02 hesai_machine:=airtop02 traffic_light_machine:=airtop05
-        NodeName: GPS
+      - Name: Sensors_Startup
+        Command: roslaunch nrc_hw_svcs sensors.launch
+        NodeName: SensorsNode
         Type: Software
-        LaunchTime: 1
-      - Name: ym0_perc_Startup
-        Command: roslaunch /home/nissan/projects/nrc_ws/src/nrc_av_ui/MM_launch/perception_ym0_OTA.launch vehicle:=ze1-01 location:=mm pointcloud_processing_machine:=airtop02 bevfusion_machine:=zbox01 image_processing_machine:=airtop01 vehicle_light_detection_machine:=airtop04 sensor_fusion_machine:=airtop02 traffic_light_machine:=airtop05 traffic_light_ped_machine:=airtop05
-        NodeName: GPS
+        LaunchTime: 15
+      - Name: Perception_Startup
+        Command: roslaunch nrc_perc_svcs perception_ym0.launch
+        NodeName: PerceptionNode
         Type: Software
-        LaunchTime: 1       
+        LaunchTime: 20
     Diagnostic:
       Retry: 3
       Timeout: 220
@@ -146,11 +148,11 @@ Subsystem:
         HealthTopicType: CtrlStateFLG
         NomWarnErrRate: 10, 7, 5
     Commands:
-      - Name: bosch_Startup
-        Command: roslaunch /home/nissan/projects/nrc_ws/src/nrc_av_ui/MM_launch/bosch_OTA.launch   nrc_bosch_com:=master
-        NodeName: bosch
+      - Name: Bosch_Startup
+        Command: rosrun nrc_svcs nrc_bosch_com_v3 __name:=nrc_bosch_com
+        NodeName: BoschNode
         Type: Software
-        LaunchTime: 1      
+        LaunchTime: 5
     Diagnostic:
       Retry: 3
       Timeout: 220
@@ -169,11 +171,16 @@ Subsystem:
         HealthTopicType: CtrlStateFLG
         NomWarnErrRate: 10, 7, 5
     Commands:
-      - Name: localization_Startup
-        Command: roslaunch /home/nissan/projects/nrc_ws/src/nrc_av_ui/MM_launch/localization_OTA.launch
-        NodeName: localization
+      - Name: AVM_Lane_Detection
+        Command: roslaunch ym0_loc_svcs avm_lanemarking_detection.launch CAR_ID:=cam
+        NodeName: AVMLaneNode
         Type: Software
-        LaunchTime: 1   
+        LaunchTime: 10
+      - Name: NDT_Localization
+        Command: roslaunch ym0_loc_svcs localization_online.launch
+        NodeName: NDTLocNode
+        Type: Software
+        LaunchTime: 15
     Diagnostic:
       Retry: 3
       Timeout: 220
@@ -192,11 +199,26 @@ Subsystem:
         HealthTopicType: CtrlStateFLG
         NomWarnErrRate: 10, 7, 5
     Commands:
-      - Name: localization_Startup
-        Command: roslaunch /home/nissan/projects/nrc_ws/src/nrc_av_ui/MM_launch/local_model_OTA.launch
-        NodeName: localization
+      - Name: Local_Model_Node
+        Command: rosrun nrc_svcs local_model __machine:=master
+        NodeName: LocalModelNode
         Type: Software
-        LaunchTime: 1   
+        LaunchTime: 5
+      - Name: Path_Selector_Node
+        Command: rosrun nrc_svcs path_selector __machine:=master
+        NodeName: PathSelectorNode
+        Type: Software
+        LaunchTime: 5
+      - Name: HMI_Data_Conversion
+        Command: rosrun nrc_svcs hmi_data_conversion __machine:=master
+        NodeName: HMIDataNode
+        Type: Software
+        LaunchTime: 5
+      - Name: Image_Reduce_Node
+        Command: rosrun nrc_svcs image_reduce __machine:=airtop01
+        NodeName: ImageReduceNode
+        Type: Software
+        LaunchTime: 5
     Diagnostic:
       Retry: 3
       Timeout: 220
@@ -204,29 +226,6 @@ Subsystem:
       - Launch:
         Run:
 
-  Route_planner:
-    Type: route_planner
-    Description: route_planner
-    Trigger: Startup, StartRequest, ARDX, or PMUX
-      - Source: StartRequest
-    HealthTopics:
-      - HealthTopic: /CtrlStateFLG_10hz
-        HealthName: CAR
-        HealthTopicType: CtrlStateFLG
-        NomWarnErrRate: 10, 7, 5
-    Commands:
-      - Name: routeplanner_Startup
-        Command: roslaunch /home/nissan/projects/nrc_ws/src/nrc_av_ui/MM_launch/route_planner_OTA.launch use_decision_for_private_area:=true use_ym0_crossing_vehicle_decision:=true use_decision_for_straight_crosswalk:=true use_traffic_light_decisions:=true
-        NodeName: routeplanner
-        Type: Software
-        LaunchTime: 1   
-    Diagnostic:
-      Retry: 3
-      Timeout: 220
-    Depends:
-      - Launch:
-        Run:
-  
 
   WM:
     Type: world_model
@@ -239,11 +238,11 @@ Subsystem:
         HealthTopicType: CtrlStateFLG
         NomWarnErrRate: 10, 7, 5
     Commands:
-      - Name: world_model
-        Command: roslaunch /home/nissan/projects/nrc_ws/src/nrc_av_ui/MM_launch/worldmodel_OTA.launch 
-        NodeName: world_model
+      - Name: World_Model
+        Command: roslaunch nrc_wm_svcs ym0_worldmodel.launch
+        NodeName: WorldModelNode
         Type: Software
-        LaunchTime: 1
+        LaunchTime: 10
     Diagnostic:
       Retry: 3
       Timeout: 220
@@ -262,14 +261,47 @@ Subsystem:
         HealthTopicType: CtrlStateFLG
         NomWarnErrRate: 10, 7, 5
     Commands:
-      - Name: DecisionMaking_Startup
-        Command: roslaunch /home/nissan/projects/nrc_ws/src/nrc_av_ui/MM_launch/DM_OTA.launch
-        NodeName: Data_conversion
+      - Name: Decision_Making
+        Command: roslaunch nrc_dm_svcs ym0_decision_making.launch
+        NodeName: DecisionMakingNode
         Type: Software
-        LaunchTime: 1
+        LaunchTime: 10
     Diagnostic:
       Retry: 3
-      Timeout: 220
+      Timeout: 120
+    Depends:
+      - Launch:
+        Run:
+
+  Monitor:
+    Type: System_Monitor
+    Description: System monitoring and status nodes
+    Trigger: Startup, StartRequest, ARDX, or PMUX
+      - Source: StartRequest
+    HealthTopics:
+      - HealthTopic: /CtrlStateFLG_10hz
+        HealthName: CAR
+        HealthTopicType: CtrlStateFLG
+        NomWarnErrRate: 10, 7, 5
+    Commands:
+      - Name: Status_Monitor
+        Command: rosrun nrc_svcs StatusMonitor_from_nodelist.py ze1
+        NodeName: StatusMonitorNode
+        Type: Software
+        LaunchTime: 5
+      - Name: Debug_Monitor
+        Command: rosrun nrc_svcs Q50_DebugMonitor __name:=Q50_DebugMonitor
+        NodeName: DebugMonitorNode
+        Type: Software
+        LaunchTime: 5
+      - Name: System_Monitor
+        Command: rosrun nrc_svcs SystemMonitor_ze1 __name:=SystemMonitor
+        NodeName: SystemMonitorNode
+        Type: Software
+        LaunchTime: 5
+    Diagnostic:
+      Retry: 3
+      Timeout: 60
     Depends:
       - Launch:
         Run:

@@ -34,6 +34,7 @@
   <arg name="system_front_tower_cameras_topics"
   default="/monitor_cam_front/image_stamped/compressed
   |/vehicle_state_ros
+  |/roof_cam_front/image_rect_color/compressed
   |/tower_cam_front/image_color/compressed
   |/tower_cam_front/stream/ffmpeg
   |/front_camera/image_color/compressed

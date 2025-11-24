@@ -508,7 +508,7 @@ def interfaceHealth(agent_name, ping_machines, sensors_list, algs_list, cmd_list
   multiDestFrame = Tkinter.Frame(tab5, width=400, height=50)
   multiDestFrame.grid(row=2,columnspan=10, sticky=Tkinter.W)
   
-  vehValTitleRow = 1;
+  vehValTitleRow = 1
   vehValButtonsRow = vehValTitleRow + 1
   drvValTitleRow = vehValButtonsRow + 1
   drvValButtonsRow = drvValTitleRow + 1
